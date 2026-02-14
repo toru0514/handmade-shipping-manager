@@ -224,6 +224,72 @@ interface OrderFactory {
 }
 ```
 
+## ドメインルール（Domain Rules）
+
+ドメインオブジェクトが持つビジネスルール・不変条件を定義します。
+
+### Order（注文）のルール
+
+| ルールID | ルール名 | 説明 | 実装場所 |
+|---------|---------|------|---------|
+| DR-ORD-001 | 注文ID一意性 | 同一注文IDの注文は重複登録できない | OrderRepository.save() |
+| DR-ORD-002 | 必須項目 | 購入者名、住所、商品名は必須 | Order.create() |
+| DR-ORD-003 | ステータス遷移 | pending → shipped への一方向遷移のみ許可 | Order.markAsShipped() |
+| DR-ORD-004 | 発送済み変更不可 | 発送済みステータスの注文は変更できない | Order.markAsShipped() |
+| DR-ORD-005 | 発送日時記録 | 発送完了時に発送日時を記録する | Order.markAsShipped() |
+
+```typescript
+class Order {
+  markAsShipped(method: ShippingMethod, trackingNumber?: TrackingNumber): void {
+    // DR-ORD-003: ステータス遷移チェック
+    if (this.status !== OrderStatus.Pending) {
+      throw new DomainError('発送済みの注文は変更できません');
+    }
+    // DR-ORD-005: 発送日時記録
+    this.status = OrderStatus.Shipped;
+    this.shippedAt = new Date();
+    this.shippingMethod = method;
+    this.trackingNumber = trackingNumber;
+  }
+}
+```
+
+### ShippingLabel（伝票）のルール
+
+| ルールID | ルール名 | 説明 | 実装場所 |
+|---------|---------|------|---------|
+| DR-LBL-001 | 有効期限 | 宅急便コンパクトのQRコードは発行から14日間有効 | YamatoCompactLabel |
+| DR-LBL-002 | 発送前のみ発行可 | 発送済み注文には伝票を発行できない | ShippingLabelIssueService |
+| DR-LBL-003 | 重複発行警告 | 同一注文に対する伝票の重複発行は警告を表示 | ShippingLabelIssueService |
+
+### Address（住所）のルール
+
+| ルールID | ルール名 | 説明 | 実装場所 |
+|---------|---------|------|---------|
+| DR-ADR-001 | 郵便番号形式 | 7桁の数字（ハイフンなし）であること | PostalCode |
+| DR-ADR-002 | 都道府県 | 47都道府県のいずれかであること | Prefecture |
+| DR-ADR-003 | 必須項目 | 郵便番号、都道府県、市区町村、番地は必須 | Address.create() |
+
+### Platform（プラットフォーム）のルール
+
+| ルールID | ルール名 | 説明 | 実装場所 |
+|---------|---------|------|---------|
+| DR-PLT-001 | 対応プラットフォーム | minne / creema のみ対応 | Platform |
+
+### ShippingMethod（配送方法）のルール
+
+| ルールID | ルール名 | 説明 | 実装場所 |
+|---------|---------|------|---------|
+| DR-SHP-001 | 対応配送方法 | クリックポスト / 宅急便コンパクト のみ対応 | ShippingMethod |
+| DR-SHP-002 | クリックポスト重量制限 | 1kg以下の荷物のみ対応 | ClickPostLabel（将来実装） |
+
+### MessageTemplate（メッセージテンプレート）のルール
+
+| ルールID | ルール名 | 説明 | 実装場所 |
+|---------|---------|------|---------|
+| DR-MSG-001 | 空テンプレート禁止 | テンプレートは空にできない | MessageTemplate |
+| DR-MSG-002 | 変数必須 | テンプレートは最低1つの変数を含む必要がある | MessageTemplate |
+
 ## 仕様（Specifications）
 
 ### OverdueOrderSpecification
