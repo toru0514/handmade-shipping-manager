@@ -18,6 +18,73 @@
 | 宅急便コンパクト | Takkyubin Compact | ヤマト運輸の配送サービス |
 | PUDO | PUDO | 宅配便ロッカー |
 
+## ER図
+
+```mermaid
+erDiagram
+    Order ||--|| Buyer : contains
+    Order ||--o| ShippingLabel : has
+    Buyer ||--|| Address : contains
+    Order ||--|| Product : contains
+
+    Order {
+        OrderId orderId PK
+        Platform platform
+        OrderStatus status
+        DateTime orderedAt
+        DateTime shippedAt
+        ShippingMethod shippingMethod
+        TrackingNumber trackingNumber
+    }
+
+    Buyer {
+        BuyerName name
+        PhoneNumber phoneNumber
+    }
+
+    Address {
+        PostalCode postalCode
+        Prefecture prefecture
+        string city
+        string street
+        string building
+    }
+
+    Product {
+        string name
+        number price
+    }
+
+    ShippingLabel {
+        LabelId labelId PK
+        OrderId orderId FK
+        ShippingLabelType type
+        LabelStatus status
+        DateTime issuedAt
+        DateTime expiresAt
+    }
+
+    ClickPostLabel {
+        LabelId labelId PK
+        binary pdfData
+    }
+
+    YamatoCompactLabel {
+        LabelId labelId PK
+        binary qrCode
+        string waybillNumber
+    }
+
+    ShippingLabel ||--o| ClickPostLabel : extends
+    ShippingLabel ||--o| YamatoCompactLabel : extends
+
+    MessageTemplate {
+        string id PK
+        TemplateType type
+        string content
+    }
+```
+
 ## コンテキストマップ
 
 ```
