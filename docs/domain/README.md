@@ -22,63 +22,62 @@
 
 ```mermaid
 erDiagram
-    Order["Order 注文"] ||--|| Buyer["Buyer 購入者"] : contains
-    Order ||--o| ShippingLabel["ShippingLabel 伝票"] : has
-    Buyer ||--|| Address["Address 住所"] : contains
-    Order ||--|| Product["Product 商品"] : contains
+    Order ||--|| Buyer : contains
+    Order ||--o| ShippingLabel : has
+    Buyer ||--|| Address : contains
+    Order ||--|| Product : contains
+    ShippingLabel ||--o| ClickPostLabel : extends
+    ShippingLabel ||--o| YamatoCompactLabel : extends
 
-    Order {
-        OrderId orderId PK "注文ID"
+    Order["注文"] {
+        OrderId order_id PK "注文ID"
         Platform platform "プラットフォーム"
         OrderStatus status "ステータス"
-        DateTime orderedAt "注文日時"
-        DateTime shippedAt "発送日時"
-        ShippingMethod shippingMethod "配送方法"
-        TrackingNumber trackingNumber "追跡番号"
+        DateTime ordered_at "注文日時"
+        DateTime shipped_at "発送日時"
+        ShippingMethod shipping_method "配送方法"
+        TrackingNumber tracking_number "追跡番号"
     }
 
-    Buyer {
+    Buyer["購入者"] {
         BuyerName name "氏名"
-        PhoneNumber phoneNumber "電話番号"
+        PhoneNumber phone_number "電話番号"
     }
 
-    Address {
-        PostalCode postalCode "郵便番号"
+    Address["住所"] {
+        PostalCode postal_code "郵便番号"
         Prefecture prefecture "都道府県"
         string city "市区町村"
         string street "番地"
         string building "建物名"
     }
 
-    Product {
+    Product["商品"] {
         string name "商品名"
         number price "価格"
     }
 
-    ShippingLabel {
-        LabelId labelId PK "伝票ID"
-        OrderId orderId FK "注文ID"
+    ShippingLabel["伝票"] {
+        LabelId label_id PK "伝票ID"
+        OrderId order_id FK "注文ID"
         ShippingLabelType type "伝票種別"
         LabelStatus status "ステータス"
-        DateTime issuedAt "発行日時"
-        DateTime expiresAt "有効期限"
+        DateTime issued_at "発行日時"
+        DateTime expires_at "有効期限"
     }
 
-    ClickPostLabel["ClickPostLabel クリックポスト伝票"] {
-        LabelId labelId PK "伝票ID"
-        binary pdfData "PDFデータ"
+    ClickPostLabel["クリックポスト伝票"] {
+        LabelId label_id PK "伝票ID"
+        binary pdf_data "PDFデータ"
     }
 
-    YamatoCompactLabel["YamatoCompactLabel 宅急便コンパクト伝票"] {
-        LabelId labelId PK "伝票ID"
-        binary qrCode "QRコード"
-        string waybillNumber "送り状番号"
+    YamatoCompactLabel["宅急便コンパクト伝票"] {
+        LabelId label_id PK "伝票ID"
+        binary qr_code "QRコード"
+        string waybill_number "送り状番号"
     }
 
-    ShippingLabel ||--o| ClickPostLabel : extends
-    ShippingLabel ||--o| YamatoCompactLabel : extends
-
-    MessageTemplate["MessageTemplate メッセージテンプレート"] {
+    MessageTemplate["メッセージテンプレート"] {
         string id PK "テンプレートID"
         TemplateType type "種別"
         string content "本文"
