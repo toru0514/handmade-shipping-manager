@@ -41,8 +41,9 @@
 │  │ (Notification)      │           │  (External)         │            │
 │  │                     │           │                     │            │
 │  │  - SlackNotifier    │           │  - GmailAdapter     │            │
-│  │                     │           │  - SpreadsheetRepo  │            │
-│  └─────────────────────┘           │  - ClickPostClient  │            │
+│  └─────────────────────┘           │  - SpreadsheetRepo  │            │
+│                                    │  - PlatformScraper  │            │
+│                                    │  - ClickPostClient  │            │
 │                                    │  - YamatoClient     │            │
 │                                    └─────────────────────┘            │
 │                                                                         │
@@ -156,6 +157,16 @@
 
 ## ドメインサービス（Domain Services）
 
+### OrderFetchService（注文取得サービス）
+
+プラットフォームから注文情報を取得するドメインサービス。
+
+```typescript
+interface OrderFetchService {
+  fetchFromPlatform(orderId: OrderId, platform: Platform): Promise<Order>;
+}
+```
+
 ### ShippingLabelIssueService（伝票発行サービス）
 
 伝票の発行を担当するドメインサービス。
@@ -177,6 +188,7 @@ interface OrderRepository {
   findByStatus(status: OrderStatus): Promise<Order[]>;
   findByBuyerName(name: string): Promise<Order[]>;
   save(order: Order): Promise<void>;
+  exists(orderId: OrderId): Promise<boolean>;
   findAll(): Promise<Order[]>;
 }
 ```
@@ -198,16 +210,17 @@ interface ShippingLabelRepository {
 | OrderCreated | 新規注文が登録されたとき | SlackNotificationHandler |
 | OrderShipped | 注文が発送済みになったとき | （将来拡張用） |
 | ShippingLabelIssued | 伝票が発行されたとき | （将来拡張用） |
+| OrderFetchFailed | 注文情報の取得に失敗したとき | SlackErrorNotificationHandler |
 
 ## ファクトリ（Factories）
 
 ### OrderFactory
 
-Gmailから取得したメール情報からOrderエンティティを生成する。
+プラットフォームから取得した情報からOrderエンティティを生成する。
 
 ```typescript
 interface OrderFactory {
-  createFromEmail(emailContent: ParsedEmail): Order;
+  createFromPlatformData(data: PlatformOrderData): Order;
 }
 ```
 
@@ -241,11 +254,12 @@ class OverdueOrderSpecification implements Specification<Order> {
 │                         Ports (Input)                               │
 │  ┌──────────────────────────────────────────────────────────────┐  │
 │  │ UseCase Interfaces (Application Layer)                        │  │
-│  │ - FetchOrdersUseCase                                          │  │
+│  │ - FetchOrderFromPlatformUseCase                               │  │
 │  │ - IssueClickPostLabelUseCase                                  │  │
 │  │ - IssueYamatoCompactLabelUseCase                              │  │
 │  │ - MarkOrderAsShippedUseCase                                   │  │
 │  │ - SearchBuyersUseCase                                         │  │
+│  │ - NotifyNewOrderUseCase                                       │  │
 │  └──────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────┘
           │
@@ -266,8 +280,10 @@ class OverdueOrderSpecification implements Specification<Order> {
 │  │ - OrderRepository                                             │  │
 │  │ - ShippingLabelRepository                                     │  │
 │  │ - NotificationService                                         │  │
+│  │ - PlatformScraperService                                      │  │
 │  │ - ClickPostService                                            │  │
 │  │ - YamatoService                                               │  │
+│  │ - EmailService                                                │  │
 │  └──────────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────┘
           │
@@ -277,6 +293,43 @@ class OverdueOrderSpecification implements Specification<Order> {
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐              │
 │  │ Spreadsheet  │  │ Playwright   │  │   Slack      │              │
 │  │ Repository   │  │ Adapters     │  │  Webhook     │              │
+│  │              │  │ - minne      │  │              │              │
+│  │              │  │ - creema     │  │              │              │
+│  │              │  │ - ClickPost  │  │              │              │
+│  │              │  │ - Yamato     │  │              │              │
 │  └──────────────┘  └──────────────┘  └──────────────┘              │
+│  ┌──────────────┐                                                  │
+│  │ Gmail        │                                                  │
+│  │ Adapter      │                                                  │
+│  └──────────────┘                                                  │
 └─────────────────────────────────────────────────────────────────────┘
+```
+
+## データフロー
+
+```
+Gmail (購入通知メール)
+    │
+    ▼
+┌─────────────────┐
+│ EmailService    │ ← メールから注文IDを抽出
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ PlatformScraper │ ← Playwrightでminne/creemaから購入者情報取得
+│ (minne/creema)  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ OrderRepository │ ← スプレッドシートに保存
+│ (Spreadsheet)   │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ NotificationSvc │ ← Slackに通知
+│ (Slack)         │
+└─────────────────┘
 ```

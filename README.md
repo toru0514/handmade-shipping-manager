@@ -8,12 +8,24 @@ minne、creemaなどのハンドメイドプラットフォームで販売した
 
 ### 主な機能
 
-- 📧 **購入メール自動取得**: Gmailから購入通知を自動取得し、スプレッドシートに記録
+- 📧 **購入情報自動取得**: Gmailの購入通知をトリガーに、Playwrightでminne/creemaから購入者情報を自動取得
 - 🔔 **Slack通知**: 新規注文をSlackで即時通知
 - 📋 **発送管理ダッシュボード**: 未発送の注文を一覧表示
 - 📮 **クリックポスト伝票発行**: 購入者情報を自動入力してPDF伝票を発行
 - 📦 **宅急便コンパクト伝票発行**: PUDO用QRコードを自動発行
 - 🔍 **購入者検索**: 過去の購入履歴やリピーター情報を検索
+
+### 処理フロー
+
+```
+1. 【自動】Gmailで購入通知メールを検知
+2. 【自動】メールから注文IDを抽出
+3. 【自動】Playwrightでminne/creemaから購入者情報を取得
+4. 【自動】スプレッドシートに保存 + Slack通知
+5. 【手動】伝票発行ボタンをクリック
+6. 【自動】クリックポスト/宅急便コンパクトの伝票を発行
+7. 【手動】発送完了を記録
+```
 
 ## アーキテクチャ
 
@@ -82,6 +94,14 @@ GOOGLE_SPREADSHEET_ID=
 
 # Slack
 SLACK_WEBHOOK_URL=
+
+# minne
+MINNE_EMAIL=
+MINNE_PASSWORD=
+
+# creema
+CREEMA_EMAIL=
+CREEMA_PASSWORD=
 
 # クリックポスト（Yahoo! JAPAN）
 YAHOO_EMAIL=
