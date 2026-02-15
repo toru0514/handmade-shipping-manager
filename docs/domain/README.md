@@ -29,58 +29,58 @@ erDiagram
     ShippingLabel ||--o| ClickPostLabel : extends
     ShippingLabel ||--o| YamatoCompactLabel : extends
 
-    Order["注文"] {
-        OrderId order_id PK "注文ID"
-        Platform platform "プラットフォーム"
-        OrderStatus status "ステータス"
-        DateTime ordered_at "注文日時"
-        DateTime shipped_at "発送日時"
-        ShippingMethod shipping_method "配送方法"
-        TrackingNumber tracking_number "追跡番号"
+    Order {
+        string order_id PK
+        string platform
+        string status
+        datetime ordered_at
+        datetime shipped_at
+        string shipping_method
+        string tracking_number
     }
 
-    Buyer["購入者"] {
-        BuyerName name "氏名"
-        PhoneNumber phone_number "電話番号"
+    Buyer {
+        string name
+        string phone_number
     }
 
-    Address["住所"] {
-        PostalCode postal_code "郵便番号"
-        Prefecture prefecture "都道府県"
-        string city "市区町村"
-        string street "番地"
-        string building "建物名"
+    Address {
+        string postal_code
+        string prefecture
+        string city
+        string street
+        string building
     }
 
-    Product["商品"] {
-        string name "商品名"
-        number price "価格"
+    Product {
+        string name
+        float price
     }
 
-    ShippingLabel["伝票"] {
-        LabelId label_id PK "伝票ID"
-        OrderId order_id FK "注文ID"
-        ShippingLabelType type "伝票種別"
-        LabelStatus status "ステータス"
-        DateTime issued_at "発行日時"
-        DateTime expires_at "有効期限"
+    ShippingLabel {
+        string label_id PK
+        string order_id FK
+        string type
+        string status
+        datetime issued_at
+        datetime expires_at
     }
 
-    ClickPostLabel["クリックポスト伝票"] {
-        LabelId label_id PK "伝票ID"
-        binary pdf_data "PDFデータ"
+    ClickPostLabel {
+        string label_id PK
+        string pdf_data
     }
 
-    YamatoCompactLabel["宅急便コンパクト伝票"] {
-        LabelId label_id PK "伝票ID"
-        binary qr_code "QRコード"
-        string waybill_number "送り状番号"
+    YamatoCompactLabel {
+        string label_id PK
+        string qr_code
+        string waybill_number
     }
 
-    MessageTemplate["メッセージテンプレート"] {
-        string id PK "テンプレートID"
-        TemplateType type "種別"
-        string content "本文"
+    MessageTemplate {
+        string id PK
+        string type
+        string content
     }
 ```
 
@@ -240,15 +240,27 @@ interface ShippingLabelIssuer {
 インフラストラクチャ層（Composition Root）で行う。ユースケースは具体実装を知らない。
 
 ```typescript
-// インフラストラクチャ層で実装（Adapter）
-class ClickPostAdapter implements ShippingLabelIssuer { ... }
-class YamatoCompactAdapter implements ShippingLabelIssuer { ... }
+// インフラストラクチャ層の実装（Adapter）
+interface ClickPostGateway {
+  issue(order: Order): Promise<ClickPostLabel>;
+}
 
-// Composition Root（DI設定）で ShippingMethod → Adapter をマッピング
-const adapterMap = {
-  [ShippingMethod.ClickPost]: new ClickPostAdapter(),
-  [ShippingMethod.YamatoCompact]: new YamatoCompactAdapter(),
-};
+interface YamatoCompactGateway {
+  issue(order: Order): Promise<YamatoCompactLabel>;
+}
+
+class ShippingLabelIssuerImpl implements ShippingLabelIssuer {
+  constructor(
+    private readonly clickPost: ClickPostGateway,
+    private readonly yamato: YamatoCompactGateway
+  ) {}
+
+  issue(order: Order, method: ShippingMethod): Promise<ShippingLabel> {
+    return method === ShippingMethod.ClickPost
+      ? this.clickPost.issue(order)
+      : this.yamato.issue(order);
+  }
+}
 ```
 
 ### OrderFetcher（注文取得ポート）
@@ -262,8 +274,17 @@ interface OrderFetcher {
 }
 
 // インフラストラクチャ層で実装（Adapter）
-class MinneAdapter implements OrderFetcher { ... }
-class CreemaAdapter implements OrderFetcher { ... }
+class MinneAdapter implements OrderFetcher {
+  async fetch(orderId: OrderId, platform: Platform): Promise<Order> {
+    throw new Error("Not implemented");
+  }
+}
+
+class CreemaAdapter implements OrderFetcher {
+  async fetch(orderId: OrderId, platform: Platform): Promise<Order> {
+    throw new Error("Not implemented");
+  }
+}
 ```
 
 ### NotificationSender（通知送信ポート）
@@ -277,7 +298,11 @@ interface NotificationSender {
 }
 
 // インフラストラクチャ層で実装（Adapter）
-class SlackNotificationAdapter implements NotificationSender { ... }
+class SlackNotificationAdapter implements NotificationSender {
+  async notify(message: NotificationMessage): Promise<void> {
+    throw new Error("Not implemented");
+  }
+}
 ```
 
 ## リポジトリ（Repositories）
@@ -361,8 +386,8 @@ class Order {
 | ルールID | ルール名 | 説明 | 実装場所 |
 |---------|---------|------|---------|
 | DR-LBL-001 | 有効期限 | 宅急便コンパクトのQRコードは発行から14日間有効 | YamatoCompactLabel |
-| DR-LBL-002 | 発送前のみ発行可 | 発送済み注文には伝票を発行できない | ShippingLabelIssueService |
-| DR-LBL-003 | 重複発行警告 | 同一注文に対する伝票の重複発行は警告を表示 | ShippingLabelIssueService |
+| DR-LBL-002 | 発送前のみ発行可 | 発送済み注文には伝票を発行できない | IssueShippingLabelUseCase |
+| DR-LBL-003 | 重複発行警告 | 同一注文に対する伝票の重複発行は警告を表示 | IssueShippingLabelUseCase |
 
 ### Address（住所）のルール
 
@@ -408,5 +433,10 @@ class OverdueOrderSpecification implements Specification<Order> {
 
 ## 関連ドキュメント
 
+### ドメイン設計
+- [イベントストーミング](./event-storming.md) - ドメインイベント、コマンド、ポリシーの可視化
+- [集約設計](./aggregate-design.md) - 集約境界の検証と設計判断
+
+### システム設計
 - [アーキテクチャ](../architecture/README.md) - ヘキサゴナルアーキテクチャ、レイヤー構成、データフロー
 - [ユースケース](../usecases/README.md) - システムのユースケース一覧
