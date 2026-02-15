@@ -221,27 +221,63 @@ erDiagram
 | ShippingMethod | 配送方法 | click_post / yamato_compact |
 | TrackingNumber | 追跡番号 | 配送方法ごとのフォーマット |
 
-## ドメインサービス（Domain Services）
+## ポート（Ports）
 
-### OrderFetchService（注文取得サービス）
+ドメイン層が定義するインターフェース。具体的な実装はインフラストラクチャ層が提供する（依存性逆転）。
 
-プラットフォームから注文情報を取得するドメインサービス。
+### ShippingLabelIssuer（伝票発行ポート）
+
+伝票の発行を担当するポート。ユースケースはこの抽象にのみ依存する。
 
 ```typescript
-interface OrderFetchService {
-  fetchFromPlatform(orderId: OrderId, platform: Platform): Promise<Order>;
+// ドメイン層で定義（Port）
+interface ShippingLabelIssuer {
+  issue(order: Order, method: ShippingMethod): Promise<ShippingLabel>;
 }
 ```
 
-### ShippingLabelIssueService（伝票発行サービス）
-
-伝票の発行を担当するドメインサービス。
+具体的な配送方法（クリックポスト/宅急便コンパクト）への振り分けは、
+インフラストラクチャ層（Composition Root）で行う。ユースケースは具体実装を知らない。
 
 ```typescript
-interface ShippingLabelIssueService {
-  issueClickPost(order: Order): Promise<ClickPostLabel>;
-  issueYamatoCompact(order: Order): Promise<YamatoCompactLabel>;
+// インフラストラクチャ層で実装（Adapter）
+class ClickPostAdapter implements ShippingLabelIssuer { ... }
+class YamatoCompactAdapter implements ShippingLabelIssuer { ... }
+
+// Composition Root（DI設定）で ShippingMethod → Adapter をマッピング
+const adapterMap = {
+  [ShippingMethod.ClickPost]: new ClickPostAdapter(),
+  [ShippingMethod.YamatoCompact]: new YamatoCompactAdapter(),
+};
+```
+
+### OrderFetcher（注文取得ポート）
+
+プラットフォームから注文情報を取得するポート。
+
+```typescript
+// ドメイン層で定義（Port）
+interface OrderFetcher {
+  fetch(orderId: OrderId, platform: Platform): Promise<Order>;
 }
+
+// インフラストラクチャ層で実装（Adapter）
+class MinneAdapter implements OrderFetcher { ... }
+class CreemaAdapter implements OrderFetcher { ... }
+```
+
+### NotificationSender（通知送信ポート）
+
+通知を送信するポート。
+
+```typescript
+// ドメイン層で定義（Port）
+interface NotificationSender {
+  notify(message: NotificationMessage): Promise<void>;
+}
+
+// インフラストラクチャ層で実装（Adapter）
+class SlackNotificationAdapter implements NotificationSender { ... }
 ```
 
 ## リポジトリ（Repositories）

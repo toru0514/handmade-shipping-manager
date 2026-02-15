@@ -19,28 +19,22 @@ flowchart TB
     end
 
     subgraph Domain["ドメイン層"]
-        Entity["エンティティ"]
-        VO["値オブジェクト"]
-        DomainService["ドメインサービス"]
-        Repository["リポジトリ（インターフェース）"]
+        Entity["エンティティ・値オブジェクト"]
+        Port["ポート（インターフェース）"]
     end
 
     subgraph Infrastructure["インフラストラクチャ層"]
-        SpreadsheetRepo["Spreadsheet Repository"]
-        PlaywrightAdapter["Playwright Adapters"]
-        SlackAdapter["Slack Webhook"]
-        GmailAdapter["Gmail Adapter"]
+        Adapter["アダプター（実装）"]
+        CompositionRoot["Composition Root（DI設定）"]
     end
 
     WebUI --> NextAPI
     NextAPI --> UC
     UC --> Entity
-    UC --> DomainService
-    UC --> Repository
-    Repository -.->|実装| SpreadsheetRepo
-    DomainService -.->|実装| PlaywrightAdapter
-    DomainService -.->|実装| SlackAdapter
-    DomainService -.->|実装| GmailAdapter
+    UC --> Port
+    Port -.->|実装| Adapter
+    CompositionRoot -.->|組み立て| UC
+    CompositionRoot -.->|注入| Adapter
 ```
 
 ## ヘキサゴナルアーキテクチャ
@@ -50,45 +44,43 @@ flowchart TB
     subgraph PrimaryAdapters["プライマリアダプター（駆動する側）"]
         NextJS["Next.js API Routes"]
         GmailPoller["Gmail Poller"]
-        CLI["CLI"]
     end
 
-    subgraph InputPorts["入力ポート"]
-        FetchOrder["FetchOrderFromPlatformUseCase"]
-        IssueClickPost["IssueClickPostLabelUseCase"]
-        IssueYamato["IssueYamatoCompactLabelUseCase"]
+    subgraph Application["アプリケーション層（ユースケース）"]
+        IssueLabel["IssueShippingLabelUseCase"]
+        FetchOrder["FetchOrderUseCase"]
         MarkShipped["MarkOrderAsShippedUseCase"]
         SearchBuyers["SearchBuyersUseCase"]
-        NotifyOrder["NotifyNewOrderUseCase"]
     end
 
-    subgraph DomainLayer["ドメイン層"]
-        Entities["エンティティ・値オブジェクト"]
-        DomainServices["ドメインサービス"]
-        Specifications["仕様"]
-    end
-
-    subgraph OutputPorts["出力ポート（インターフェース）"]
-        OrderRepo["OrderRepository"]
-        LabelRepo["ShippingLabelRepository"]
-        NotificationSvc["NotificationService"]
-        PlatformScraper["PlatformScraperService"]
-        ClickPostSvc["ClickPostService"]
-        YamatoSvc["YamatoService"]
-        EmailSvc["EmailService"]
+    subgraph Domain["ドメイン層"]
+        Entities["エンティティ・値オブジェクト<br/>Order, ShippingMethod, etc."]
+        Ports["ポート（インターフェース）<br/>ShippingLabelIssuer<br/>OrderFetcher<br/>OrderRepository"]
     end
 
     subgraph SecondaryAdapters["セカンダリアダプター（駆動される側）"]
-        Spreadsheet["Google Spreadsheet"]
-        Playwright["Playwright"]
-        Slack["Slack Webhook"]
-        Gmail["Gmail API"]
+        ClickPostAdapter["ClickPostAdapter"]
+        YamatoAdapter["YamatoCompactAdapter"]
+        MinneAdapter["MinneAdapter"]
+        CreemaAdapter["CreemaAdapter"]
+        SpreadsheetRepo["SpreadsheetRepository"]
+        SlackAdapter["SlackAdapter"]
     end
 
-    PrimaryAdapters --> InputPorts
-    InputPorts --> DomainLayer
-    DomainLayer --> OutputPorts
-    OutputPorts -.->|実装| SecondaryAdapters
+    subgraph CompositionRoot["Composition Root"]
+        DI["DI設定<br/>ShippingMethod → Adapter マッピング"]
+    end
+
+    PrimaryAdapters --> Application
+    Application --> Entities
+    Application --> Ports
+    Ports -.->|implements| ClickPostAdapter
+    Ports -.->|implements| YamatoAdapter
+    Ports -.->|implements| MinneAdapter
+    Ports -.->|implements| CreemaAdapter
+    Ports -.->|implements| SpreadsheetRepo
+    Ports -.->|implements| SlackAdapter
+    DI -.->|組み立て・注入| Application
 ```
 
 ## 依存関係のルール
@@ -97,9 +89,60 @@ flowchart TB
 プレゼンテーション層 → アプリケーション層 → ドメイン層 ← インフラストラクチャ層
 ```
 
-- **ドメイン層は他の層に依存しない**
-- インフラストラクチャ層はドメイン層のインターフェースを実装する（依存性逆転）
-- アプリケーション層はドメイン層のインターフェースを通じてインフラストラクチャ層を利用する
+### 基本原則
+
+- **ドメイン層は他の層に依存しない**（最も内側）
+- **ドメイン層がインターフェース（Port）を定義する**
+- **インフラストラクチャ層がインターフェースを実装する**（依存性逆転）
+- **ユースケースは抽象（Port）にのみ依存し、具体実装（Adapter）を知らない**
+
+### 依存性逆転の例：伝票発行
+
+```typescript
+// ❌ 避けるべき：ユースケースが具体実装に依存
+class IssueShippingLabelUseCase {
+  constructor(
+    private clickPostAdapter: ClickPostAdapter,  // 具体実装をimport
+    private yamatoAdapter: YamatoCompactAdapter, // 具体実装をimport
+  ) {}
+}
+
+// ✅ 正しい：ユースケースは抽象にのみ依存
+class IssueShippingLabelUseCase {
+  constructor(
+    private labelIssuer: ShippingLabelIssuer, // ドメイン層で定義されたPort
+  ) {}
+
+  execute(order: Order, method: ShippingMethod): Promise<ShippingLabel> {
+    return this.labelIssuer.issue(order, method);
+  }
+}
+```
+
+### Composition Root（DI設定）
+
+ShippingMethod → Adapter のマッピングはComposition Root（アプリケーションの起動時）で行う。
+
+```typescript
+// infrastructure/di/container.ts
+const container = {
+  // ShippingMethod に応じた Adapter を返すファクトリ
+  shippingLabelIssuer: (method: ShippingMethod): ShippingLabelIssuer => {
+    switch (method) {
+      case ShippingMethod.ClickPost:
+        return new ClickPostAdapter();
+      case ShippingMethod.YamatoCompact:
+        return new YamatoCompactAdapter();
+      // 将来: case ShippingMethod.Sagawa: return new SagawaAdapter();
+    }
+  },
+};
+```
+
+この設計により：
+- **ユースケースは配送方法の追加・変更の影響を受けない**
+- **新しい配送方法（例：佐川）の追加はインフラ層とDI設定の変更のみ**
+- **テスト時はモックを注入可能**
 
 ## コンテキストマップ
 
@@ -141,24 +184,53 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    Gmail["📧 Gmail<br/>購入通知メール"]
-    EmailService["EmailService<br/>メールから注文IDを抽出"]
-    PlatformScraper["PlatformScraper<br/>Playwrightでminne/creemaから<br/>購入者情報取得"]
-    OrderRepository["OrderRepository<br/>スプレッドシートに保存"]
-    NotificationSvc["NotificationService<br/>Slackに通知"]
-    Dashboard["📱 ダッシュボード<br/>発送前注文一覧"]
-    LabelService["ShippingLabelService<br/>伝票発行"]
-    ClickPost["📮 クリックポスト<br/>PDF伝票"]
-    Yamato["📦 宅急便コンパクト<br/>QRコード"]
+    subgraph External["外部システム"]
+        Gmail["📧 Gmail"]
+        Minne["🛒 minne"]
+        Creema["🛒 creema"]
+        ClickPostSite["📮 クリックポスト"]
+        YamatoSite["📦 ヤマト運輸"]
+        Slack["💬 Slack"]
+        Spreadsheet["📊 Spreadsheet"]
+    end
 
-    Gmail --> EmailService
-    EmailService --> PlatformScraper
-    PlatformScraper --> OrderRepository
-    OrderRepository --> NotificationSvc
-    OrderRepository --> Dashboard
-    Dashboard --> LabelService
-    LabelService --> ClickPost
-    LabelService --> Yamato
+    subgraph Adapters["インフラストラクチャ層（Adapter）"]
+        GmailAdapter["GmailAdapter"]
+        PlatformAdapter["MinneAdapter / CreemaAdapter"]
+        LabelAdapter["ClickPostAdapter / YamatoAdapter"]
+        SlackAdapter["SlackAdapter"]
+        SpreadsheetRepo["SpreadsheetRepository"]
+    end
+
+    subgraph Ports["ドメイン層（Port）"]
+        OrderFetcher["OrderFetcher"]
+        LabelIssuer["ShippingLabelIssuer"]
+        NotificationSender["NotificationSender"]
+        OrderRepository["OrderRepository"]
+    end
+
+    subgraph UseCase["アプリケーション層"]
+        FetchOrderUC["FetchOrderUseCase"]
+        IssueLabelUC["IssueShippingLabelUseCase"]
+    end
+
+    Gmail --> GmailAdapter
+    GmailAdapter --> FetchOrderUC
+    FetchOrderUC --> OrderFetcher
+    OrderFetcher -.-> PlatformAdapter
+    PlatformAdapter --> Minne
+    PlatformAdapter --> Creema
+    FetchOrderUC --> OrderRepository
+    OrderRepository -.-> SpreadsheetRepo
+    SpreadsheetRepo --> Spreadsheet
+    FetchOrderUC --> NotificationSender
+    NotificationSender -.-> SlackAdapter
+    SlackAdapter --> Slack
+
+    IssueLabelUC --> LabelIssuer
+    LabelIssuer -.-> LabelAdapter
+    LabelAdapter --> ClickPostSite
+    LabelAdapter --> YamatoSite
 ```
 
 ## 技術スタック
@@ -174,27 +246,48 @@ flowchart TD
 
 ```
 src/
-├── presentation/          # プレゼンテーション層
-│   ├── components/        # UIコンポーネント
-│   └── pages/             # Next.js pages
+├── presentation/           # プレゼンテーション層
+│   ├── components/         # UIコンポーネント
+│   └── pages/              # Next.js pages
 │
-├── application/           # アプリケーション層
-│   └── usecases/          # ユースケース
+├── application/            # アプリケーション層
+│   └── usecases/           # ユースケース（Portにのみ依存）
+│       ├── FetchOrderUseCase.ts
+│       ├── IssueShippingLabelUseCase.ts
+│       └── MarkOrderAsShippedUseCase.ts
 │
-├── domain/                # ドメイン層
-│   ├── entities/          # エンティティ
-│   ├── valueObjects/      # 値オブジェクト
-│   ├── services/          # ドメインサービス
-│   ├── repositories/      # リポジトリインターフェース
-│   └── specifications/    # 仕様
+├── domain/                 # ドメイン層（最も内側、依存なし）
+│   ├── entities/           # エンティティ
+│   │   ├── Order.ts
+│   │   └── ShippingLabel.ts
+│   ├── valueObjects/       # 値オブジェクト
+│   │   ├── ShippingMethod.ts    # click_post / yamato_compact
+│   │   ├── Platform.ts          # minne / creema
+│   │   └── ...
+│   ├── ports/              # ポート（インターフェース定義）
+│   │   ├── ShippingLabelIssuer.ts
+│   │   ├── OrderFetcher.ts
+│   │   ├── OrderRepository.ts
+│   │   └── NotificationSender.ts
+│   └── specifications/     # 仕様
 │
-└── infrastructure/        # インフラストラクチャ層
-    ├── repositories/      # リポジトリ実装
-    ├── adapters/          # 外部サービスアダプター
-    │   ├── playwright/    # Playwright関連
-    │   ├── gmail/         # Gmail API
-    │   └── slack/         # Slack Webhook
-    └── config/            # 設定
+└── infrastructure/         # インフラストラクチャ層（Portを実装）
+    ├── adapters/           # アダプター（Port実装）
+    │   ├── shipping/
+    │   │   ├── ClickPostAdapter.ts      # implements ShippingLabelIssuer
+    │   │   └── YamatoCompactAdapter.ts  # implements ShippingLabelIssuer
+    │   ├── platform/
+    │   │   ├── MinneAdapter.ts          # implements OrderFetcher
+    │   │   └── CreemaAdapter.ts         # implements OrderFetcher
+    │   ├── notification/
+    │   │   └── SlackAdapter.ts          # implements NotificationSender
+    │   └── persistence/
+    │       └── SpreadsheetRepository.ts # implements OrderRepository
+    ├── di/                 # Composition Root
+    │   └── container.ts    # DI設定、ShippingMethod→Adapterマッピング
+    └── external/           # 外部ライブラリラッパー
+        ├── playwright/
+        └── google/
 ```
 
 ## 関連ドキュメント
