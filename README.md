@@ -49,6 +49,7 @@ minne、creemaなどのハンドメイドプラットフォームで販売した
 
 - [ユースケース一覧](./docs/usecases/README.md)
 - [ドメインモデル](./docs/domain/README.md)
+- [アーキテクチャ](./docs/architecture/README.md)
 
 ## 開発予定
 
