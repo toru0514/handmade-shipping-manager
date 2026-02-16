@@ -16,6 +16,60 @@
 
 ---
 
+## PR チェックリスト（全イシュー共通）
+
+すべてのPRは、イシュー固有の受け入れ条件に**加えて**、以下を満たすこと。
+
+### 1. テスト
+
+- [ ] 新規・変更コードに対するユニットテストがある
+- [ ] `npm run test` が全件パスする（既存テスト含む）
+- [ ] テストは外部依存（API, DB, ファイルシステム）に依存せず単独実行できる（インフラ層を除く）
+
+### 2. コード品質
+
+- [ ] `npm run lint` がエラーなしで通る
+- [ ] `npm run format` 適用済み（差分なし）
+- [ ] TypeScript の `strict` モードでコンパイルエラーがない
+
+### 3. アーキテクチャ（レイヤー依存ルール）
+
+ヘキサゴナルアーキテクチャの依存方向を厳守する。
+
+```
+presentation → application → domain ← infrastructure
+```
+
+- [ ] **domain 層は他の層を import していない**（最重要）
+- [ ] **application 層は infrastructure / presentation を import していない**
+- [ ] **application 層はポート（interface）にのみ依存し、具体実装（Adapter）を import していない**
+- [ ] infrastructure 層のクラスは必ずドメイン層の Port（interface）を `implements` している
+
+### 4. ドメインモデル整合性
+
+`docs/domain/README.md` に定義されたルールとの一致を確認する。
+
+- [ ] 値オブジェクトは**不変（immutable）**である（プロパティが `readonly`）
+- [ ] 集約ルートの操作はドメインルール（DR-XXX）に従っている
+- [ ] 集約間は**IDで参照**している（直接オブジェクト参照をしない）
+- [ ] OrderStatus は `pending` / `shipped` の2状態のみ（中間状態を追加しない）
+- [ ] ShippingLabel の「伝票発行済み」は OrderStatus ではなく ShippingLabel の**存在**で判断する
+
+### 5. 命名規則（ユビキタス言語）
+
+`docs/domain/README.md` のユビキタス言語テーブルに従う。
+
+- [ ] クラス名・変数名がユビキタス言語と一致している（例: `Order`, `Buyer`, `ShippingLabel`）
+- [ ] ドメインイベント名が設計ドキュメントと一致している（例: `OrderRegistered`, `OrderShipped`）
+- [ ] ファイルパスが `docs/architecture/README.md` のディレクトリ構成と一致している
+
+### 6. 他イシューへの影響確認
+
+- [ ] 他のイシューが依存しているインターフェース（Port）のシグネチャを変更していない（変更する場合は依存イシュー担当者と合意）
+- [ ] 共有型（値オブジェクト、エンティティ）のプロパティ追加・削除をしていない（する場合は設計ドキュメントも更新）
+
+---
+
 ## Phase 0: プロジェクトセットアップ
 
 ### Issue #1: Next.js + TypeScript プロジェクト初期化
