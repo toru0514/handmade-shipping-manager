@@ -23,7 +23,7 @@
 ```mermaid
 erDiagram
     Order ||--|| Buyer : contains
-    Order ||--o| ShippingLabel : has
+    Order ||--o{ ShippingLabel : has
     Buyer ||--|| Address : contains
     Order ||--|| Product : contains
     ShippingLabel ||--o| ClickPostLabel : extends
@@ -69,6 +69,7 @@ erDiagram
     ClickPostLabel {
         string label_id PK
         string pdf_data
+        string tracking_number
     }
 
     YamatoCompactLabel {
@@ -78,7 +79,7 @@ erDiagram
     }
 
     MessageTemplate {
-        string id PK
+        string id PK "※集約ではなく設定/読み取りモデル"
         string type "purchase_thanks / shipping_notice"
         string content
         string variables "利用可能な変数リスト"
@@ -153,7 +154,7 @@ erDiagram
 ├─────────────────────────────────────────────────┤
 │ - name: BuyerName                               │
 │ - address: Address                              │
-│ - phoneNumber: PhoneNumber                      │
+│ - phoneNumber: PhoneNumber?                     │
 └─────────────────────────────────────────────────┘
           │
           │ contains
@@ -195,12 +196,12 @@ erDiagram
           │
     ┌─────┴─────┐
     │           │
-┌───┴───┐   ┌───┴───┐
-│ClickPostLabel│   │YamatoCompactLabel│
-├───────┤   ├───────┤
-│- pdfData│   │- qrCode│
-│         │   │- waybillNumber│
-└─────────┘   └─────────┘
+┌───┴────────┐   ┌───┴────────────┐
+│ClickPostLabel │   │YamatoCompactLabel│
+├────────────┤   ├────────────────┤
+│- pdfData        │   │- qrCode             │
+│- trackingNumber │   │- waybillNumber       │
+└─────────────┘   └──────────────────┘
 ```
 
 ## エンティティ（Entities）
@@ -214,6 +215,9 @@ erDiagram
 
 | 値オブジェクト | 説明 | バリデーションルール |
 |--------------|------|-------------------|
+| Buyer | 購入者 | 名前、住所、電話番号を含む複合値オブジェクト |
+| Address | 住所 | 郵便番号、都道府県、市区町村、番地、建物名 |
+| Product | 商品 | 商品名、価格 |
 | OrderId | 注文ID | プラットフォーム固有のフォーマット |
 | BuyerName | 購入者名 | 空文字不可、100文字以内 |
 | PostalCode | 郵便番号 | 7桁の数字（ハイフンなし） |
@@ -271,22 +275,28 @@ class ShippingLabelIssuerImpl implements ShippingLabelIssuer {
 ### OrderFetcher（注文取得ポート）
 
 プラットフォームから注文情報を取得するポート。
+戻り値は `PlatformOrderData`（生データ）であり、`Order` への変換は `OrderFactory` が担当する。
+これにより、インフラ層がドメインオブジェクトを生成する責務を持たない。
 
 ```typescript
 // ドメイン層で定義（Port）
 interface OrderFetcher {
-  fetch(orderId: OrderId, platform: Platform): Promise<Order>;
+  fetch(orderId: OrderId, platform: Platform): Promise<PlatformOrderData>;
 }
+
+// ユースケースでの使い方
+// const data = await orderFetcher.fetch(orderId, platform);
+// const order = orderFactory.createFromPlatformData(data);
 
 // インフラストラクチャ層で実装（Adapter）
 class MinneAdapter implements OrderFetcher {
-  async fetch(orderId: OrderId, platform: Platform): Promise<Order> {
+  async fetch(orderId: OrderId, platform: Platform): Promise<PlatformOrderData> {
     throw new Error("Not implemented");
   }
 }
 
 class CreemaAdapter implements OrderFetcher {
-  async fetch(orderId: OrderId, platform: Platform): Promise<Order> {
+  async fetch(orderId: OrderId, platform: Platform): Promise<PlatformOrderData> {
     throw new Error("Not implemented");
   }
 }
@@ -330,7 +340,7 @@ interface OrderRepository {
 ```typescript
 interface ShippingLabelRepository {
   findById(labelId: LabelId): Promise<ShippingLabel | null>;
-  findByOrderId(orderId: OrderId): Promise<ShippingLabel | null>;
+  findByOrderId(orderId: OrderId): Promise<ShippingLabel[]>;
   save(label: ShippingLabel): Promise<void>;
 }
 ```
@@ -380,6 +390,7 @@ interface OrderFactory {
 | DR-ORD-003 | ステータス遷移 | pending → shipped への一方向遷移のみ許可 | Order.markAsShipped() |
 | DR-ORD-004 | 発送済み変更不可 | 発送済みステータスの注文は変更できない | Order.markAsShipped() |
 | DR-ORD-005 | 発送日時記録 | 発送完了時に発送日時を記録する | Order.markAsShipped() |
+| DR-ORD-006 | 超過注文警告 | 3日以上経過した未発送注文は警告対象 | OverdueOrderSpecification |
 
 ```typescript
 class Order {

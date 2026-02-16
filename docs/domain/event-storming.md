@@ -77,7 +77,7 @@ flowchart LR
     C3 --> E4
     C3 --> E4F
     E3 --> RM1
-    E3 --> C6
+    RM1 --> C6
     C6 --> E7
     RM1 --> C4
     C4 --> E5

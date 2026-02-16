@@ -55,7 +55,7 @@ flowchart TB
 
     subgraph Domain["ドメイン層"]
         Entities["エンティティ・値オブジェクト<br/>Order, ShippingMethod, etc."]
-        Ports["ポート（インターフェース）<br/>ShippingLabelIssuer<br/>OrderFetcher<br/>OrderRepository"]
+        Ports["ポート（インターフェース）<br/>ShippingLabelIssuer<br/>OrderFetcher<br/>OrderRepository<br/>ShippingLabelRepository<br/>MessageTemplateRepository<br/>NotificationSender"]
     end
 
     subgraph SecondaryAdapters["セカンダリアダプター（駆動される側）"]
