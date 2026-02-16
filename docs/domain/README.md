@@ -337,12 +337,23 @@ interface ShippingLabelRepository {
 
 ## ドメインイベント（Domain Events）
 
+イベントの詳細なフローは[イベントストーミング](./event-storming.md)を参照。
+
 | イベント | 発生タイミング | ハンドラー |
 |---------|--------------|-----------|
-| OrderCreated | 新規注文が登録されたとき | SlackNotificationHandler |
-| OrderShipped | 注文が発送済みになったとき | （将来拡張用） |
+| PurchaseEmailReceived | Gmailで購入通知メールを検出したとき | FetchOrderUseCase |
+| OrderFetched | プラットフォームから注文情報の取得に成功したとき | RegisterOrderPolicy |
+| OrderFetchFailed | プラットフォームから注文情報の取得に失敗したとき | SlackErrorNotificationHandler |
+| OrderRegistered | 新規注文が登録されたとき | SlackNotificationHandler |
+| DuplicateOrderSkipped | 既存の注文IDと重複したとき | （ログ記録のみ） |
+| NotificationSent | Slack通知が成功したとき | （なし） |
+| NotificationFailed | Slack通知が失敗したとき | （リトライ/ログ記録） |
 | ShippingLabelIssued | 伝票が発行されたとき | （将来拡張用） |
-| OrderFetchFailed | 注文情報の取得に失敗したとき | SlackErrorNotificationHandler |
+| ShippingLabelIssueFailed | 伝票の発行に失敗したとき | （エラー表示） |
+| OrderShipped | 注文が発送済みになったとき | （将来拡張用） |
+| PurchaseThanksMessageGenerated | 購入お礼メッセージが生成されたとき | （クリップボードコピー） |
+| ShippingNoticeMessageGenerated | 発送連絡メッセージが生成されたとき | （クリップボードコピー） |
+| MessageTemplateUpdated | 定型文テンプレートが更新されたとき | （即時反映） |
 
 ## ファクトリ（Factories）
 

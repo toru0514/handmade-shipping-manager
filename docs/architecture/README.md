@@ -246,46 +246,76 @@ flowchart TD
 
 ```
 src/
-├── presentation/           # プレゼンテーション層
-│   ├── components/         # UIコンポーネント
-│   └── pages/              # Next.js pages
+├── presentation/               # プレゼンテーション層
+│   ├── components/             # UIコンポーネント
+│   └── pages/                  # Next.js pages
 │
-├── application/            # アプリケーション層
-│   └── usecases/           # ユースケース（Portにのみ依存）
-│       ├── FetchOrderUseCase.ts
-│       ├── IssueShippingLabelUseCase.ts
-│       └── MarkOrderAsShippedUseCase.ts
+├── application/                # アプリケーション層
+│   └── usecases/               # ユースケース（Portにのみ依存）
+│       ├── FetchOrderUseCase.ts              # UC-001
+│       ├── NotifyNewOrderUseCase.ts          # UC-002
+│       ├── ListPendingOrdersUseCase.ts       # UC-003
+│       ├── IssueShippingLabelUseCase.ts      # UC-004/005
+│       ├── MarkOrderAsShippedUseCase.ts      # UC-006
+│       ├── SearchBuyersUseCase.ts            # UC-007
+│       ├── GeneratePurchaseThanksUseCase.ts  # UC-008
+│       ├── GenerateShippingNoticeUseCase.ts  # UC-009
+│       └── UpdateMessageTemplateUseCase.ts   # UC-010
 │
-├── domain/                 # ドメイン層（最も内側、依存なし）
-│   ├── entities/           # エンティティ
+├── domain/                     # ドメイン層（最も内側、依存なし）
+│   ├── entities/               # エンティティ
 │   │   ├── Order.ts
-│   │   └── ShippingLabel.ts
-│   ├── valueObjects/       # 値オブジェクト
-│   │   ├── ShippingMethod.ts    # click_post / yamato_compact
-│   │   ├── Platform.ts          # minne / creema
-│   │   └── ...
-│   ├── ports/              # ポート（インターフェース定義）
+│   │   ├── ShippingLabel.ts
+│   │   ├── ClickPostLabel.ts
+│   │   └── YamatoCompactLabel.ts
+│   ├── valueObjects/           # 値オブジェクト
+│   │   ├── OrderId.ts
+│   │   ├── LabelId.ts
+│   │   ├── Platform.ts              # minne / creema
+│   │   ├── OrderStatus.ts           # pending / shipped
+│   │   ├── ShippingMethod.ts        # click_post / yamato_compact
+│   │   ├── BuyerName.ts
+│   │   ├── PostalCode.ts
+│   │   ├── Prefecture.ts
+│   │   ├── PhoneNumber.ts
+│   │   ├── TrackingNumber.ts
+│   │   ├── Address.ts
+│   │   ├── Buyer.ts
+│   │   ├── Product.ts
+│   │   ├── Message.ts
+│   │   └── MessageTemplateType.ts   # purchase_thanks / shipping_notice
+│   ├── ports/                  # ポート（インターフェース定義）
+│   │   ├── OrderRepository.ts
+│   │   ├── ShippingLabelRepository.ts
+│   │   ├── MessageTemplateRepository.ts
 │   │   ├── ShippingLabelIssuer.ts
 │   │   ├── OrderFetcher.ts
-│   │   ├── OrderRepository.ts
 │   │   └── NotificationSender.ts
-│   └── specifications/     # 仕様
+│   ├── services/               # ドメインサービス
+│   │   └── MessageGenerator.ts
+│   ├── specifications/         # 仕様
+│   │   └── OverdueOrderSpecification.ts
+│   └── factories/              # ファクトリ
+│       └── OrderFactory.ts
 │
-└── infrastructure/         # インフラストラクチャ層（Portを実装）
-    ├── adapters/           # アダプター（Port実装）
+└── infrastructure/             # インフラストラクチャ層（Portを実装）
+    ├── adapters/               # アダプター（Port実装）
     │   ├── shipping/
-    │   │   ├── ClickPostAdapter.ts      # implements ShippingLabelIssuer
-    │   │   └── YamatoCompactAdapter.ts  # implements ShippingLabelIssuer
+    │   │   ├── ClickPostAdapter.ts         # implements ClickPostGateway
+    │   │   ├── YamatoCompactAdapter.ts     # implements YamatoCompactGateway
+    │   │   └── ShippingLabelIssuerImpl.ts  # implements ShippingLabelIssuer
     │   ├── platform/
-    │   │   ├── MinneAdapter.ts          # implements OrderFetcher
-    │   │   └── CreemaAdapter.ts         # implements OrderFetcher
+    │   │   ├── MinneAdapter.ts             # implements OrderFetcher
+    │   │   └── CreemaAdapter.ts            # implements OrderFetcher
     │   ├── notification/
-    │   │   └── SlackAdapter.ts          # implements NotificationSender
+    │   │   └── SlackAdapter.ts             # implements NotificationSender
     │   └── persistence/
-    │       └── SpreadsheetRepository.ts # implements OrderRepository
-    ├── di/                 # Composition Root
-    │   └── container.ts    # DI設定、ShippingMethod→Adapterマッピング
-    └── external/           # 外部ライブラリラッパー
+    │       ├── SpreadsheetOrderRepository.ts          # implements OrderRepository
+    │       ├── SpreadsheetShippingLabelRepository.ts  # implements ShippingLabelRepository
+    │       └── LocalStorageMessageTemplateRepository.ts # implements MessageTemplateRepository
+    ├── di/                     # Composition Root
+    │   └── container.ts        # DI設定、ShippingMethod→Adapterマッピング
+    └── external/               # 外部ライブラリラッパー
         ├── playwright/
         └── google/
 ```
