@@ -79,9 +79,12 @@ erDiagram
 
     MessageTemplate {
         string id PK
-        string type
+        string type "purchase_thanks / shipping_notice"
         string content
+        string variables "利用可能な変数リスト"
     }
+
+    Order ..o| MessageTemplate : "MessageGeneratorが参照"
 ```
 
 ## コンテキストマップ
@@ -220,6 +223,8 @@ erDiagram
 | OrderStatus | 注文ステータス | pending / shipped |
 | ShippingMethod | 配送方法 | click_post / yamato_compact |
 | TrackingNumber | 追跡番号 | 配送方法ごとのフォーマット |
+| Message | 生成済みメッセージ | 空文字不可 |
+| MessageTemplateType | テンプレート種別 | purchase_thanks / shipping_notice |
 
 ## ポート（Ports）
 
@@ -416,6 +421,66 @@ class Order {
 |---------|---------|------|---------|
 | DR-MSG-001 | 空テンプレート禁止 | テンプレートは空にできない | MessageTemplate |
 | DR-MSG-002 | 変数必須 | テンプレートは最低1つの変数を含む必要がある | MessageTemplate |
+
+## ドメインサービス（Domain Services）
+
+### MessageGenerator（メッセージ生成サービス）
+
+注文情報とテンプレートからメッセージを生成する純粋な変換処理。
+Order の責務ではなく、集約をまたぐ処理でもないため、ドメインサービスとして実装する。
+（設計判断の詳細は[集約設計](./aggregate-design.md#3-メッセージテンプレートの位置づけ)を参照）
+
+```typescript
+// ドメイン層で定義
+interface MessageGenerator {
+  generate(order: Order, template: MessageTemplate): Message;
+}
+```
+
+#### 関連するドメインオブジェクト
+
+```
+MessageGenerator (ドメインサービス)
+├── 入力: Order（集約）
+├── 入力: MessageTemplate（設定/読み取りモデル）
+└── 出力: Message（値オブジェクト）
+```
+
+### MessageTemplate（メッセージテンプレート / 設定）
+
+ユーザーが編集可能な定型文テンプレート。ビジネスルールではなくユーザー設定であるため、
+集約ではなく設定/読み取りモデルとして扱う。
+
+```typescript
+interface MessageTemplate {
+  readonly id: string;
+  readonly type: MessageTemplateType;  // 'purchase_thanks' | 'shipping_notice'
+  readonly content: string;
+  readonly variables: TemplateVariable[];
+}
+
+// テンプレートから生成されたメッセージ（値オブジェクト）
+class Message {
+  readonly content: string;
+
+  constructor(content: string) {
+    if (!content || content.trim().length === 0) {
+      throw new DomainError('メッセージは空にできません');
+    }
+    this.content = content;
+  }
+}
+```
+
+### MessageTemplateRepository
+
+```typescript
+interface MessageTemplateRepository {
+  findByType(type: MessageTemplateType): Promise<MessageTemplate | null>;
+  save(template: MessageTemplate): Promise<void>;
+  resetToDefault(type: MessageTemplateType): Promise<void>;
+}
+```
 
 ## 仕様（Specifications）
 
