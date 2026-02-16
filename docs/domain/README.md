@@ -23,7 +23,7 @@
 ```mermaid
 erDiagram
     Order ||--|| Buyer : contains
-    Order ||--o| ShippingLabel : has
+    Order ||--o{ ShippingLabel : has
     Buyer ||--|| Address : contains
     Order ||--|| Product : contains
     ShippingLabel ||--o| ClickPostLabel : extends
@@ -69,6 +69,7 @@ erDiagram
     ClickPostLabel {
         string label_id PK
         string pdf_data
+        string tracking_number
     }
 
     YamatoCompactLabel {
@@ -78,10 +79,13 @@ erDiagram
     }
 
     MessageTemplate {
-        string id PK
-        string type
+        string id PK "※集約ではなく設定/読み取りモデル"
+        string type "purchase_thanks / shipping_notice"
         string content
+        string variables "利用可能な変数リスト"
     }
+
+    Order ..o| MessageTemplate : "MessageGeneratorが参照"
 ```
 
 ## コンテキストマップ
@@ -150,7 +154,7 @@ erDiagram
 ├─────────────────────────────────────────────────┤
 │ - name: BuyerName                               │
 │ - address: Address                              │
-│ - phoneNumber: PhoneNumber                      │
+│ - phoneNumber: PhoneNumber?                     │
 └─────────────────────────────────────────────────┘
           │
           │ contains
@@ -192,12 +196,12 @@ erDiagram
           │
     ┌─────┴─────┐
     │           │
-┌───┴───┐   ┌───┴───┐
-│ClickPostLabel│   │YamatoCompactLabel│
-├───────┤   ├───────┤
-│- pdfData│   │- qrCode│
-│         │   │- waybillNumber│
-└─────────┘   └─────────┘
+┌───┴────────┐   ┌───┴────────────┐
+│ClickPostLabel │   │YamatoCompactLabel│
+├────────────┤   ├────────────────┤
+│- pdfData        │   │- qrCode             │
+│- trackingNumber │   │- waybillNumber       │
+└─────────────┘   └──────────────────┘
 ```
 
 ## エンティティ（Entities）
@@ -211,6 +215,9 @@ erDiagram
 
 | 値オブジェクト | 説明 | バリデーションルール |
 |--------------|------|-------------------|
+| Buyer | 購入者 | 名前、住所、電話番号を含む複合値オブジェクト |
+| Address | 住所 | 郵便番号、都道府県、市区町村、番地、建物名 |
+| Product | 商品 | 商品名、価格 |
 | OrderId | 注文ID | プラットフォーム固有のフォーマット |
 | BuyerName | 購入者名 | 空文字不可、100文字以内 |
 | PostalCode | 郵便番号 | 7桁の数字（ハイフンなし） |
@@ -220,6 +227,8 @@ erDiagram
 | OrderStatus | 注文ステータス | pending / shipped |
 | ShippingMethod | 配送方法 | click_post / yamato_compact |
 | TrackingNumber | 追跡番号 | 配送方法ごとのフォーマット |
+| Message | 生成済みメッセージ | 空文字不可 |
+| MessageTemplateType | テンプレート種別 | purchase_thanks / shipping_notice |
 
 ## ポート（Ports）
 
@@ -266,22 +275,28 @@ class ShippingLabelIssuerImpl implements ShippingLabelIssuer {
 ### OrderFetcher（注文取得ポート）
 
 プラットフォームから注文情報を取得するポート。
+戻り値は `PlatformOrderData`（生データ）であり、`Order` への変換は `OrderFactory` が担当する。
+これにより、インフラ層がドメインオブジェクトを生成する責務を持たない。
 
 ```typescript
 // ドメイン層で定義（Port）
 interface OrderFetcher {
-  fetch(orderId: OrderId, platform: Platform): Promise<Order>;
+  fetch(orderId: OrderId, platform: Platform): Promise<PlatformOrderData>;
 }
+
+// ユースケースでの使い方
+// const data = await orderFetcher.fetch(orderId, platform);
+// const order = orderFactory.createFromPlatformData(data);
 
 // インフラストラクチャ層で実装（Adapter）
 class MinneAdapter implements OrderFetcher {
-  async fetch(orderId: OrderId, platform: Platform): Promise<Order> {
+  async fetch(orderId: OrderId, platform: Platform): Promise<PlatformOrderData> {
     throw new Error("Not implemented");
   }
 }
 
 class CreemaAdapter implements OrderFetcher {
-  async fetch(orderId: OrderId, platform: Platform): Promise<Order> {
+  async fetch(orderId: OrderId, platform: Platform): Promise<PlatformOrderData> {
     throw new Error("Not implemented");
   }
 }
@@ -325,19 +340,30 @@ interface OrderRepository {
 ```typescript
 interface ShippingLabelRepository {
   findById(labelId: LabelId): Promise<ShippingLabel | null>;
-  findByOrderId(orderId: OrderId): Promise<ShippingLabel | null>;
+  findByOrderId(orderId: OrderId): Promise<ShippingLabel[]>;
   save(label: ShippingLabel): Promise<void>;
 }
 ```
 
 ## ドメインイベント（Domain Events）
 
+イベントの詳細なフローは[イベントストーミング](./event-storming.md)を参照。
+
 | イベント | 発生タイミング | ハンドラー |
 |---------|--------------|-----------|
-| OrderCreated | 新規注文が登録されたとき | SlackNotificationHandler |
-| OrderShipped | 注文が発送済みになったとき | （将来拡張用） |
+| PurchaseEmailReceived | Gmailで購入通知メールを検出したとき | FetchOrderUseCase |
+| OrderFetched | プラットフォームから注文情報の取得に成功したとき | RegisterOrderPolicy |
+| OrderFetchFailed | プラットフォームから注文情報の取得に失敗したとき | SlackErrorNotificationHandler |
+| OrderRegistered | 新規注文が登録されたとき | SlackNotificationHandler |
+| DuplicateOrderSkipped | 既存の注文IDと重複したとき | （ログ記録のみ） |
+| NotificationSent | Slack通知が成功したとき | （なし） |
+| NotificationFailed | Slack通知が失敗したとき | （リトライ/ログ記録） |
 | ShippingLabelIssued | 伝票が発行されたとき | （将来拡張用） |
-| OrderFetchFailed | 注文情報の取得に失敗したとき | SlackErrorNotificationHandler |
+| ShippingLabelIssueFailed | 伝票の発行に失敗したとき | （エラー表示） |
+| OrderShipped | 注文が発送済みになったとき | （将来拡張用） |
+| PurchaseThanksMessageGenerated | 購入お礼メッセージが生成されたとき | （クリップボードコピー） |
+| ShippingNoticeMessageGenerated | 発送連絡メッセージが生成されたとき | （クリップボードコピー） |
+| MessageTemplateUpdated | 定型文テンプレートが更新されたとき | （即時反映） |
 
 ## ファクトリ（Factories）
 
@@ -364,6 +390,7 @@ interface OrderFactory {
 | DR-ORD-003 | ステータス遷移 | pending → shipped への一方向遷移のみ許可 | Order.markAsShipped() |
 | DR-ORD-004 | 発送済み変更不可 | 発送済みステータスの注文は変更できない | Order.markAsShipped() |
 | DR-ORD-005 | 発送日時記録 | 発送完了時に発送日時を記録する | Order.markAsShipped() |
+| DR-ORD-006 | 超過注文警告 | 3日以上経過した未発送注文は警告対象 | OverdueOrderSpecification |
 
 ```typescript
 class Order {
@@ -416,6 +443,66 @@ class Order {
 |---------|---------|------|---------|
 | DR-MSG-001 | 空テンプレート禁止 | テンプレートは空にできない | MessageTemplate |
 | DR-MSG-002 | 変数必須 | テンプレートは最低1つの変数を含む必要がある | MessageTemplate |
+
+## ドメインサービス（Domain Services）
+
+### MessageGenerator（メッセージ生成サービス）
+
+注文情報とテンプレートからメッセージを生成する純粋な変換処理。
+Order の責務ではなく、集約をまたぐ処理でもないため、ドメインサービスとして実装する。
+（設計判断の詳細は[集約設計](./aggregate-design.md#3-メッセージテンプレートの位置づけ)を参照）
+
+```typescript
+// ドメイン層で定義
+interface MessageGenerator {
+  generate(order: Order, template: MessageTemplate): Message;
+}
+```
+
+#### 関連するドメインオブジェクト
+
+```
+MessageGenerator (ドメインサービス)
+├── 入力: Order（集約）
+├── 入力: MessageTemplate（設定/読み取りモデル）
+└── 出力: Message（値オブジェクト）
+```
+
+### MessageTemplate（メッセージテンプレート / 設定）
+
+ユーザーが編集可能な定型文テンプレート。ビジネスルールではなくユーザー設定であるため、
+集約ではなく設定/読み取りモデルとして扱う。
+
+```typescript
+interface MessageTemplate {
+  readonly id: string;
+  readonly type: MessageTemplateType;  // 'purchase_thanks' | 'shipping_notice'
+  readonly content: string;
+  readonly variables: TemplateVariable[];
+}
+
+// テンプレートから生成されたメッセージ（値オブジェクト）
+class Message {
+  readonly content: string;
+
+  constructor(content: string) {
+    if (!content || content.trim().length === 0) {
+      throw new DomainError('メッセージは空にできません');
+    }
+    this.content = content;
+  }
+}
+```
+
+### MessageTemplateRepository
+
+```typescript
+interface MessageTemplateRepository {
+  findByType(type: MessageTemplateType): Promise<MessageTemplate | null>;
+  save(template: MessageTemplate): Promise<void>;
+  resetToDefault(type: MessageTemplateType): Promise<void>;
+}
+```
 
 ## 仕様（Specifications）
 

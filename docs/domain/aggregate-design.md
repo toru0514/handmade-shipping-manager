@@ -36,7 +36,7 @@ classDiagram
         <<Value Object>>
         +BuyerName name
         +Address address
-        +PhoneNumber phoneNumber
+        +PhoneNumber phoneNumber?
     }
 
     class ShippingLabel {
@@ -221,7 +221,7 @@ classDiagram
         <<Value Object>>
         +BuyerName name
         +Address address
-        +PhoneNumber phoneNumber
+        +PhoneNumber phoneNumber?
     }
 
     class Address {
@@ -244,7 +244,7 @@ classDiagram
         <<Aggregate Root>>
         +LabelId labelId
         +OrderId orderId
-        +ShippingMethod method
+        +ShippingLabelType type
         +LabelStatus status
         +DateTime issuedAt
         +DateTime expiresAt
@@ -252,13 +252,13 @@ classDiagram
     }
 
     class ClickPostLabel {
-        <<Entity>>
+        <<ShippingLabel Subtype>>
         +binary pdfData
-        +string trackingNumber
+        +TrackingNumber trackingNumber
     }
 
     class YamatoCompactLabel {
-        <<Entity>>
+        <<ShippingLabel Subtype>>
         +binary qrCode
         +string waybillNumber
     }
