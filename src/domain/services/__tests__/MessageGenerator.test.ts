@@ -92,4 +92,21 @@ describe('MessageGenerator', () => {
     expect(message).toContain('https://trackings.post.japanpost.jp/services/srv/search/input');
     expect(message).toContain('2026-02-17T10:30:00.000Z');
   });
+
+  it('テンプレート内の未知変数を空文字として除去する', () => {
+    const order = createOrder();
+    const generator = new MessageGenerator();
+    const template: MessageTemplate = {
+      id: 'tmpl-3',
+      type: MessageTemplateType.PurchaseThanks,
+      content: '確認: {{buyer_name}} / {{unknown_var}} / {{order_id}}',
+      variables: [{ name: 'buyer_name' }, { name: 'order_id' }],
+    };
+
+    const message = generator.generate(order, template).toString();
+
+    expect(message).toContain('確認: 山田 太郎');
+    expect(message).toContain('ORD-001');
+    expect(message).not.toContain('{{unknown_var}}');
+  });
 });
