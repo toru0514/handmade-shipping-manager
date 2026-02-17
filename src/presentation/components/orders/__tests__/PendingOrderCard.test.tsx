@@ -19,8 +19,10 @@ function createDto(overrides: Partial<PendingOrderDto> = {}): PendingOrderDto {
 }
 
 describe('PendingOrderCard', () => {
+  const noop = () => {};
+
   it('注文情報が正しく表示される', () => {
-    render(<PendingOrderCard order={createDto()} />);
+    render(<PendingOrderCard order={createDto()} onRequestShipmentComplete={noop} />);
 
     expect(screen.getByText('山田 太郎')).toBeInTheDocument();
     expect(screen.getByText('ハンドメイドアクセサリー')).toBeInTheDocument();
@@ -30,7 +32,12 @@ describe('PendingOrderCard', () => {
   });
 
   it('超過注文の場合に警告が表示される', () => {
-    render(<PendingOrderCard order={createDto({ isOverdue: true, daysSinceOrder: 5 })} />);
+    render(
+      <PendingOrderCard
+        order={createDto({ isOverdue: true, daysSinceOrder: 5 })}
+        onRequestShipmentComplete={noop}
+      />,
+    );
 
     const alert = screen.getByRole('alert');
     expect(alert).toBeInTheDocument();
@@ -38,13 +45,21 @@ describe('PendingOrderCard', () => {
   });
 
   it('超過でない注文には警告が表示されない', () => {
-    render(<PendingOrderCard order={createDto({ isOverdue: false })} />);
+    render(
+      <PendingOrderCard order={createDto({ isOverdue: false })} onRequestShipmentComplete={noop} />,
+    );
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('発送完了ボタンが表示される', () => {
+    render(<PendingOrderCard order={createDto()} onRequestShipmentComplete={noop} />);
+
+    expect(screen.getByRole('button', { name: '発送完了' })).toBeInTheDocument();
+  });
+
   it('購入お礼ボタンが disabled で配置されている', () => {
-    render(<PendingOrderCard order={createDto()} />);
+    render(<PendingOrderCard order={createDto()} onRequestShipmentComplete={noop} />);
 
     const button = screen.getByRole('button', { name: '購入お礼' });
     expect(button).toBeInTheDocument();
@@ -52,13 +67,23 @@ describe('PendingOrderCard', () => {
   });
 
   it('creema プラットフォームのラベルが表示される', () => {
-    render(<PendingOrderCard order={createDto({ platform: 'creema' })} />);
+    render(
+      <PendingOrderCard
+        order={createDto({ platform: 'creema' })}
+        onRequestShipmentComplete={noop}
+      />,
+    );
 
     expect(screen.getByText('creema')).toBeInTheDocument();
   });
 
   it('超過注文は赤枠スタイルが適用される', () => {
-    render(<PendingOrderCard order={createDto({ isOverdue: true, daysSinceOrder: 4 })} />);
+    render(
+      <PendingOrderCard
+        order={createDto({ isOverdue: true, daysSinceOrder: 4 })}
+        onRequestShipmentComplete={noop}
+      />,
+    );
 
     const card = screen.getByTestId('order-card-ORD-001');
     expect(card.className).toContain('border-red-400');
@@ -66,7 +91,9 @@ describe('PendingOrderCard', () => {
   });
 
   it('通常注文はデフォルトスタイルが適用される', () => {
-    render(<PendingOrderCard order={createDto({ isOverdue: false })} />);
+    render(
+      <PendingOrderCard order={createDto({ isOverdue: false })} onRequestShipmentComplete={noop} />,
+    );
 
     const card = screen.getByTestId('order-card-ORD-001');
     expect(card.className).toContain('border-gray-200');
