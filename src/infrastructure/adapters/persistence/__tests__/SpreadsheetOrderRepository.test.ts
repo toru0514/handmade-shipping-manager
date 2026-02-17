@@ -11,16 +11,20 @@ import { SpreadsheetOrderRepository } from '../SpreadsheetOrderRepository';
 
 class InMemorySheetsClient implements SheetsClient {
   private rows: string[][] = [];
+  clearCount = 0;
+  writeCount = 0;
 
   async readRows(): Promise<string[][]> {
     return this.rows.map((row) => [...row]);
   }
 
   async writeRows(rows: string[][]): Promise<void> {
+    this.writeCount += 1;
     this.rows = rows.map((row) => [...row]);
   }
 
   async clearRows(): Promise<void> {
+    this.clearCount += 1;
     this.rows = [];
   }
 }
@@ -114,5 +118,16 @@ describe('SpreadsheetOrderRepository', () => {
 
     const all = await repository.findAll();
     expect(all).toHaveLength(2);
+  });
+
+  it('save 時に先に clearRows してから writeRows する（行減少時の残存防止）', async () => {
+    const client = new InMemorySheetsClient();
+    const repository = new SpreadsheetOrderRepository(client);
+
+    await repository.save(createOrder('ORD-001', '山田 太郎'));
+    await repository.save(createOrder('ORD-001', '山田 花子'));
+
+    expect(client.clearCount).toBe(2);
+    expect(client.writeCount).toBe(2);
   });
 });

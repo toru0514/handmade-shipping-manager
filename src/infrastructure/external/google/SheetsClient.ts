@@ -11,7 +11,7 @@ interface SheetsValuesResponse {
 interface SheetsClientConfig {
   readonly spreadsheetId: string;
   readonly sheetName: string;
-  readonly apiKey: string;
+  readonly accessToken: string;
   readonly baseUrl?: string;
 }
 
@@ -30,6 +30,7 @@ export class GoogleSheetsClient implements SheetsClient {
     const targetRange = range ?? `${this.config.sheetName}!A2:Z`;
     const response = await this.fetcher(this.buildValuesUrl(targetRange), {
       method: 'GET',
+      headers: this.createAuthHeaders(),
     });
 
     if (!response.ok) {
@@ -45,7 +46,10 @@ export class GoogleSheetsClient implements SheetsClient {
 
     const response = await this.fetcher(this.buildValuesUrl(targetRange, 'RAW'), {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        ...this.createAuthHeaders(),
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({ values: rows }),
     });
 
@@ -58,10 +62,13 @@ export class GoogleSheetsClient implements SheetsClient {
     const targetRange = range ?? `${this.config.sheetName}!A2:Z`;
     const encodedRange = encodeURIComponent(targetRange);
     const response = await this.fetcher(
-      `${this.getBaseUrl()}/v4/spreadsheets/${this.config.spreadsheetId}/values/${encodedRange}:clear?key=${this.config.apiKey}`,
+      `${this.getBaseUrl()}/v4/spreadsheets/${this.config.spreadsheetId}/values/${encodedRange}:clear`,
       {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          ...this.createAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
       },
     );
 
@@ -73,13 +80,19 @@ export class GoogleSheetsClient implements SheetsClient {
   private buildValuesUrl(range: string, valueInputOption?: 'RAW'): string {
     const encodedRange = encodeURIComponent(range);
     const base = `${this.getBaseUrl()}/v4/spreadsheets/${this.config.spreadsheetId}/values/${encodedRange}`;
-    const query = new URLSearchParams({ key: this.config.apiKey });
+    const query = new URLSearchParams();
 
     if (valueInputOption) {
       query.set('valueInputOption', valueInputOption);
     }
 
-    return `${base}?${query.toString()}`;
+    return query.size > 0 ? `${base}?${query.toString()}` : base;
+  }
+
+  private createAuthHeaders(): Record<string, string> {
+    return {
+      Authorization: `Bearer ${this.config.accessToken}`,
+    };
   }
 
   private getBaseUrl(): string {

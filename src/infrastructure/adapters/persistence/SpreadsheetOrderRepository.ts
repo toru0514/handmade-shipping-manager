@@ -65,11 +65,8 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
       rows.push(serialized);
     }
 
-    if (rows.length === 0) {
-      await this.sheetsClient.clearRows();
-      return;
-    }
-
+    // NOTE: 現状は全行置換で整合性を保つ実装。高頻度/同時書き込みには非対応。
+    await this.sheetsClient.clearRows();
     await this.sheetsClient.writeRows(rows, DEFAULT_RANGE);
   }
 
