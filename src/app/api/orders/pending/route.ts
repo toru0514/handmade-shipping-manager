@@ -22,7 +22,8 @@ export async function GET() {
   try {
     const orders = await useCase.execute();
     return NextResponse.json(orders);
-  } catch {
+  } catch (err) {
+    console.error('注文取得エラー:', err);
     return NextResponse.json({ error: '注文の取得に失敗しました' }, { status: 500 });
   }
 }

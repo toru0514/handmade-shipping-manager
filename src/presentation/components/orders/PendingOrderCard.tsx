@@ -4,8 +4,8 @@ interface PendingOrderCardProps {
   order: PendingOrderDto;
 }
 
-function formatDate(date: Date): string {
-  return new Date(date).toLocaleDateString('ja-JP', {
+function formatDate(isoString: string): string {
+  return new Date(isoString).toLocaleDateString('ja-JP', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',

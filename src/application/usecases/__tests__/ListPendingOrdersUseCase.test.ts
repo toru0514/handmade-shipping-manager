@@ -5,6 +5,7 @@ import { OverdueOrderSpecification } from '@/domain/specifications/OverdueOrderS
 import { OrderId } from '@/domain/valueObjects/OrderId';
 import { OrderStatus } from '@/domain/valueObjects/OrderStatus';
 import { Platform } from '@/domain/valueObjects/Platform';
+import { ShippingMethod } from '@/domain/valueObjects/ShippingMethod';
 import { OrderFactory } from '@/domain/factories/OrderFactory';
 import { ListPendingOrdersUseCase } from '../ListPendingOrdersUseCase';
 
@@ -67,9 +68,7 @@ describe('ListPendingOrdersUseCase', () => {
   it('pending ステータスの注文のみ返す', async () => {
     const pending = createPendingOrder('ORD-001', '山田 太郎', new Date());
     const shipped = createPendingOrder('ORD-002', '田中 花子', new Date());
-    shipped.markAsShipped(
-      new (await import('@/domain/valueObjects/ShippingMethod')).ShippingMethod('click_post'),
-    );
+    shipped.markAsShipped(new ShippingMethod('click_post'));
 
     const repo = new InMemoryOrderRepository([pending, shipped]);
     const useCase = new ListPendingOrdersUseCase(repo, overdueSpec);
@@ -94,6 +93,8 @@ describe('ListPendingOrdersUseCase', () => {
       buyerName: '山田 太郎',
       productName: 'ハンドメイドアクセサリー',
     });
+    expect(typeof result[0]?.orderedAt).toBe('string');
+    expect(() => new Date(result[0]!.orderedAt).toISOString()).not.toThrow();
     expect(result[0]?.daysSinceOrder).toBeGreaterThanOrEqual(0);
     expect(result[0]?.isOverdue).toBe(false);
   });

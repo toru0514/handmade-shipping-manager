@@ -8,7 +8,7 @@ export interface PendingOrderDto {
   readonly platform: string;
   readonly buyerName: string;
   readonly productName: string;
-  readonly orderedAt: Date;
+  readonly orderedAt: string;
   readonly daysSinceOrder: number;
   readonly isOverdue: boolean;
 }
@@ -30,7 +30,7 @@ export class ListPendingOrdersUseCase {
       platform: order.platform.toString(),
       buyerName: order.buyer.name.toString(),
       productName: order.product.name,
-      orderedAt: order.orderedAt,
+      orderedAt: order.orderedAt.toISOString(),
       daysSinceOrder: order.getDaysSinceOrder(),
       isOverdue: this.overdueSpec.isSatisfiedBy(order),
     };
