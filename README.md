@@ -89,9 +89,16 @@ npm test
 
 ```env
 # Google API
+# 初回アクセストークン（任意。未指定時は refresh token で自動取得）
+GOOGLE_SHEETS_ACCESS_TOKEN=
+# 必須
+GOOGLE_SHEETS_SPREADSHEET_ID=
+# 任意（デフォルト: Orders）
+GOOGLE_SHEETS_SHEET_NAME=
+# アクセストークン自動更新に必須
+GOOGLE_SHEETS_REFRESH_TOKEN=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-GOOGLE_SPREADSHEET_ID=
 
 # Slack
 SLACK_WEBHOOK_URL=

@@ -9,12 +9,9 @@ import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistenc
 import { GoogleSheetsClient } from '@/infrastructure/external/google/SheetsClient';
 
 type Env = Readonly<Record<string, string | undefined>>;
-type SheetsEnvKey =
-  | 'GOOGLE_SHEETS_ACCESS_TOKEN'
-  | 'GOOGLE_SHEETS_SPREADSHEET_ID'
-  | 'GOOGLE_SHEETS_SHEET_NAME';
+type RequiredEnvKey = 'GOOGLE_SHEETS_SPREADSHEET_ID';
 
-function resolveRequiredEnv(name: SheetsEnvKey, env: Env): string {
+function resolveRequiredEnv(name: RequiredEnvKey, env: Env): string {
   const value = env[name]?.trim();
   if (!value) {
     throw new Error(`${name} is not configured`);
@@ -23,10 +20,37 @@ function resolveRequiredEnv(name: SheetsEnvKey, env: Env): string {
 }
 
 function createOrderRepository(env: Env): SpreadsheetOrderRepository {
+  const accessToken = env.GOOGLE_SHEETS_ACCESS_TOKEN?.trim();
+  const refreshToken = env.GOOGLE_SHEETS_REFRESH_TOKEN?.trim();
+  const clientId = env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
+
+  const hasAccessToken = Boolean(accessToken);
+  const hasRefreshToken = Boolean(refreshToken);
+  const hasClientId = Boolean(clientId);
+  const hasClientSecret = Boolean(clientSecret);
+
+  if (hasRefreshToken && (!hasClientId || !hasClientSecret)) {
+    throw new Error(
+      'GOOGLE_SHEETS_REFRESH_TOKEN が設定されている場合は GOOGLE_CLIENT_ID と GOOGLE_CLIENT_SECRET も必須です',
+    );
+  }
+
+  const hasRefreshTokenConfig = Boolean(refreshToken && clientId && clientSecret);
+
+  if (!hasAccessToken && !hasRefreshTokenConfig) {
+    throw new Error(
+      'Google Sheets 認証情報が不足しています: GOOGLE_SHEETS_ACCESS_TOKEN または GOOGLE_SHEETS_REFRESH_TOKEN + GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET を設定してください',
+    );
+  }
+
   const sheetsClient = new GoogleSheetsClient({
     spreadsheetId: resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env),
     sheetName: env.GOOGLE_SHEETS_SHEET_NAME?.trim() || 'Orders',
-    accessToken: resolveRequiredEnv('GOOGLE_SHEETS_ACCESS_TOKEN', env),
+    accessToken,
+    refreshToken,
+    clientId,
+    clientSecret,
   });
 
   return new SpreadsheetOrderRepository(sheetsClient);
