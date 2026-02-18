@@ -135,4 +135,67 @@ describe('OrdersPage (UC-006)', () => {
 
     expect(screen.getByTestId('order-card-ORD-001')).toBeInTheDocument();
   });
+
+  it('購入お礼フローでプレビュー表示とコピー通知が動作する', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+
+      if (url === '/api/orders/pending') {
+        return new Response(
+          JSON.stringify([
+            {
+              orderId: 'ORD-001',
+              platform: 'minne',
+              buyerName: '山田 太郎',
+              productName: 'ハンドメイドアクセサリー',
+              orderedAt: '2026-02-15T00:00:00.000Z',
+              daysSinceOrder: 2,
+              isOverdue: false,
+            },
+          ]),
+          { status: 200 },
+        );
+      }
+
+      if (url === '/api/orders/ORD-001/message/purchase-thanks') {
+        return new Response(
+          JSON.stringify({
+            orderId: 'ORD-001',
+            message: '山田 太郎 様\nご購入ありがとうございます。',
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+    });
+
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', {
+      clipboard: {
+        writeText,
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<OrdersPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('order-card-ORD-001')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '購入お礼' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: '購入お礼メッセージ' })).toBeInTheDocument();
+      expect(screen.getByText(/ご購入ありがとうございます。/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'コピー' }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('山田 太郎 様\nご購入ありがとうございます。');
+      expect(screen.getByRole('status')).toHaveTextContent('コピーしました');
+    });
+  });
 });
