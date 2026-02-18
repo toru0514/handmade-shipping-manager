@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   GenerateShippingNoticeUseCase,
   ShippingNoticeOrderNotFoundError,
+  ShippingNoticeOrderNotShippedError,
   ShippingNoticeTemplateNotFoundError,
 } from '@/application/usecases/GenerateShippingNoticeUseCase';
 import { Order } from '@/domain/entities/Order';
@@ -90,6 +91,22 @@ function createShippedOrder(orderId: string): Order {
   return order;
 }
 
+function createPendingOrder(orderId: string): Order {
+  return orderFactory.createFromPlatformData({
+    orderId,
+    platform: Platform.Minne,
+    buyerName: '山田 太郎',
+    buyerPostalCode: '1500001',
+    buyerPrefecture: '東京都',
+    buyerCity: '渋谷区',
+    buyerAddress1: '神宮前1-1-1',
+    buyerPhone: '09012345678',
+    productName: 'ハンドメイドアクセサリー',
+    price: 2500,
+    orderedAt: new Date('2026-02-15T00:00:00.000Z'),
+  });
+}
+
 function shippingNoticeTemplate(): MessageTemplate {
   return {
     id: 'shipping-notice-template',
@@ -143,6 +160,17 @@ describe('GenerateShippingNoticeUseCase', () => {
 
     await expect(useCase.execute({ orderId: 'ORD-404' })).rejects.toBeInstanceOf(
       ShippingNoticeOrderNotFoundError,
+    );
+  });
+
+  it('発送済みではない注文は専用エラーを返す', async () => {
+    const orderRepository = new InMemoryOrderRepository([createPendingOrder('ORD-003')]);
+    const templateRepository = new InMemoryMessageTemplateRepository();
+    await templateRepository.save(shippingNoticeTemplate());
+    const useCase = new GenerateShippingNoticeUseCase(orderRepository, templateRepository);
+
+    await expect(useCase.execute({ orderId: 'ORD-003' })).rejects.toBeInstanceOf(
+      ShippingNoticeOrderNotShippedError,
     );
   });
 });

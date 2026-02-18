@@ -3,6 +3,7 @@ import { OrderRepository } from '@/domain/ports/OrderRepository';
 import { MessageGenerator, MessageTemplate } from '@/domain/services/MessageGenerator';
 import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
 import { OrderId } from '@/domain/valueObjects/OrderId';
+import { OrderStatus } from '@/domain/valueObjects/OrderStatus';
 
 export interface GenerateShippingNoticeInput {
   readonly orderId: string;
@@ -27,6 +28,13 @@ export class ShippingNoticeTemplateNotFoundError extends Error {
   }
 }
 
+export class ShippingNoticeOrderNotShippedError extends Error {
+  constructor(orderId: string) {
+    super(`発送済みではない注文です: ${orderId}`);
+    this.name = 'ShippingNoticeOrderNotShippedError';
+  }
+}
+
 export class GenerateShippingNoticeUseCase {
   constructor(
     private readonly orderRepository: OrderRepository,
@@ -38,6 +46,9 @@ export class GenerateShippingNoticeUseCase {
     const order = await this.orderRepository.findById(new OrderId(input.orderId));
     if (order === null) {
       throw new ShippingNoticeOrderNotFoundError(input.orderId);
+    }
+    if (!order.status.equals(OrderStatus.Shipped)) {
+      throw new ShippingNoticeOrderNotShippedError(input.orderId);
     }
 
     const template = await this.templateRepository.findByType(MessageTemplateType.ShippingNotice);
