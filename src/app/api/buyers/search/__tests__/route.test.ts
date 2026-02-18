@@ -10,4 +10,12 @@ describe('GET /api/buyers/search', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual([]);
   });
+
+  it('name パラメータが未指定の場合も空配列を返す', async () => {
+    const request = new NextRequest('http://localhost/api/buyers/search');
+    const response = await GET(request);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual([]);
+  });
 });

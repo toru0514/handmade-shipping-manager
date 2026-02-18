@@ -15,7 +15,7 @@ export interface BuyerOrderHistoryDto {
 }
 
 export interface BuyerDetailDto {
-  readonly buyerKey: string;
+  readonly buyerId: string;
   readonly buyerName: string;
   readonly postalCode: string;
   readonly prefecture: string;
@@ -45,7 +45,7 @@ export class SearchBuyersUseCase {
     const grouped = this.groupByBuyerIdentity(matchedOrders);
 
     return [...grouped.entries()]
-      .map(([buyerKey, orders]) => this.toBuyerDetail(buyerKey, orders))
+      .map(([identityKey, orders]) => this.toBuyerDetail(identityKey, orders))
       .sort((a, b) => b.lastOrderedAt.localeCompare(a.lastOrderedAt))
       .slice(0, MAX_RESULTS);
   }
@@ -76,7 +76,7 @@ export class SearchBuyersUseCase {
     ].join('::');
   }
 
-  private toBuyerDetail(buyerKey: string, orders: Order[]): BuyerDetailDto {
+  private toBuyerDetail(identityKey: string, orders: Order[]): BuyerDetailDto {
     const sorted = [...orders].sort((a, b) => b.orderedAt.getTime() - a.orderedAt.getTime());
     const latest = sorted[0];
     const oldest = sorted[sorted.length - 1];
@@ -88,7 +88,7 @@ export class SearchBuyersUseCase {
     const totalAmount = sorted.reduce((sum, order) => sum + order.product.price, 0);
 
     return {
-      buyerKey,
+      buyerId: this.toBuyerId(identityKey),
       buyerName: latest.buyer.name.toString(),
       postalCode: latest.buyer.address.postalCode.toString(),
       prefecture: latest.buyer.address.prefecture.toString(),
@@ -109,5 +109,17 @@ export class SearchBuyersUseCase {
         orderedAt: order.orderedAt.toISOString(),
       })),
     };
+  }
+
+  /**
+   * UI選択用の外部識別子。内部の集約キー文字列を直接露出しない。
+   */
+  private toBuyerId(identityKey: string): string {
+    let hash = 2166136261;
+    for (let i = 0; i < identityKey.length; i += 1) {
+      hash ^= identityKey.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return `buyer_${(hash >>> 0).toString(16).padStart(8, '0')}`;
   }
 }

@@ -122,6 +122,32 @@ describe('SearchBuyersUseCase', () => {
     expect(result).toEqual([]);
   });
 
+  it('検索結果が100件を超える場合は最大100件に制限される', async () => {
+    const orders: Order[] = [];
+    for (let i = 0; i < 101; i += 1) {
+      const day = ((i % 28) + 1).toString().padStart(2, '0');
+      orders.push(
+        createOrder({
+          orderId: `ORD-${i.toString().padStart(3, '0')}`,
+          buyerName: `田中${i}`,
+          platform: i % 2 === 0 ? Platform.Minne : Platform.Creema,
+          price: 1000 + i,
+          orderedAt: `2026-02-${day}T00:00:00.000Z`,
+          buyerPostalCode: `${(1000001 + i).toString().slice(0, 7)}`,
+          buyerCity: `都市${i}`,
+          buyerAddress1: `住所${i}`,
+          buyerPhone: `090${(10000000 + i).toString().slice(-8)}`,
+        }),
+      );
+    }
+
+    const repository = new InMemoryOrderRepository(orders);
+    const useCase = new SearchBuyersUseCase(repository);
+    const result = await useCase.execute({ buyerName: '田中' });
+
+    expect(result).toHaveLength(100);
+  });
+
   it('同姓同名でも住所・電話が異なる場合は別購入者として扱う', async () => {
     const repository = new InMemoryOrderRepository([
       createOrder({
@@ -152,6 +178,7 @@ describe('SearchBuyersUseCase', () => {
     const result = await useCase.execute({ buyerName: '佐藤' });
 
     expect(result).toHaveLength(2);
+    expect(result[0]?.buyerId).not.toBe(result[1]?.buyerId);
     expect(result[0]?.orderCount).toBe(1);
     expect(result[1]?.orderCount).toBe(1);
   });

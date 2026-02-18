@@ -20,7 +20,7 @@ describe('BuyersPage (UC-007)', () => {
         return new Response(
           JSON.stringify([
             {
-              buyerKey: '山田 太郎::1000001::東京都::千代田区::千代田1-1::::09012345678',
+              buyerId: 'buyer_001',
               buyerName: '山田 太郎',
               postalCode: '1000001',
               prefecture: '東京都',
@@ -84,7 +84,7 @@ describe('BuyersPage (UC-007)', () => {
       return new Response(
         JSON.stringify([
           {
-            buyerKey: '佐藤 花子::1000001::東京都::千代田区::千代田1-1::::09011112222',
+            buyerId: 'buyer_101',
             buyerName: '佐藤 花子',
             postalCode: '1000001',
             prefecture: '東京都',
@@ -107,7 +107,7 @@ describe('BuyersPage (UC-007)', () => {
             ],
           },
           {
-            buyerKey: '佐藤 花子::1500001::東京都::渋谷区::神宮前1-2-3::::09033334444',
+            buyerId: 'buyer_102',
             buyerName: '佐藤 花子',
             postalCode: '1500001',
             prefecture: '東京都',
