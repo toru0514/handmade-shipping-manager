@@ -3,26 +3,37 @@ import { MarkOrderAsShippedUseCase } from '@/application/usecases/MarkOrderAsShi
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
 import { GoogleSheetsClient } from '@/infrastructure/external/google/SheetsClient';
 
-interface MarkAsShippedRequestBody {
-  shippingMethod?: string;
-  trackingNumber?: string;
-}
-
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ orderId: string }> },
 ) {
   const { orderId } = await context.params;
 
-  let body: MarkAsShippedRequestBody;
+  let body: unknown;
   try {
-    body = (await request.json()) as MarkAsShippedRequestBody;
+    body = await request.json();
   } catch {
     return NextResponse.json({ error: 'リクエストボディが不正です' }, { status: 400 });
   }
 
-  if (!body.shippingMethod) {
+  if (typeof body !== 'object' || body === null) {
+    return NextResponse.json({ error: 'リクエストボディが不正です' }, { status: 400 });
+  }
+
+  const parsedBody = body as Record<string, unknown>;
+  const shippingMethod = parsedBody.shippingMethod;
+  const trackingNumber = parsedBody.trackingNumber;
+
+  if (typeof shippingMethod !== 'string' || shippingMethod.trim().length === 0) {
     return NextResponse.json({ error: '配送方法は必須です' }, { status: 400 });
+  }
+
+  if (
+    trackingNumber !== undefined &&
+    trackingNumber !== null &&
+    typeof trackingNumber !== 'string'
+  ) {
+    return NextResponse.json({ error: '追跡番号は文字列で指定してください' }, { status: 400 });
   }
 
   const accessToken = process.env.GOOGLE_SHEETS_ACCESS_TOKEN ?? '';
@@ -41,8 +52,8 @@ export async function POST(
   try {
     const result = await useCase.execute({
       orderId,
-      shippingMethod: body.shippingMethod,
-      trackingNumber: body.trackingNumber,
+      shippingMethod: shippingMethod.trim(),
+      trackingNumber: typeof trackingNumber === 'string' ? trackingNumber : undefined,
     });
     return NextResponse.json(result);
   } catch (err) {

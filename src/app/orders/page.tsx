@@ -13,7 +13,8 @@ import { ShipmentConfirmDialog } from '@/presentation/components/orders/Shipment
 export default function OrdersPage() {
   const [orders, setOrders] = useState<PendingOrderDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<PendingOrderDto | null>(null);
   const [isSubmittingShipment, setIsSubmittingShipment] = useState(false);
   const [completeData, setCompleteData] = useState<ShipmentCompleteData | null>(null);
@@ -33,7 +34,7 @@ export default function OrdersPage() {
       try {
         await fetchOrders();
       } catch (err) {
-        setError(err instanceof Error ? err.message : '予期しないエラーが発生しました');
+        setLoadError(err instanceof Error ? err.message : '予期しないエラーが発生しました');
       } finally {
         setLoading(false);
       }
@@ -48,7 +49,7 @@ export default function OrdersPage() {
     if (selectedOrder === null) return;
 
     setIsSubmittingShipment(true);
-    setError(null);
+    setUpdateError(null);
 
     try {
       const response = await fetch(`/api/orders/${selectedOrder.orderId}/ship`, {
@@ -76,7 +77,7 @@ export default function OrdersPage() {
       setIsCompleteMessageOpen(true);
       setOrders((prev) => prev.filter((order) => order.orderId !== result.orderId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : '発送完了の更新に失敗しました');
+      setUpdateError(err instanceof Error ? err.message : '発送完了の更新に失敗しました');
     } finally {
       setIsSubmittingShipment(false);
     }
@@ -92,16 +93,25 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {error && (
+      {loadError && (
         <div className="rounded bg-red-100 px-4 py-3 text-red-700" role="alert">
-          {error}
+          {loadError}
         </div>
       )}
 
-      {!loading && !error && (
+      {updateError && (
+        <div className="rounded bg-red-100 px-4 py-3 text-red-700" role="alert">
+          {updateError}
+        </div>
+      )}
+
+      {!loading && !loadError && (
         <PendingOrderList
           orders={orders}
-          onRequestShipmentComplete={(order) => setSelectedOrder(order)}
+          onRequestShipmentComplete={(order) => {
+            setUpdateError(null);
+            setSelectedOrder(order);
+          }}
         />
       )}
 

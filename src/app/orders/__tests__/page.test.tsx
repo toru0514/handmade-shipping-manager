@@ -87,4 +87,51 @@ describe('OrdersPage (UC-006)', () => {
       }),
     );
   });
+
+  it('発送更新に失敗しても一覧は表示されたままになる', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url === '/api/orders/pending') {
+        return new Response(
+          JSON.stringify([
+            {
+              orderId: 'ORD-001',
+              platform: 'minne',
+              buyerName: '山田 太郎',
+              productName: 'ハンドメイドアクセサリー',
+              orderedAt: '2026-02-15T00:00:00.000Z',
+              daysSinceOrder: 2,
+              isOverdue: false,
+            },
+          ]),
+          { status: 200 },
+        );
+      }
+
+      if (url === '/api/orders/ORD-001/ship' && init?.method === 'POST') {
+        return new Response(JSON.stringify({ error: '発送済みの注文は変更できません' }), {
+          status: 400,
+        });
+      }
+
+      return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<OrdersPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('order-card-ORD-001')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '発送完了' }));
+    fireEvent.click(screen.getByRole('button', { name: '発送完了にする' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('発送済みの注文は変更できません');
+    });
+
+    expect(screen.getByTestId('order-card-ORD-001')).toBeInTheDocument();
+  });
 });
