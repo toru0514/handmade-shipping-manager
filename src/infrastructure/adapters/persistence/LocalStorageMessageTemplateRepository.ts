@@ -60,10 +60,14 @@ function resolveStorage(): StorageLike {
 }
 
 export class LocalStorageMessageTemplateRepository implements MessageTemplateRepository<MessageTemplate> {
-  constructor(private readonly storage: StorageLike = resolveStorage()) {}
+  constructor(private readonly storage?: StorageLike) {}
+
+  private getStorage(): StorageLike {
+    return this.storage ?? resolveStorage();
+  }
 
   async findByType(type: MessageTemplateType): Promise<MessageTemplate | null> {
-    const raw = this.storage.getItem(storageKey(type));
+    const raw = this.getStorage().getItem(storageKey(type));
 
     if (!raw) {
       const defaultTemplate = buildDefaultTemplate(type);
@@ -93,7 +97,7 @@ export class LocalStorageMessageTemplateRepository implements MessageTemplateRep
       variables: cloneVariables(template.variables),
     };
 
-    this.storage.setItem(storageKey(template.type), JSON.stringify(serialized));
+    this.getStorage().setItem(storageKey(template.type), JSON.stringify(serialized));
   }
 
   async resetToDefault(type: MessageTemplateType): Promise<MessageTemplate> {
