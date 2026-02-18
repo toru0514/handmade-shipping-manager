@@ -234,6 +234,64 @@ describe('GoogleSheetsClient', () => {
     );
   });
 
+  it('writeRows は 401 時にトークンを更新してリトライする', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 401 })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'token-write-refreshed', expires_in: 3600 }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        accessToken: 'token-expired',
+        refreshToken: 'refresh-token',
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+      },
+      fetcher,
+    );
+
+    await expect(client.writeRows([['A', 'B']])).resolves.toBeUndefined();
+    const [, retryInit] = fetcher.mock.calls[2] as [string, RequestInit];
+    expect((retryInit.headers as Record<string, string>).Authorization).toBe(
+      'Bearer token-write-refreshed',
+    );
+  });
+
+  it('clearRows は 401 時にトークンを更新してリトライする', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 401 })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'token-clear-refreshed', expires_in: 3600 }),
+      })
+      .mockResolvedValueOnce({ ok: true });
+
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        accessToken: 'token-expired',
+        refreshToken: 'refresh-token',
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+      },
+      fetcher,
+    );
+
+    await expect(client.clearRows()).resolves.toBeUndefined();
+    const [, retryInit] = fetcher.mock.calls[2] as [string, RequestInit];
+    expect((retryInit.headers as Record<string, string>).Authorization).toBe(
+      'Bearer token-clear-refreshed',
+    );
+  });
+
   it('トークン更新レスポンスに access_token がない場合は AuthenticationError を投げる', async () => {
     const fetcher = vi
       .fn()

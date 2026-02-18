@@ -26,6 +26,16 @@ function createOrderRepository(env: Env): SpreadsheetOrderRepository {
   const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
 
   const hasAccessToken = Boolean(accessToken);
+  const hasRefreshToken = Boolean(refreshToken);
+  const hasClientId = Boolean(clientId);
+  const hasClientSecret = Boolean(clientSecret);
+
+  if (hasRefreshToken && (!hasClientId || !hasClientSecret)) {
+    throw new Error(
+      'GOOGLE_SHEETS_REFRESH_TOKEN が設定されている場合は GOOGLE_CLIENT_ID と GOOGLE_CLIENT_SECRET も必須です',
+    );
+  }
+
   const hasRefreshTokenConfig = Boolean(refreshToken && clientId && clientSecret);
 
   if (!hasAccessToken && !hasRefreshTokenConfig) {

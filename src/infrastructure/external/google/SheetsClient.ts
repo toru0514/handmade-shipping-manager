@@ -43,7 +43,6 @@ export class GoogleSheetsClient implements SheetsClient {
     const targetRange = range ?? `${this.config.sheetName}!A2:Z`;
     const response = await this.requestWithAuth(this.buildValuesUrl(targetRange), {
       method: 'GET',
-      operation: 'read',
     });
 
     if (!response.ok) {
@@ -59,7 +58,6 @@ export class GoogleSheetsClient implements SheetsClient {
 
     const response = await this.requestWithAuth(this.buildValuesUrl(targetRange, 'RAW'), {
       method: 'PUT',
-      operation: 'write',
       contentType: 'application/json',
       body: JSON.stringify({ values: rows }),
     });
@@ -76,7 +74,6 @@ export class GoogleSheetsClient implements SheetsClient {
       `${this.getBaseUrl()}/v4/spreadsheets/${this.config.spreadsheetId}/values/${encodedRange}:clear`,
       {
         method: 'POST',
-        operation: 'clear',
         contentType: 'application/json',
       },
     );
@@ -135,16 +132,33 @@ export class GoogleSheetsClient implements SheetsClient {
     return Boolean(this.config.refreshToken && this.config.clientId && this.config.clientSecret);
   }
 
+  private getRefreshCredentials(): {
+    refreshToken: string;
+    clientId: string;
+    clientSecret: string;
+  } | null {
+    const refreshToken = this.config.refreshToken;
+    const clientId = this.config.clientId;
+    const clientSecret = this.config.clientSecret;
+
+    if (refreshToken && clientId && clientSecret) {
+      return { refreshToken, clientId, clientSecret };
+    }
+
+    return null;
+  }
+
   private async refreshAccessToken(): Promise<void> {
-    if (!this.canRefreshToken()) {
+    const credentials = this.getRefreshCredentials();
+    if (!credentials) {
       throw new AuthenticationError('Google OAuth2 リフレッシュトークン設定が不足しています');
     }
 
     const body = new URLSearchParams({
       grant_type: 'refresh_token',
-      refresh_token: this.config.refreshToken as string,
-      client_id: this.config.clientId as string,
-      client_secret: this.config.clientSecret as string,
+      refresh_token: credentials.refreshToken,
+      client_id: credentials.clientId,
+      client_secret: credentials.clientSecret,
     });
 
     const response = await this.fetcher(this.getTokenUrl(), {
@@ -177,7 +191,6 @@ export class GoogleSheetsClient implements SheetsClient {
     url: string,
     options: {
       method: 'GET' | 'PUT' | 'POST';
-      operation: 'read' | 'write' | 'clear';
       contentType?: string;
       body?: BodyInit;
     },
