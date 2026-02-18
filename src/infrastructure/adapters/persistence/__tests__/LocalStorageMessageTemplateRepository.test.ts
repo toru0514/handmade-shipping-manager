@@ -16,19 +16,16 @@ class InMemoryStorage {
 }
 
 describe('LocalStorageMessageTemplateRepository', () => {
-  it('findByType は未保存時にデフォルトテンプレートを初期化して返す', async () => {
+  it('findByType は未保存時に null を返す', async () => {
     const storage = new InMemoryStorage();
     const repository = new LocalStorageMessageTemplateRepository(storage);
 
     const found = await repository.findByType(MessageTemplateType.PurchaseThanks);
 
-    expect(found).not.toBeNull();
-    expect(found?.type.equals(MessageTemplateType.PurchaseThanks)).toBe(true);
-    expect(found?.content).toContain('{{buyer_name}}');
-    expect(found?.content).toContain('{{product_name}}');
+    expect(found).toBeNull();
 
     const raw = storage.getItem('message-template:purchase_thanks');
-    expect(raw).not.toBeNull();
+    expect(raw).toBeNull();
   });
 
   it('save/findByType で保存したテンプレートを取得できる', async () => {
@@ -51,19 +48,16 @@ describe('LocalStorageMessageTemplateRepository', () => {
     expect(found?.variables).toEqual([{ name: 'buyer_name' }]);
   });
 
-  it('findByType は shipping_notice 未保存時にデフォルトテンプレートを初期化して返す', async () => {
+  it('findByType は shipping_notice 未保存時に null を返す', async () => {
     const storage = new InMemoryStorage();
     const repository = new LocalStorageMessageTemplateRepository(storage);
 
     const found = await repository.findByType(MessageTemplateType.ShippingNotice);
 
-    expect(found).not.toBeNull();
-    expect(found?.type.equals(MessageTemplateType.ShippingNotice)).toBe(true);
-    expect(found?.content).toContain('{{shipping_method}}');
-    expect(found?.content).toContain('{{tracking_number}}');
+    expect(found).toBeNull();
 
     const raw = storage.getItem('message-template:shipping_notice');
-    expect(raw).not.toBeNull();
+    expect(raw).toBeNull();
   });
 
   it('resetToDefault は指定種別をデフォルトに戻して返す', async () => {
