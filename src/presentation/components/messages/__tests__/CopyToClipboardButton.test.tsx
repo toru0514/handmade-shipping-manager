@@ -25,4 +25,19 @@ describe('CopyToClipboardButton', () => {
       expect(onError).not.toHaveBeenCalled();
     });
   });
+
+  it('クリップボード未対応環境では onError を呼ぶ', async () => {
+    const onCopied = vi.fn();
+    const onError = vi.fn();
+    vi.stubGlobal('navigator', {});
+
+    render(<CopyToClipboardButton content="テスト本文" onCopied={onCopied} onError={onError} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'コピー' }));
+
+    await waitFor(() => {
+      expect(onCopied).not.toHaveBeenCalled();
+      expect(onError).toHaveBeenCalledWith('この環境ではクリップボードにコピーできません');
+    });
+  });
 });

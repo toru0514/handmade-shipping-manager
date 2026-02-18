@@ -1,7 +1,9 @@
 import { MessageTemplateRepository } from '@/domain/ports/MessageTemplateRepository';
 import { MessageTemplate, TemplateVariable } from '@/domain/services/MessageGenerator';
-import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
-import { MessageTemplateTypeValue } from '@/domain/valueObjects/MessageTemplateType';
+import {
+  MessageTemplateType,
+  MessageTemplateTypeValue,
+} from '@/domain/valueObjects/MessageTemplateType';
 
 const DEFAULT_TEMPLATES: Record<MessageTemplateTypeValue, Omit<MessageTemplate, 'type'>> = {
   purchase_thanks: {
@@ -42,6 +44,7 @@ export class DefaultMessageTemplateRepository implements MessageTemplateReposito
   }
 
   async save(_template: MessageTemplate): Promise<void> {
+    // no-op: このリポジトリはデフォルトテンプレート提供専用で、永続化は行わない。
     return Promise.resolve();
   }
 

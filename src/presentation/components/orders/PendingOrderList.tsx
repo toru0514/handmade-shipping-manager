@@ -5,14 +5,14 @@ interface PendingOrderListProps {
   orders: PendingOrderDto[];
   onRequestShipmentComplete: (order: PendingOrderDto) => void;
   onRequestPurchaseThanks: (order: PendingOrderDto) => void;
-  isGeneratingPurchaseThanks?: boolean;
+  generatingPurchaseThanksOrderId?: string | null;
 }
 
 export function PendingOrderList({
   orders,
   onRequestShipmentComplete,
   onRequestPurchaseThanks,
-  isGeneratingPurchaseThanks = false,
+  generatingPurchaseThanksOrderId = null,
 }: PendingOrderListProps) {
   if (orders.length === 0) {
     return (
@@ -30,7 +30,7 @@ export function PendingOrderList({
           order={order}
           onRequestShipmentComplete={onRequestShipmentComplete}
           onRequestPurchaseThanks={onRequestPurchaseThanks}
-          isGeneratingPurchaseThanks={isGeneratingPurchaseThanks}
+          isGeneratingPurchaseThanks={generatingPurchaseThanksOrderId === order.orderId}
         />
       ))}
     </div>

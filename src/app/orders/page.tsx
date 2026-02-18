@@ -19,7 +19,9 @@ export default function OrdersPage() {
   const [purchaseThanksError, setPurchaseThanksError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<PendingOrderDto | null>(null);
   const [isSubmittingShipment, setIsSubmittingShipment] = useState(false);
-  const [isGeneratingPurchaseThanks, setIsGeneratingPurchaseThanks] = useState(false);
+  const [generatingPurchaseThanksOrderId, setGeneratingPurchaseThanksOrderId] = useState<
+    string | null
+  >(null);
   const [purchaseThanksPreview, setPurchaseThanksPreview] = useState<{
     orderId: string;
     message: string;
@@ -92,7 +94,7 @@ export default function OrdersPage() {
 
   const handleRequestPurchaseThanks = useCallback(async (order: PendingOrderDto): Promise<void> => {
     setPurchaseThanksError(null);
-    setIsGeneratingPurchaseThanks(true);
+    setGeneratingPurchaseThanksOrderId(order.orderId);
 
     try {
       const response = await fetch(`/api/orders/${order.orderId}/message/purchase-thanks`);
@@ -117,7 +119,7 @@ export default function OrdersPage() {
         err instanceof Error ? err.message : '購入お礼メッセージの生成に失敗しました',
       );
     } finally {
-      setIsGeneratingPurchaseThanks(false);
+      setGeneratingPurchaseThanksOrderId(null);
     }
   }, []);
 
@@ -145,7 +147,7 @@ export default function OrdersPage() {
       {!loading && !loadError && (
         <PendingOrderList
           orders={orders}
-          isGeneratingPurchaseThanks={isGeneratingPurchaseThanks}
+          generatingPurchaseThanksOrderId={generatingPurchaseThanksOrderId}
           onRequestShipmentComplete={(order) => {
             setUpdateError(null);
             setSelectedOrder(order);
