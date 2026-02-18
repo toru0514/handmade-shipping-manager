@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SearchBuyersUseCase } from '@/application/usecases/SearchBuyersUseCase';
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
+import { normalizeHttpError, toApiErrorResponse } from '@/infrastructure/errors/HttpErrors';
 import { GoogleSheetsClient } from '@/infrastructure/external/google/SheetsClient';
 
 export async function GET(request: NextRequest) {
@@ -26,7 +27,10 @@ export async function GET(request: NextRequest) {
     const buyers = await useCase.execute({ buyerName: keyword });
     return NextResponse.json(buyers);
   } catch (err) {
-    console.error('購入者検索エラー:', err);
-    return NextResponse.json({ error: '購入者情報の検索に失敗しました' }, { status: 500 });
+    const normalizedError = normalizeHttpError(err, '購入者情報の検索に失敗しました');
+    console.error('購入者検索エラー:', normalizedError);
+    return NextResponse.json(toApiErrorResponse(normalizedError), {
+      status: normalizedError.statusCode,
+    });
   }
 }
