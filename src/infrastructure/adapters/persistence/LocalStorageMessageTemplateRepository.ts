@@ -1,6 +1,7 @@
 import { MessageTemplateRepository } from '@/domain/ports/MessageTemplateRepository';
 import { MessageTemplate, TemplateVariable } from '@/domain/services/MessageGenerator';
 import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
+import { MessageTemplateTypeValue } from '@/domain/valueObjects/MessageTemplateType';
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -13,7 +14,7 @@ interface StoredMessageTemplate {
 
 const STORAGE_KEY_PREFIX = 'message-template:';
 
-const DEFAULT_TEMPLATES: Record<string, Omit<MessageTemplate, 'type'>> = {
+const DEFAULT_TEMPLATES: Record<MessageTemplateTypeValue, Omit<MessageTemplate, 'type'>> = {
   purchase_thanks: {
     id: 'default-purchase-thanks',
     content: `{{buyer_name}} 様\n\nこの度は「{{product_name}}」をご購入いただき、誠にありがとうございます。\n\n心を込めてお作りした作品です。\n発送準備が整いましたら、改めてご連絡いたします。\n\nご不明な点がございましたら、お気軽にお問い合わせください。\n\n今後ともよろしくお願いいたします。`,
@@ -32,7 +33,7 @@ const DEFAULT_TEMPLATES: Record<string, Omit<MessageTemplate, 'type'>> = {
 };
 
 function storageKey(type: MessageTemplateType): string {
-  return `${STORAGE_KEY_PREFIX}${type.toString()}`;
+  return `${STORAGE_KEY_PREFIX}${type.value}`;
 }
 
 function cloneVariables(variables: TemplateVariable[]): TemplateVariable[] {
@@ -40,11 +41,7 @@ function cloneVariables(variables: TemplateVariable[]): TemplateVariable[] {
 }
 
 function buildDefaultTemplate(type: MessageTemplateType): MessageTemplate {
-  const base = DEFAULT_TEMPLATES[type.toString()];
-
-  if (!base) {
-    throw new Error(`Unsupported message template type: ${type.toString()}`);
-  }
+  const base = DEFAULT_TEMPLATES[type.value];
 
   return {
     id: base.id,
@@ -83,6 +80,7 @@ export class LocalStorageMessageTemplateRepository implements MessageTemplateRep
         variables: cloneVariables(parsed.variables),
       };
     } catch {
+      console.warn(`Invalid message template JSON found for key: ${storageKey(type)}`);
       return null;
     }
   }
