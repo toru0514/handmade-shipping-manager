@@ -5,6 +5,12 @@ import {
   OrderNotFoundError,
 } from '@/application/usecases/MarkOrderAsShippedErrors';
 import { createContainer } from '@/infrastructure/di/container';
+import {
+  NotFoundError,
+  ValidationError,
+  normalizeHttpError,
+  toApiErrorResponse,
+} from '@/infrastructure/errors/HttpErrors';
 
 export async function POST(
   request: NextRequest,
@@ -16,11 +22,13 @@ export async function POST(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: 'リクエストボディが不正です' }, { status: 400 });
+    const error = new ValidationError('リクエストボディが不正です');
+    return NextResponse.json(toApiErrorResponse(error), { status: error.statusCode });
   }
 
   if (typeof body !== 'object' || body === null) {
-    return NextResponse.json({ error: 'リクエストボディが不正です' }, { status: 400 });
+    const error = new ValidationError('リクエストボディが不正です');
+    return NextResponse.json(toApiErrorResponse(error), { status: error.statusCode });
   }
 
   const parsedBody = body as Record<string, unknown>;
@@ -28,7 +36,8 @@ export async function POST(
   const trackingNumber = parsedBody.trackingNumber;
 
   if (typeof shippingMethod !== 'string' || shippingMethod.trim().length === 0) {
-    return NextResponse.json({ error: '配送方法は必須です' }, { status: 400 });
+    const error = new ValidationError('配送方法は必須です');
+    return NextResponse.json(toApiErrorResponse(error), { status: error.statusCode });
   }
 
   if (
@@ -36,7 +45,8 @@ export async function POST(
     trackingNumber !== null &&
     typeof trackingNumber !== 'string'
   ) {
-    return NextResponse.json({ error: '追跡番号は文字列で指定してください' }, { status: 400 });
+    const error = new ValidationError('追跡番号は文字列で指定してください');
+    return NextResponse.json(toApiErrorResponse(error), { status: error.statusCode });
   }
 
   try {
@@ -50,14 +60,19 @@ export async function POST(
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof OrderNotFoundError) {
-      return NextResponse.json({ error: err.message }, { status: 404 });
+      const error = new NotFoundError(err.message);
+      return NextResponse.json(toApiErrorResponse(error), { status: error.statusCode });
     }
 
     if (err instanceof InvalidShipmentInputError || err instanceof InvalidShipmentOperationError) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
+      const error = new ValidationError(err.message);
+      return NextResponse.json(toApiErrorResponse(error), { status: error.statusCode });
     }
 
+    const normalizedError = normalizeHttpError(err, '発送完了の記録に失敗しました');
     console.error('発送完了更新エラー:', err);
-    return NextResponse.json({ error: '発送完了の記録に失敗しました' }, { status: 500 });
+    return NextResponse.json(toApiErrorResponse(normalizedError), {
+      status: normalizedError.statusCode,
+    });
   }
 }

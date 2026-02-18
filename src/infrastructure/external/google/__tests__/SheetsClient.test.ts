@@ -1,4 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
+import {
+  AuthenticationError,
+  ExternalServiceError,
+  NotFoundError,
+} from '@/infrastructure/errors/HttpErrors';
 import { GoogleSheetsClient } from '../SheetsClient';
 
 describe('GoogleSheetsClient', () => {
@@ -66,5 +71,47 @@ describe('GoogleSheetsClient', () => {
     expect(url).not.toContain('key=');
     expect(init.method).toBe('POST');
     expect((init.headers as Record<string, string>).Authorization).toBe('Bearer token-123');
+  });
+
+  it('401/403 は AuthenticationError を投げる', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: false, status: 401 });
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        accessToken: 'token-123',
+      },
+      fetcher,
+    );
+
+    await expect(client.readRows()).rejects.toBeInstanceOf(AuthenticationError);
+  });
+
+  it('404 は NotFoundError を投げる', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: false, status: 404 });
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        accessToken: 'token-123',
+      },
+      fetcher,
+    );
+
+    await expect(client.writeRows([['v1']])).rejects.toBeInstanceOf(NotFoundError);
+  });
+
+  it('その他ステータスは ExternalServiceError を投げる', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: false, status: 500 });
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        accessToken: 'token-123',
+      },
+      fetcher,
+    );
+
+    await expect(client.clearRows()).rejects.toBeInstanceOf(ExternalServiceError);
   });
 });
