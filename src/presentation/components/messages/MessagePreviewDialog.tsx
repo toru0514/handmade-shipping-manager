@@ -31,9 +31,9 @@ export function MessagePreviewDialog({
         className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="purchase-thanks-preview-title"
+        aria-labelledby="message-preview-title"
       >
-        <h2 id="purchase-thanks-preview-title" className="mb-2 text-xl font-bold">
+        <h2 id="message-preview-title" className="mb-2 text-xl font-bold">
           {title}
         </h2>
         <p className="mb-4 text-sm text-gray-700">注文 {orderId} のメッセージプレビューです。</p>

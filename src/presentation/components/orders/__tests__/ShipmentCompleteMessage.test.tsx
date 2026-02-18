@@ -71,4 +71,23 @@ describe('ShipmentCompleteMessage', () => {
       expect(screen.getByRole('status')).toHaveTextContent('コピーしました');
     });
   });
+
+  it('API 失敗時にエラーメッセージが表示される', async () => {
+    const fetchMock = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          error: { message: '発送連絡メッセージの生成に失敗しました' },
+        }),
+        { status: 500 },
+      );
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ShipmentCompleteMessage open data={data} onClose={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: '発送連絡を作成' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toHaveTextContent('発送連絡メッセージの生成に失敗しました');
+    });
+  });
 });
