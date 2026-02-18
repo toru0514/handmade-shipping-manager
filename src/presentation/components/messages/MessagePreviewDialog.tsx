@@ -7,6 +7,7 @@ interface MessagePreviewDialogProps {
   readonly open: boolean;
   readonly orderId: string;
   readonly message: string;
+  readonly title: string;
   readonly onClose: () => void;
 }
 
@@ -14,6 +15,7 @@ export function MessagePreviewDialog({
   open,
   orderId,
   message,
+  title,
   onClose,
 }: MessagePreviewDialogProps) {
   const [notice, setNotice] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export function MessagePreviewDialog({
         aria-labelledby="purchase-thanks-preview-title"
       >
         <h2 id="purchase-thanks-preview-title" className="mb-2 text-xl font-bold">
-          購入お礼メッセージ
+          {title}
         </h2>
         <p className="mb-4 text-sm text-gray-700">注文 {orderId} のメッセージプレビューです。</p>
 

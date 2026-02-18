@@ -20,6 +20,7 @@ describe('MessagePreviewDialog', () => {
         orderId="ORD-001"
         message={`山田 太郎 様
 ありがとうございます。`}
+        title="購入お礼メッセージ"
         onClose={onClose}
       />,
     );

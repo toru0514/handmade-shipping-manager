@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import { ShipmentCompleteMessage } from '../ShipmentCompleteMessage';
 
@@ -31,5 +31,44 @@ describe('ShipmentCompleteMessage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '閉じる' }));
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('発送連絡メッセージを生成してコピーできる', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/orders/ORD-001/message/shipping-notice') {
+        return new Response(
+          JSON.stringify({
+            orderId: 'ORD-001',
+            message: '山田 太郎 様\n発送しました。',
+          }),
+          { status: 200 },
+        );
+      }
+      return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', {
+      clipboard: {
+        writeText,
+      },
+    });
+
+    render(<ShipmentCompleteMessage open data={data} onClose={() => {}} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '発送連絡を作成' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: '発送連絡メッセージ' })).toBeInTheDocument();
+      expect(screen.getByText(/発送しました。/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'コピー' }));
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('山田 太郎 様\n発送しました。');
+      expect(screen.getByRole('status')).toHaveTextContent('コピーしました');
+    });
   });
 });
