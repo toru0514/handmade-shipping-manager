@@ -5,22 +5,12 @@ const { executeMock } = vi.hoisted(() => ({
   executeMock: vi.fn(),
 }));
 
-vi.mock('@/application/usecases/ListPendingOrdersUseCase', () => ({
-  ListPendingOrdersUseCase: class {
-    execute = executeMock;
-  },
-}));
-
-vi.mock('@/domain/specifications/OverdueOrderSpecification', () => ({
-  OverdueOrderSpecification: class {},
-}));
-
-vi.mock('@/infrastructure/adapters/persistence/SpreadsheetOrderRepository', () => ({
-  SpreadsheetOrderRepository: class {},
-}));
-
-vi.mock('@/infrastructure/external/google/SheetsClient', () => ({
-  GoogleSheetsClient: class {},
+vi.mock('@/infrastructure/di/container', () => ({
+  createContainer: vi.fn(() => ({
+    getListPendingOrdersUseCase: () => ({
+      execute: executeMock,
+    }),
+  })),
 }));
 
 import { GET } from '../route';
