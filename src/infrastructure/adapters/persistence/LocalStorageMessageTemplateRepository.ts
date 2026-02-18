@@ -1,7 +1,9 @@
 import { MessageTemplateRepository } from '@/domain/ports/MessageTemplateRepository';
 import { MessageTemplate, TemplateVariable } from '@/domain/services/MessageGenerator';
-import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
-import { MessageTemplateTypeValue } from '@/domain/valueObjects/MessageTemplateType';
+import {
+  MessageTemplateType,
+  MessageTemplateTypeValue,
+} from '@/domain/valueObjects/MessageTemplateType';
 
 type StorageLike = Pick<Storage, 'getItem' | 'setItem'>;
 
@@ -70,9 +72,7 @@ export class LocalStorageMessageTemplateRepository implements MessageTemplateRep
     const raw = this.getStorage().getItem(storageKey(type));
 
     if (!raw) {
-      const defaultTemplate = buildDefaultTemplate(type);
-      await this.save(defaultTemplate);
-      return defaultTemplate;
+      return null;
     }
 
     try {

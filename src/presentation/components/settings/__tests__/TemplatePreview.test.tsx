@@ -10,6 +10,7 @@ describe('TemplatePreview', () => {
 
     render(<TemplatePreview content="山田 太郎 様\nありがとうございます。" onClose={onClose} />);
 
+    expect(screen.getByRole('dialog')).toHaveAttribute('aria-modal', 'true');
     expect(screen.getByText('プレビュー')).toBeInTheDocument();
     expect(screen.getByText(/山田 太郎 様/)).toBeInTheDocument();
     expect(screen.getByText(/ありがとうございます。/)).toBeInTheDocument();

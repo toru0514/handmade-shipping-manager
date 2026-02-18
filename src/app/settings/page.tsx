@@ -1,11 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import {
-  AVAILABLE_TEMPLATE_VARIABLES,
-  UpdateMessageTemplateUseCase,
-} from '@/application/usecases/UpdateMessageTemplateUseCase';
-import { LocalStorageMessageTemplateRepository } from '@/infrastructure/adapters/persistence/LocalStorageMessageTemplateRepository';
+import { AVAILABLE_TEMPLATE_VARIABLES } from '@/application/usecases/UpdateMessageTemplateUseCase';
+import { createUpdateMessageTemplateUseCase } from '@/infrastructure/di/settingsFactory';
 import { TemplateEditor } from '@/presentation/components/settings/TemplateEditor';
 import { TemplatePreview } from '@/presentation/components/settings/TemplatePreview';
 import { VariableList } from '@/presentation/components/settings/VariableList';
@@ -26,7 +23,7 @@ export default function SettingsPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const useCase = useMemo(() => {
-    return new UpdateMessageTemplateUseCase(new LocalStorageMessageTemplateRepository());
+    return createUpdateMessageTemplateUseCase();
   }, []);
 
   useEffect(() => {
