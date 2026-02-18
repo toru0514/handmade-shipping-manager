@@ -1,7 +1,9 @@
+import { GeneratePurchaseThanksUseCase } from '@/application/usecases/GeneratePurchaseThanksUseCase';
 import { ListPendingOrdersUseCase } from '@/application/usecases/ListPendingOrdersUseCase';
 import { MarkOrderAsShippedUseCase } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import { SearchBuyersUseCase } from '@/application/usecases/SearchBuyersUseCase';
 import { OverdueOrderSpecification } from '@/domain/specifications/OverdueOrderSpecification';
+import { DefaultMessageTemplateRepository } from '@/infrastructure/adapters/persistence/DefaultMessageTemplateRepository';
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
 import { GoogleSheetsClient } from '@/infrastructure/external/google/SheetsClient';
 
@@ -33,15 +35,19 @@ export interface Container {
   getListPendingOrdersUseCase(): ListPendingOrdersUseCase;
   getMarkOrderAsShippedUseCase(): MarkOrderAsShippedUseCase;
   getSearchBuyersUseCase(): SearchBuyersUseCase;
+  getGeneratePurchaseThanksUseCase(): GeneratePurchaseThanksUseCase;
 }
 
 export function createContainer(env: Env = process.env): Container {
   const orderRepository = createOrderRepository(env);
   const overdueSpec = new OverdueOrderSpecification();
+  const templateRepository = new DefaultMessageTemplateRepository();
 
   return {
     getListPendingOrdersUseCase: () => new ListPendingOrdersUseCase(orderRepository, overdueSpec),
     getMarkOrderAsShippedUseCase: () => new MarkOrderAsShippedUseCase(orderRepository),
     getSearchBuyersUseCase: () => new SearchBuyersUseCase(orderRepository),
+    getGeneratePurchaseThanksUseCase: () =>
+      new GeneratePurchaseThanksUseCase(orderRepository, templateRepository),
   };
 }

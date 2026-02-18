@@ -4,9 +4,16 @@ import { PendingOrderCard } from './PendingOrderCard';
 interface PendingOrderListProps {
   orders: PendingOrderDto[];
   onRequestShipmentComplete: (order: PendingOrderDto) => void;
+  onRequestPurchaseThanks: (order: PendingOrderDto) => void;
+  generatingPurchaseThanksOrderId?: string | null;
 }
 
-export function PendingOrderList({ orders, onRequestShipmentComplete }: PendingOrderListProps) {
+export function PendingOrderList({
+  orders,
+  onRequestShipmentComplete,
+  onRequestPurchaseThanks,
+  generatingPurchaseThanksOrderId = null,
+}: PendingOrderListProps) {
   if (orders.length === 0) {
     return (
       <div className="py-12 text-center text-gray-500" data-testid="empty-orders">
@@ -22,6 +29,8 @@ export function PendingOrderList({ orders, onRequestShipmentComplete }: PendingO
           key={order.orderId}
           order={order}
           onRequestShipmentComplete={onRequestShipmentComplete}
+          onRequestPurchaseThanks={onRequestPurchaseThanks}
+          isGeneratingPurchaseThanks={generatingPurchaseThanksOrderId === order.orderId}
         />
       ))}
     </div>

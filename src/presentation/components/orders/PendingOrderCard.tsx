@@ -3,6 +3,8 @@ import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUs
 interface PendingOrderCardProps {
   order: PendingOrderDto;
   onRequestShipmentComplete: (order: PendingOrderDto) => void;
+  onRequestPurchaseThanks: (order: PendingOrderDto) => void;
+  isGeneratingPurchaseThanks?: boolean;
 }
 
 function formatDate(isoString: string): string {
@@ -21,7 +23,12 @@ function platformLabel(platform: string): string {
   return labels[platform] ?? platform;
 }
 
-export function PendingOrderCard({ order, onRequestShipmentComplete }: PendingOrderCardProps) {
+export function PendingOrderCard({
+  order,
+  onRequestShipmentComplete,
+  onRequestPurchaseThanks,
+  isGeneratingPurchaseThanks = false,
+}: PendingOrderCardProps) {
   return (
     <div
       className={`rounded-lg border p-4 shadow-sm ${
@@ -64,10 +71,10 @@ export function PendingOrderCard({ order, onRequestShipmentComplete }: PendingOr
         <button
           type="button"
           className="rounded bg-blue-500 px-3 py-1.5 text-sm text-white hover:bg-blue-600 disabled:opacity-50"
-          disabled
-          title="Phase 3 で実装予定"
+          disabled={isGeneratingPurchaseThanks}
+          onClick={() => onRequestPurchaseThanks(order)}
         >
-          購入お礼
+          {isGeneratingPurchaseThanks ? '生成中...' : '購入お礼'}
         </button>
       </div>
     </div>

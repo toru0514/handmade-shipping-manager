@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { MarkOrderAsShippedResultDto } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
 import { PendingOrderList } from '@/presentation/components/orders/PendingOrderList';
+import { MessagePreviewDialog } from '@/presentation/components/messages/MessagePreviewDialog';
 import {
   ShipmentCompleteData,
   ShipmentCompleteMessage,
@@ -15,8 +16,16 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [purchaseThanksError, setPurchaseThanksError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<PendingOrderDto | null>(null);
   const [isSubmittingShipment, setIsSubmittingShipment] = useState(false);
+  const [generatingPurchaseThanksOrderId, setGeneratingPurchaseThanksOrderId] = useState<
+    string | null
+  >(null);
+  const [purchaseThanksPreview, setPurchaseThanksPreview] = useState<{
+    orderId: string;
+    message: string;
+  } | null>(null);
   const [completeData, setCompleteData] = useState<ShipmentCompleteData | null>(null);
   const [isCompleteMessageOpen, setIsCompleteMessageOpen] = useState(false);
 
@@ -83,6 +92,37 @@ export default function OrdersPage() {
     [selectedOrder],
   );
 
+  const handleRequestPurchaseThanks = useCallback(async (order: PendingOrderDto): Promise<void> => {
+    setPurchaseThanksError(null);
+    setGeneratingPurchaseThanksOrderId(order.orderId);
+
+    try {
+      const response = await fetch(`/api/orders/${order.orderId}/message/purchase-thanks`);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: { message?: string } | string;
+        };
+        const message =
+          typeof body.error === 'string'
+            ? body.error
+            : (body.error?.message ?? '購入お礼メッセージの生成に失敗しました');
+        throw new Error(message);
+      }
+
+      const payload = (await response.json()) as {
+        orderId: string;
+        message: string;
+      };
+      setPurchaseThanksPreview(payload);
+    } catch (err) {
+      setPurchaseThanksError(
+        err instanceof Error ? err.message : '購入お礼メッセージの生成に失敗しました',
+      );
+    } finally {
+      setGeneratingPurchaseThanksOrderId(null);
+    }
+  }, []);
+
   return (
     <main className="mx-auto max-w-6xl p-6">
       <h1 className="mb-6 text-2xl font-bold">発送前注文一覧</h1>
@@ -98,13 +138,22 @@ export default function OrdersPage() {
           {loadError}
         </div>
       )}
+      {purchaseThanksError && (
+        <div className="mb-4 rounded bg-red-100 px-4 py-3 text-red-700" role="alert">
+          {purchaseThanksError}
+        </div>
+      )}
 
       {!loading && !loadError && (
         <PendingOrderList
           orders={orders}
+          generatingPurchaseThanksOrderId={generatingPurchaseThanksOrderId}
           onRequestShipmentComplete={(order) => {
             setUpdateError(null);
             setSelectedOrder(order);
+          }}
+          onRequestPurchaseThanks={(order) => {
+            void handleRequestPurchaseThanks(order);
           }}
         />
       )}
@@ -122,6 +171,13 @@ export default function OrdersPage() {
         open={isCompleteMessageOpen}
         data={completeData}
         onClose={() => setIsCompleteMessageOpen(false)}
+      />
+
+      <MessagePreviewDialog
+        open={purchaseThanksPreview !== null}
+        orderId={purchaseThanksPreview?.orderId ?? ''}
+        message={purchaseThanksPreview?.message ?? ''}
+        onClose={() => setPurchaseThanksPreview(null)}
       />
     </main>
   );
