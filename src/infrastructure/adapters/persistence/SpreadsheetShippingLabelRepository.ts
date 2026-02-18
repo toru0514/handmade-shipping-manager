@@ -80,6 +80,8 @@ export class SpreadsheetShippingLabelRepository implements ShippingLabelReposito
         label.type,
         label.status,
         label.issuedAt.toISOString(),
+        // expiresAt はコンストラクタで issuedAt + EXPIRY_DAYS として再計算されるため、
+        // スプレッドシート値は運用上の参照情報として保存する（現状 deserialize では未使用）。
         label.expiresAt?.toISOString() ?? '',
         '',
         '',
@@ -95,7 +97,17 @@ export class SpreadsheetShippingLabelRepository implements ShippingLabelReposito
     const labelId = new LabelId(row[COL.labelId] ?? '');
     const orderId = new OrderId(row[COL.orderId] ?? '');
     const type = row[COL.type] ?? '';
-    const issuedAt = new Date(row[COL.issuedAt] ?? '');
+    // 現在 status は 'issued' のみのため deserialize では未使用。
+    // 将来的にステータス追加時は row[COL.status] を読み取り、エンティティ生成へ反映する。
+
+    const issuedAtRaw = row[COL.issuedAt];
+    if (!issuedAtRaw || issuedAtRaw.trim().length === 0) {
+      throw new Error(`issuedAt が空です: labelId=${labelId.toString()}`);
+    }
+    const issuedAt = new Date(issuedAtRaw);
+    if (Number.isNaN(issuedAt.getTime())) {
+      throw new Error(`issuedAt の日付フォーマットが不正です: ${issuedAtRaw}`);
+    }
 
     if (type === 'click_post') {
       return new ClickPostLabel({

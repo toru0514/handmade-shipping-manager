@@ -64,6 +64,7 @@ describe('SpreadsheetShippingLabelRepository', () => {
     expect(clickPost.orderId.toString()).toBe('ORD-001');
     expect(clickPost.pdfData).toBe('base64-pdf-data');
     expect(clickPost.trackingNumber.toString()).toBe('CP123456789JP');
+    expect(clickPost.issuedAt.toISOString()).toBe('2026-02-10T00:00:00.000Z');
   });
 
   it('save/findById で YamatoCompactLabel を保存・取得できる', async () => {
@@ -81,6 +82,8 @@ describe('SpreadsheetShippingLabelRepository', () => {
     expect(yamato.orderId.toString()).toBe('ORD-010');
     expect(yamato.qrCode).toBe('yamato-qr-code');
     expect(yamato.waybillNumber).toBe('YMT-1234-5678');
+    expect(yamato.issuedAt.toISOString()).toBe('2026-02-11T00:00:00.000Z');
+    expect(yamato.expiresAt?.toISOString()).toBe('2026-02-25T00:00:00.000Z');
   });
 
   it('findByOrderId は同一注文のラベルを配列で返す（1:N）', async () => {
@@ -136,6 +139,24 @@ describe('SpreadsheetShippingLabelRepository', () => {
 
     await expect(repository.findById(new LabelId('LBL-001'))).rejects.toThrow(
       '不正なラベル種別です',
+    );
+  });
+
+  it('issuedAt が空の行はデシリアライズ時にエラーになる', async () => {
+    const client = new InMemorySheetsClient();
+    await client.writeRows([['LBL-002', 'ORD-001', 'click_post', 'issued', '']]);
+    const repository = new SpreadsheetShippingLabelRepository(client);
+
+    await expect(repository.findById(new LabelId('LBL-002'))).rejects.toThrow('issuedAt が空です');
+  });
+
+  it('issuedAt が不正形式の行はデシリアライズ時にエラーになる', async () => {
+    const client = new InMemorySheetsClient();
+    await client.writeRows([['LBL-003', 'ORD-001', 'click_post', 'issued', 'not-a-date']]);
+    const repository = new SpreadsheetShippingLabelRepository(client);
+
+    await expect(repository.findById(new LabelId('LBL-003'))).rejects.toThrow(
+      'issuedAt の日付フォーマットが不正です',
     );
   });
 
