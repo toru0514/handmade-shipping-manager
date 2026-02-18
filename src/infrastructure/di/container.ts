@@ -1,4 +1,5 @@
 import { GeneratePurchaseThanksUseCase } from '@/application/usecases/GeneratePurchaseThanksUseCase';
+import { GenerateShippingNoticeUseCase } from '@/application/usecases/GenerateShippingNoticeUseCase';
 import { ListPendingOrdersUseCase } from '@/application/usecases/ListPendingOrdersUseCase';
 import { MarkOrderAsShippedUseCase } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import { SearchBuyersUseCase } from '@/application/usecases/SearchBuyersUseCase';
@@ -36,6 +37,7 @@ export interface Container {
   getMarkOrderAsShippedUseCase(): MarkOrderAsShippedUseCase;
   getSearchBuyersUseCase(): SearchBuyersUseCase;
   getGeneratePurchaseThanksUseCase(): GeneratePurchaseThanksUseCase;
+  getGenerateShippingNoticeUseCase(): GenerateShippingNoticeUseCase;
 }
 
 export function createContainer(env: Env = process.env): Container {
@@ -49,5 +51,7 @@ export function createContainer(env: Env = process.env): Container {
     getSearchBuyersUseCase: () => new SearchBuyersUseCase(orderRepository),
     getGeneratePurchaseThanksUseCase: () =>
       new GeneratePurchaseThanksUseCase(orderRepository, templateRepository),
+    getGenerateShippingNoticeUseCase: () =>
+      new GenerateShippingNoticeUseCase(orderRepository, templateRepository),
   };
 }

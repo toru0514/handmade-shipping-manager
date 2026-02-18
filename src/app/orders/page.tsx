@@ -177,6 +177,7 @@ export default function OrdersPage() {
         open={purchaseThanksPreview !== null}
         orderId={purchaseThanksPreview?.orderId ?? ''}
         message={purchaseThanksPreview?.message ?? ''}
+        title="購入お礼メッセージ"
         onClose={() => setPurchaseThanksPreview(null)}
       />
     </main>

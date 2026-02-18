@@ -198,4 +198,86 @@ describe('OrdersPage (UC-006)', () => {
       expect(screen.getByRole('status')).toHaveTextContent('コピーしました');
     });
   });
+
+  it('発送完了後に発送連絡メッセージを生成してコピーできる', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url === '/api/orders/pending') {
+        return new Response(
+          JSON.stringify([
+            {
+              orderId: 'ORD-001',
+              platform: 'minne',
+              buyerName: '山田 太郎',
+              productName: 'ハンドメイドアクセサリー',
+              orderedAt: '2026-02-15T00:00:00.000Z',
+              daysSinceOrder: 2,
+              isOverdue: false,
+            },
+          ]),
+          { status: 200 },
+        );
+      }
+
+      if (url === '/api/orders/ORD-001/ship' && init?.method === 'POST') {
+        return new Response(
+          JSON.stringify({
+            orderId: 'ORD-001',
+            status: 'shipped',
+            shippedAt: '2026-02-17T10:30:00.000Z',
+            shippingMethod: 'click_post',
+            trackingNumber: 'CP123456789JP',
+          }),
+          { status: 200 },
+        );
+      }
+
+      if (url === '/api/orders/ORD-001/message/shipping-notice') {
+        return new Response(
+          JSON.stringify({
+            orderId: 'ORD-001',
+            message: '山田 太郎 様\n発送しました。',
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+    });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('navigator', {
+      clipboard: {
+        writeText,
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<OrdersPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('order-card-ORD-001')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '発送完了' }));
+    fireEvent.click(screen.getByRole('button', { name: '発送完了にする' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('注文 ORD-001 を発送済みにしました。')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '発送連絡を作成' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: '発送連絡メッセージ' })).toBeInTheDocument();
+      expect(screen.getByText(/発送しました。/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'コピー' }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('山田 太郎 様\n発送しました。');
+      expect(screen.getByRole('status')).toHaveTextContent('コピーしました');
+    });
+  });
 });
