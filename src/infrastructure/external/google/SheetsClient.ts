@@ -115,6 +115,13 @@ export class GoogleSheetsClient implements SheetsClient {
 
     if (this.canRefreshToken()) {
       await this.refreshAccessToken();
+    } else if (
+      this.accessTokenExpiresAt !== undefined &&
+      Date.now() >= this.accessTokenExpiresAt - 30_000
+    ) {
+      throw new AuthenticationError(
+        'アクセストークンが失効しており、更新する手段が設定されていません',
+      );
     }
 
     if (!this.accessToken) {

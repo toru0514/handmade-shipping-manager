@@ -20,13 +20,27 @@ function resolveRequiredEnv(name: RequiredEnvKey, env: Env): string {
 }
 
 function createOrderRepository(env: Env): SpreadsheetOrderRepository {
+  const accessToken = env.GOOGLE_SHEETS_ACCESS_TOKEN?.trim();
+  const refreshToken = env.GOOGLE_SHEETS_REFRESH_TOKEN?.trim();
+  const clientId = env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
+
+  const hasAccessToken = Boolean(accessToken);
+  const hasRefreshTokenConfig = Boolean(refreshToken && clientId && clientSecret);
+
+  if (!hasAccessToken && !hasRefreshTokenConfig) {
+    throw new Error(
+      'Google Sheets 認証情報が不足しています: GOOGLE_SHEETS_ACCESS_TOKEN または GOOGLE_SHEETS_REFRESH_TOKEN + GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET を設定してください',
+    );
+  }
+
   const sheetsClient = new GoogleSheetsClient({
     spreadsheetId: resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env),
     sheetName: env.GOOGLE_SHEETS_SHEET_NAME?.trim() || 'Orders',
-    accessToken: env.GOOGLE_SHEETS_ACCESS_TOKEN?.trim(),
-    refreshToken: env.GOOGLE_SHEETS_REFRESH_TOKEN?.trim(),
-    clientId: env.GOOGLE_CLIENT_ID?.trim(),
-    clientSecret: env.GOOGLE_CLIENT_SECRET?.trim(),
+    accessToken,
+    refreshToken,
+    clientId,
+    clientSecret,
   });
 
   return new SpreadsheetOrderRepository(sheetsClient);

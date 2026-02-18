@@ -185,4 +185,120 @@ describe('GoogleSheetsClient', () => {
 
     await expect(client.readRows()).rejects.toBeInstanceOf(AuthenticationError);
   });
+
+  it('アクセストークンもリフレッシュ設定も未指定の場合は AuthenticationError を投げる', async () => {
+    const fetcher = vi.fn();
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+      },
+      fetcher,
+    );
+
+    await expect(client.readRows()).rejects.toBeInstanceOf(AuthenticationError);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('403 時も refresh token でアクセストークン更新し再試行する', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 403 })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'token-refreshed-403', expires_in: 3600 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ values: [['C', 'D']] }),
+      });
+
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        accessToken: 'token-expired',
+        refreshToken: 'refresh-token',
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+      },
+      fetcher,
+    );
+
+    const rows = await client.readRows();
+    expect(rows).toEqual([['C', 'D']]);
+
+    const [, retryInit] = fetcher.mock.calls[2] as [string, RequestInit];
+    expect((retryInit.headers as Record<string, string>).Authorization).toBe(
+      'Bearer token-refreshed-403',
+    );
+  });
+
+  it('トークン更新レスポンスに access_token がない場合は AuthenticationError を投げる', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 401 })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ expires_in: 3600 }),
+      });
+
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        accessToken: 'token-expired',
+        refreshToken: 'refresh-token',
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+      },
+      fetcher,
+    );
+
+    await expect(client.readRows()).rejects.toBeInstanceOf(AuthenticationError);
+  });
+
+  it('期限内キャッシュがある場合はトークン更新せず既存トークンを再利用する', async () => {
+    const fetcher = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ values: [['E', 'F']] }),
+    });
+
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        accessToken: 'token-keep',
+        refreshToken: 'refresh-token',
+        clientId: 'client-id',
+        clientSecret: 'client-secret',
+      },
+      fetcher,
+    );
+
+    await client.readRows();
+    await client.readRows();
+
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(fetcher.mock.calls[0]?.[0]).not.toContain('oauth2.googleapis.com/token');
+    expect(fetcher.mock.calls[1]?.[0]).not.toContain('oauth2.googleapis.com/token');
+  });
+
+  it('期限切れトークンかつ更新手段なしの場合は API 呼び出し前に AuthenticationError を投げる', async () => {
+    const fetcher = vi.fn();
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        accessToken: 'token-expired',
+      },
+      fetcher,
+    );
+
+    (client as unknown as { accessTokenExpiresAt?: number }).accessTokenExpiresAt =
+      Date.now() - 1_000;
+
+    await expect(client.readRows()).rejects.toBeInstanceOf(AuthenticationError);
+    expect(fetcher).not.toHaveBeenCalled();
+  });
 });
