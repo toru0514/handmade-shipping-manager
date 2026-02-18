@@ -2,6 +2,7 @@ import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUs
 
 interface PendingOrderCardProps {
   order: PendingOrderDto;
+  onRequestShipmentComplete: (order: PendingOrderDto) => void;
 }
 
 function formatDate(isoString: string): string {
@@ -20,7 +21,7 @@ function platformLabel(platform: string): string {
   return labels[platform] ?? platform;
 }
 
-export function PendingOrderCard({ order }: PendingOrderCardProps) {
+export function PendingOrderCard({ order, onRequestShipmentComplete }: PendingOrderCardProps) {
   return (
     <div
       className={`rounded-lg border p-4 shadow-sm ${
@@ -53,6 +54,13 @@ export function PendingOrderCard({ order }: PendingOrderCardProps) {
       )}
 
       <div className="flex gap-2">
+        <button
+          type="button"
+          className="rounded bg-emerald-600 px-3 py-1.5 text-sm text-white hover:bg-emerald-700"
+          onClick={() => onRequestShipmentComplete(order)}
+        >
+          発送完了
+        </button>
         <button
           type="button"
           className="rounded bg-blue-500 px-3 py-1.5 text-sm text-white hover:bg-blue-600 disabled:opacity-50"

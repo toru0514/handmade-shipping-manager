@@ -1,31 +1,87 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { MarkOrderAsShippedResultDto } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
 import { PendingOrderList } from '@/presentation/components/orders/PendingOrderList';
+import {
+  ShipmentCompleteData,
+  ShipmentCompleteMessage,
+} from '@/presentation/components/orders/ShipmentCompleteMessage';
+import { ShipmentConfirmDialog } from '@/presentation/components/orders/ShipmentConfirmDialog';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<PendingOrderDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<PendingOrderDto | null>(null);
+  const [isSubmittingShipment, setIsSubmittingShipment] = useState(false);
+  const [completeData, setCompleteData] = useState<ShipmentCompleteData | null>(null);
+  const [isCompleteMessageOpen, setIsCompleteMessageOpen] = useState(false);
+
+  const fetchOrders = useCallback(async () => {
+    const response = await fetch('/api/orders/pending');
+    if (!response.ok) {
+      throw new Error('注文の取得に失敗しました');
+    }
+    const data = (await response.json()) as PendingOrderDto[];
+    setOrders(data);
+  }, []);
 
   useEffect(() => {
-    async function fetchOrders() {
+    async function loadOrders() {
       try {
-        const response = await fetch('/api/orders/pending');
-        if (!response.ok) {
-          throw new Error('注文の取得に失敗しました');
-        }
-        const data = (await response.json()) as PendingOrderDto[];
-        setOrders(data);
+        await fetchOrders();
       } catch (err) {
-        setError(err instanceof Error ? err.message : '予期しないエラーが発生しました');
+        setLoadError(err instanceof Error ? err.message : '予期しないエラーが発生しました');
       } finally {
         setLoading(false);
       }
     }
-    void fetchOrders();
-  }, []);
+    void loadOrders();
+  }, [fetchOrders]);
+
+  const handleConfirmShipment = useCallback(
+    async (input: { shippingMethod: string; trackingNumber?: string }): Promise<void> => {
+      if (selectedOrder === null) return;
+
+      setIsSubmittingShipment(true);
+      setUpdateError(null);
+
+      try {
+        const response = await fetch(`/api/orders/${selectedOrder.orderId}/ship`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(input),
+        });
+
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as { error?: string };
+          throw new Error(body.error ?? '発送完了の更新に失敗しました');
+        }
+
+        const result = (await response.json()) as MarkOrderAsShippedResultDto;
+
+        setSelectedOrder(null);
+        setCompleteData({
+          orderId: result.orderId,
+          shippedAt: result.shippedAt,
+          shippingMethod: result.shippingMethod,
+          trackingNumber: result.trackingNumber,
+        });
+        setIsCompleteMessageOpen(true);
+        setOrders((prev) => prev.filter((order) => order.orderId !== result.orderId));
+      } catch (err) {
+        setUpdateError(err instanceof Error ? err.message : '発送完了の更新に失敗しました');
+      } finally {
+        setIsSubmittingShipment(false);
+      }
+    },
+    [selectedOrder],
+  );
 
   return (
     <main className="mx-auto max-w-6xl p-6">
@@ -37,13 +93,36 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {error && (
+      {loadError && (
         <div className="rounded bg-red-100 px-4 py-3 text-red-700" role="alert">
-          {error}
+          {loadError}
         </div>
       )}
 
-      {!loading && !error && <PendingOrderList orders={orders} />}
+      {!loading && !loadError && (
+        <PendingOrderList
+          orders={orders}
+          onRequestShipmentComplete={(order) => {
+            setUpdateError(null);
+            setSelectedOrder(order);
+          }}
+        />
+      )}
+
+      <ShipmentConfirmDialog
+        open={selectedOrder !== null}
+        order={selectedOrder}
+        isSubmitting={isSubmittingShipment}
+        error={updateError}
+        onClose={() => setSelectedOrder(null)}
+        onConfirm={handleConfirmShipment}
+      />
+
+      <ShipmentCompleteMessage
+        open={isCompleteMessageOpen}
+        data={completeData}
+        onClose={() => setIsCompleteMessageOpen(false)}
+      />
     </main>
   );
 }
