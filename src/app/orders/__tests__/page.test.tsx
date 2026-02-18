@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import OrdersPage from '../page';
 
@@ -129,7 +129,8 @@ describe('OrdersPage (UC-006)', () => {
     fireEvent.click(screen.getByRole('button', { name: '発送完了にする' }));
 
     await waitFor(() => {
-      expect(screen.getByRole('alert')).toHaveTextContent('発送済みの注文は変更できません');
+      const dialog = screen.getByRole('dialog', { name: '発送完了確認' });
+      expect(within(dialog).getByRole('alert')).toHaveTextContent('発送済みの注文は変更できません');
     });
 
     expect(screen.getByTestId('order-card-ORD-001')).toBeInTheDocument();

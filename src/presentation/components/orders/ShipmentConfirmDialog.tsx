@@ -7,6 +7,7 @@ interface ShipmentConfirmDialogProps {
   readonly open: boolean;
   readonly order: PendingOrderDto | null;
   readonly isSubmitting: boolean;
+  readonly error?: string | null;
   readonly onClose: () => void;
   readonly onConfirm: (input: { shippingMethod: string; trackingNumber?: string }) => Promise<void>;
 }
@@ -21,6 +22,7 @@ export function ShipmentConfirmDialog({
   open,
   order,
   isSubmitting,
+  error,
   onClose,
   onConfirm,
 }: ShipmentConfirmDialogProps) {
@@ -65,6 +67,12 @@ export function ShipmentConfirmDialog({
           <p>購入品: {order.productName}</p>
           <p>配送方法: {shippingMethodLabel(shippingMethod)}</p>
         </div>
+
+        {error && (
+          <div role="alert" className="mb-4 rounded bg-red-100 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={(event) => void handleSubmit(event)}>
           <label className="mb-2 block text-sm font-medium text-gray-700" htmlFor="shipping-method">

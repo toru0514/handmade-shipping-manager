@@ -2,6 +2,11 @@ import { OrderRepository } from '@/domain/ports/OrderRepository';
 import { OrderId } from '@/domain/valueObjects/OrderId';
 import { ShippingMethod } from '@/domain/valueObjects/ShippingMethod';
 import { TrackingNumber } from '@/domain/valueObjects/TrackingNumber';
+import {
+  InvalidShipmentInputError,
+  InvalidShipmentOperationError,
+  OrderNotFoundError,
+} from './MarkOrderAsShippedErrors';
 
 export interface MarkOrderAsShippedInput {
   readonly orderId: string;
@@ -23,15 +28,32 @@ export class MarkOrderAsShippedUseCase {
   async execute(input: MarkOrderAsShippedInput): Promise<MarkOrderAsShippedResultDto> {
     const order = await this.orderRepository.findById(new OrderId(input.orderId));
     if (order === null) {
-      throw new Error(`対象注文が見つかりません: ${input.orderId}`);
+      throw new OrderNotFoundError(input.orderId);
     }
 
-    const method = new ShippingMethod(input.shippingMethod);
+    if (!order.status.isPending()) {
+      throw new InvalidShipmentOperationError('発送済みの注文は変更できません');
+    }
+
+    let method: ShippingMethod;
+    try {
+      method = new ShippingMethod(input.shippingMethod);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '配送方法が不正です';
+      throw new InvalidShipmentInputError(message);
+    }
+
     const normalizedTrackingNumber = input.trackingNumber?.trim();
-    const trackingNumber =
-      normalizedTrackingNumber && normalizedTrackingNumber.length > 0
-        ? new TrackingNumber(normalizedTrackingNumber)
-        : undefined;
+    let trackingNumber: TrackingNumber | undefined;
+
+    if (normalizedTrackingNumber && normalizedTrackingNumber.length > 0) {
+      try {
+        trackingNumber = new TrackingNumber(normalizedTrackingNumber);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : '追跡番号が不正です';
+        throw new InvalidShipmentInputError(message);
+      }
+    }
 
     order.markAsShipped(method, trackingNumber);
     await this.orderRepository.save(order);

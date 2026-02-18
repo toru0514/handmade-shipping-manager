@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  InvalidShipmentInputError,
+  InvalidShipmentOperationError,
+  OrderNotFoundError,
+} from '@/application/usecases/MarkOrderAsShippedErrors';
 import { MarkOrderAsShippedUseCase } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
 import { GoogleSheetsClient } from '@/infrastructure/external/google/SheetsClient';
@@ -57,18 +62,12 @@ export async function POST(
     });
     return NextResponse.json(result);
   } catch (err) {
-    const message = err instanceof Error ? err.message : '発送完了の記録に失敗しました';
-
-    if (message.includes('見つかりません')) {
-      return NextResponse.json({ error: message }, { status: 404 });
+    if (err instanceof OrderNotFoundError) {
+      return NextResponse.json({ error: err.message }, { status: 404 });
     }
 
-    if (
-      message.includes('不正な配送方法です') ||
-      message.includes('追跡番号は空にできません') ||
-      message.includes('発送済みの注文は変更できません')
-    ) {
-      return NextResponse.json({ error: message }, { status: 400 });
+    if (err instanceof InvalidShipmentInputError || err instanceof InvalidShipmentOperationError) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
     }
 
     console.error('発送完了更新エラー:', err);

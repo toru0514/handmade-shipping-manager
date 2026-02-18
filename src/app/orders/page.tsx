@@ -42,46 +42,46 @@ export default function OrdersPage() {
     void loadOrders();
   }, [fetchOrders]);
 
-  async function handleConfirmShipment(input: {
-    shippingMethod: string;
-    trackingNumber?: string;
-  }): Promise<void> {
-    if (selectedOrder === null) return;
+  const handleConfirmShipment = useCallback(
+    async (input: { shippingMethod: string; trackingNumber?: string }): Promise<void> => {
+      if (selectedOrder === null) return;
 
-    setIsSubmittingShipment(true);
-    setUpdateError(null);
+      setIsSubmittingShipment(true);
+      setUpdateError(null);
 
-    try {
-      const response = await fetch(`/api/orders/${selectedOrder.orderId}/ship`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(input),
-      });
+      try {
+        const response = await fetch(`/api/orders/${selectedOrder.orderId}/ship`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(input),
+        });
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? '発送完了の更新に失敗しました');
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as { error?: string };
+          throw new Error(body.error ?? '発送完了の更新に失敗しました');
+        }
+
+        const result = (await response.json()) as MarkOrderAsShippedResultDto;
+
+        setSelectedOrder(null);
+        setCompleteData({
+          orderId: result.orderId,
+          shippedAt: result.shippedAt,
+          shippingMethod: result.shippingMethod,
+          trackingNumber: result.trackingNumber,
+        });
+        setIsCompleteMessageOpen(true);
+        setOrders((prev) => prev.filter((order) => order.orderId !== result.orderId));
+      } catch (err) {
+        setUpdateError(err instanceof Error ? err.message : '発送完了の更新に失敗しました');
+      } finally {
+        setIsSubmittingShipment(false);
       }
-
-      const result = (await response.json()) as MarkOrderAsShippedResultDto;
-
-      setSelectedOrder(null);
-      setCompleteData({
-        orderId: result.orderId,
-        shippedAt: result.shippedAt,
-        shippingMethod: result.shippingMethod,
-        trackingNumber: result.trackingNumber,
-      });
-      setIsCompleteMessageOpen(true);
-      setOrders((prev) => prev.filter((order) => order.orderId !== result.orderId));
-    } catch (err) {
-      setUpdateError(err instanceof Error ? err.message : '発送完了の更新に失敗しました');
-    } finally {
-      setIsSubmittingShipment(false);
-    }
-  }
+    },
+    [selectedOrder],
+  );
 
   return (
     <main className="mx-auto max-w-6xl p-6">
@@ -99,12 +99,6 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {updateError && (
-        <div className="rounded bg-red-100 px-4 py-3 text-red-700" role="alert">
-          {updateError}
-        </div>
-      )}
-
       {!loading && !loadError && (
         <PendingOrderList
           orders={orders}
@@ -119,6 +113,7 @@ export default function OrdersPage() {
         open={selectedOrder !== null}
         order={selectedOrder}
         isSubmitting={isSubmittingShipment}
+        error={updateError}
         onClose={() => setSelectedOrder(null)}
         onConfirm={handleConfirmShipment}
       />

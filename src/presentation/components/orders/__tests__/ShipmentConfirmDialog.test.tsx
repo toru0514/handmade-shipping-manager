@@ -78,4 +78,19 @@ describe('ShipmentConfirmDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'キャンセル' }));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  it('error が指定された場合はダイアログ内に表示する', () => {
+    render(
+      <ShipmentConfirmDialog
+        open
+        order={createOrder()}
+        isSubmitting={false}
+        error="発送済みの注文は変更できません"
+        onClose={() => {}}
+        onConfirm={async () => {}}
+      />,
+    );
+
+    expect(screen.getByRole('alert')).toHaveTextContent('発送済みの注文は変更できません');
+  });
 });
