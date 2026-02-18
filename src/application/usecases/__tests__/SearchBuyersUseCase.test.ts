@@ -42,16 +42,23 @@ function createOrder(params: {
   platform: Platform;
   price: number;
   orderedAt: string;
+  buyerPostalCode?: string;
+  buyerPrefecture?: string;
+  buyerCity?: string;
+  buyerAddress1?: string;
+  buyerAddress2?: string;
+  buyerPhone?: string;
 }): Order {
   return orderFactory.createFromPlatformData({
     orderId: params.orderId,
     platform: params.platform,
     buyerName: params.buyerName,
-    buyerPostalCode: '1000001',
-    buyerPrefecture: '東京都',
-    buyerCity: '千代田区',
-    buyerAddress1: '千代田1-1',
-    buyerPhone: '09012345678',
+    buyerPostalCode: params.buyerPostalCode ?? '1000001',
+    buyerPrefecture: params.buyerPrefecture ?? '東京都',
+    buyerCity: params.buyerCity ?? '千代田区',
+    buyerAddress1: params.buyerAddress1 ?? '千代田1-1',
+    buyerAddress2: params.buyerAddress2,
+    buyerPhone: params.buyerPhone ?? '09012345678',
     productName: 'ハンドメイド作品',
     price: params.price,
     orderedAt: new Date(params.orderedAt),
@@ -113,5 +120,39 @@ describe('SearchBuyersUseCase', () => {
     const result = await useCase.execute({ buyerName: '   ' });
 
     expect(result).toEqual([]);
+  });
+
+  it('同姓同名でも住所・電話が異なる場合は別購入者として扱う', async () => {
+    const repository = new InMemoryOrderRepository([
+      createOrder({
+        orderId: 'ORD-101',
+        buyerName: '佐藤 花子',
+        platform: Platform.Minne,
+        price: 2000,
+        orderedAt: '2026-02-11T00:00:00.000Z',
+        buyerPostalCode: '1000001',
+        buyerCity: '千代田区',
+        buyerAddress1: '千代田1-1',
+        buyerPhone: '09011112222',
+      }),
+      createOrder({
+        orderId: 'ORD-102',
+        buyerName: '佐藤 花子',
+        platform: Platform.Creema,
+        price: 2800,
+        orderedAt: '2026-02-12T00:00:00.000Z',
+        buyerPostalCode: '1500001',
+        buyerCity: '渋谷区',
+        buyerAddress1: '神宮前1-2-3',
+        buyerPhone: '09033334444',
+      }),
+    ]);
+
+    const useCase = new SearchBuyersUseCase(repository);
+    const result = await useCase.execute({ buyerName: '佐藤' });
+
+    expect(result).toHaveLength(2);
+    expect(result[0]?.orderCount).toBe(1);
+    expect(result[1]?.orderCount).toBe(1);
   });
 });

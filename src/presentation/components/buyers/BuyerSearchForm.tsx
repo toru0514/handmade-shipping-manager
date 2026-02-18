@@ -15,6 +15,11 @@ export function BuyerSearchForm({ isLoading = false, onSearch }: BuyerSearchForm
     await onSearch(buyerName);
   }
 
+  async function handleClear() {
+    setBuyerName('');
+    await onSearch('');
+  }
+
   return (
     <form
       className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
@@ -35,7 +40,7 @@ export function BuyerSearchForm({ isLoading = false, onSearch }: BuyerSearchForm
         <button
           type="button"
           className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100 disabled:opacity-60"
-          onClick={() => void onSearch('')}
+          onClick={() => void handleClear()}
           disabled={isLoading}
         >
           クリア

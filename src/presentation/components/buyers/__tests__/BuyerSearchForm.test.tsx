@@ -19,7 +19,10 @@ describe('BuyerSearchForm', () => {
     const onSearch = vi.fn().mockResolvedValue(undefined);
     render(<BuyerSearchForm onSearch={onSearch} />);
 
+    fireEvent.change(screen.getByLabelText('購入者名'), { target: { value: '山田' } });
     fireEvent.click(screen.getByRole('button', { name: 'クリア' }));
+
+    expect(screen.getByLabelText('購入者名')).toHaveValue('');
     expect(onSearch).toHaveBeenCalledWith('');
   });
 });

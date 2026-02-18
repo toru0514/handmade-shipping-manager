@@ -41,7 +41,7 @@ export class SearchBuyersUseCase {
     }
 
     const matchedOrders = await this.orderRepository.findByBuyerName(keyword);
-    const grouped = this.groupByBuyerName(matchedOrders);
+    const grouped = this.groupByBuyerIdentity(matchedOrders);
 
     return [...grouped.entries()]
       .map(([, orders]) => this.toBuyerDetail(orders))
@@ -49,17 +49,30 @@ export class SearchBuyersUseCase {
       .slice(0, MAX_RESULTS);
   }
 
-  private groupByBuyerName(orders: Order[]): Map<string, Order[]> {
+  private groupByBuyerIdentity(orders: Order[]): Map<string, Order[]> {
     const grouped = new Map<string, Order[]>();
 
     for (const order of orders) {
-      const key = order.buyer.name.toString();
+      const key = this.toBuyerIdentityKey(order);
       const current = grouped.get(key) ?? [];
       current.push(order);
       grouped.set(key, current);
     }
 
     return grouped;
+  }
+
+  private toBuyerIdentityKey(order: Order): string {
+    const address = order.buyer.address;
+    return [
+      order.buyer.name.toString(),
+      address.postalCode.toString(),
+      address.prefecture.toString(),
+      address.city,
+      address.street,
+      address.building ?? '',
+      order.buyer.phoneNumber?.toString() ?? '',
+    ].join('::');
   }
 
   private toBuyerDetail(orders: Order[]): BuyerDetailDto {
