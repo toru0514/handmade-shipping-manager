@@ -15,6 +15,7 @@ export interface BuyerOrderHistoryDto {
 }
 
 export interface BuyerDetailDto {
+  readonly buyerKey: string;
   readonly buyerName: string;
   readonly postalCode: string;
   readonly prefecture: string;
@@ -44,7 +45,7 @@ export class SearchBuyersUseCase {
     const grouped = this.groupByBuyerIdentity(matchedOrders);
 
     return [...grouped.entries()]
-      .map(([, orders]) => this.toBuyerDetail(orders))
+      .map(([buyerKey, orders]) => this.toBuyerDetail(buyerKey, orders))
       .sort((a, b) => b.lastOrderedAt.localeCompare(a.lastOrderedAt))
       .slice(0, MAX_RESULTS);
   }
@@ -75,7 +76,7 @@ export class SearchBuyersUseCase {
     ].join('::');
   }
 
-  private toBuyerDetail(orders: Order[]): BuyerDetailDto {
+  private toBuyerDetail(buyerKey: string, orders: Order[]): BuyerDetailDto {
     const sorted = [...orders].sort((a, b) => b.orderedAt.getTime() - a.orderedAt.getTime());
     const latest = sorted[0];
     const oldest = sorted[sorted.length - 1];
@@ -87,6 +88,7 @@ export class SearchBuyersUseCase {
     const totalAmount = sorted.reduce((sum, order) => sum + order.product.price, 0);
 
     return {
+      buyerKey,
       buyerName: latest.buyer.name.toString(),
       postalCode: latest.buyer.address.postalCode.toString(),
       prefecture: latest.buyer.address.prefecture.toString(),

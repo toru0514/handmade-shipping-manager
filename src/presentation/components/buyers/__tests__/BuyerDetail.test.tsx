@@ -7,6 +7,7 @@ import { BuyerDetail } from '../BuyerDetail';
 
 function createBuyer(): BuyerDetailDto {
   return {
+    buyerKey: '山田 太郎::1000001::東京都::千代田区::千代田1-1::::09012345678',
     buyerName: '山田 太郎',
     postalCode: '1000001',
     prefecture: '東京都',

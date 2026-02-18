@@ -7,12 +7,12 @@ import { BuyerSearchForm } from '@/presentation/components/buyers/BuyerSearchFor
 
 export default function BuyersPage() {
   const [buyers, setBuyers] = useState<BuyerDetailDto[]>([]);
-  const [selectedBuyerName, setSelectedBuyerName] = useState<string | null>(null);
+  const [selectedBuyerKey, setSelectedBuyerKey] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
 
-  const selectedBuyer = buyers.find((buyer) => buyer.buyerName === selectedBuyerName) ?? null;
+  const selectedBuyer = buyers.find((buyer) => buyer.buyerKey === selectedBuyerKey) ?? null;
 
   const handleSearch = useCallback(async (buyerName: string) => {
     const keyword = buyerName.trim();
@@ -21,7 +21,7 @@ export default function BuyersPage() {
 
     if (keyword.length === 0) {
       setBuyers([]);
-      setSelectedBuyerName(null);
+      setSelectedBuyerKey(null);
       return;
     }
 
@@ -35,11 +35,11 @@ export default function BuyersPage() {
 
       const data = (await response.json()) as BuyerDetailDto[];
       setBuyers(data);
-      setSelectedBuyerName(data[0]?.buyerName ?? null);
+      setSelectedBuyerKey(data[0]?.buyerKey ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : '購入者情報の検索に失敗しました');
       setBuyers([]);
-      setSelectedBuyerName(null);
+      setSelectedBuyerKey(null);
     } finally {
       setIsLoading(false);
     }
@@ -66,15 +66,15 @@ export default function BuyersPage() {
           )}
           <ul className="space-y-2">
             {buyers.map((buyer) => (
-              <li key={buyer.buyerName}>
+              <li key={buyer.buyerKey}>
                 <button
                   type="button"
                   className={`w-full rounded border px-3 py-2 text-left text-sm ${
-                    selectedBuyerName === buyer.buyerName
+                    selectedBuyerKey === buyer.buyerKey
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 hover:bg-gray-50'
                   }`}
-                  onClick={() => setSelectedBuyerName(buyer.buyerName)}
+                  onClick={() => setSelectedBuyerKey(buyer.buyerKey)}
                 >
                   <p className="font-medium">{buyer.buyerName}</p>
                   <p className="text-xs text-gray-500">
