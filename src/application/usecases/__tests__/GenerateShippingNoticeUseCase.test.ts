@@ -1,0 +1,176 @@
+import { describe, expect, it } from 'vitest';
+import {
+  GenerateShippingNoticeUseCase,
+  ShippingNoticeOrderNotFoundError,
+  ShippingNoticeOrderNotShippedError,
+  ShippingNoticeTemplateNotFoundError,
+} from '@/application/usecases/GenerateShippingNoticeUseCase';
+import { Order } from '@/domain/entities/Order';
+import { OrderFactory } from '@/domain/factories/OrderFactory';
+import { MessageTemplateRepository } from '@/domain/ports/MessageTemplateRepository';
+import { OrderRepository } from '@/domain/ports/OrderRepository';
+import { MessageTemplate } from '@/domain/services/MessageGenerator';
+import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
+import { OrderId } from '@/domain/valueObjects/OrderId';
+import { OrderStatus } from '@/domain/valueObjects/OrderStatus';
+import { Platform } from '@/domain/valueObjects/Platform';
+import { ShippingMethod } from '@/domain/valueObjects/ShippingMethod';
+import { TrackingNumber } from '@/domain/valueObjects/TrackingNumber';
+
+class InMemoryOrderRepository implements OrderRepository {
+  private readonly store = new Map<string, Order>();
+
+  constructor(seedOrders: Order[] = []) {
+    for (const order of seedOrders) {
+      this.store.set(order.orderId.toString(), order);
+    }
+  }
+
+  async findById(orderId: OrderId): Promise<Order | null> {
+    return this.store.get(orderId.toString()) ?? null;
+  }
+
+  async findByStatus(status: OrderStatus): Promise<Order[]> {
+    return [...this.store.values()].filter((order) => order.status.equals(status));
+  }
+
+  async findByBuyerName(name: string): Promise<Order[]> {
+    const keyword = name.trim();
+    return [...this.store.values()].filter((order) =>
+      order.buyer.name.toString().includes(keyword),
+    );
+  }
+
+  async save(order: Order): Promise<void> {
+    this.store.set(order.orderId.toString(), order);
+  }
+
+  async exists(orderId: OrderId): Promise<boolean> {
+    return this.store.has(orderId.toString());
+  }
+
+  async findAll(): Promise<Order[]> {
+    return [...this.store.values()];
+  }
+}
+
+class InMemoryMessageTemplateRepository implements MessageTemplateRepository<MessageTemplate> {
+  private readonly store = new Map<string, MessageTemplate>();
+
+  async findByType(type: MessageTemplateType): Promise<MessageTemplate | null> {
+    return this.store.get(type.value) ?? null;
+  }
+
+  async save(template: MessageTemplate): Promise<void> {
+    this.store.set(template.type.value, template);
+  }
+
+  async resetToDefault(_type: MessageTemplateType): Promise<MessageTemplate> {
+    throw new Error('not implemented for this test');
+  }
+}
+
+const orderFactory = new OrderFactory();
+
+function createShippedOrder(orderId: string): Order {
+  const order = orderFactory.createFromPlatformData({
+    orderId,
+    platform: Platform.Minne,
+    buyerName: '山田 太郎',
+    buyerPostalCode: '1500001',
+    buyerPrefecture: '東京都',
+    buyerCity: '渋谷区',
+    buyerAddress1: '神宮前1-1-1',
+    buyerPhone: '09012345678',
+    productName: 'ハンドメイドアクセサリー',
+    price: 2500,
+    orderedAt: new Date('2026-02-15T00:00:00.000Z'),
+  });
+
+  order.markAsShipped(ShippingMethod.ClickPost, new TrackingNumber('CP123456789JP'));
+  return order;
+}
+
+function createPendingOrder(orderId: string): Order {
+  return orderFactory.createFromPlatformData({
+    orderId,
+    platform: Platform.Minne,
+    buyerName: '山田 太郎',
+    buyerPostalCode: '1500001',
+    buyerPrefecture: '東京都',
+    buyerCity: '渋谷区',
+    buyerAddress1: '神宮前1-1-1',
+    buyerPhone: '09012345678',
+    productName: 'ハンドメイドアクセサリー',
+    price: 2500,
+    orderedAt: new Date('2026-02-15T00:00:00.000Z'),
+  });
+}
+
+function shippingNoticeTemplate(): MessageTemplate {
+  return {
+    id: 'shipping-notice-template',
+    type: MessageTemplateType.ShippingNotice,
+    content:
+      '{{buyer_name}} 様\n{{product_name}} を {{shipping_method}} で発送しました。\n追跡番号: {{tracking_number}}\n追跡URL: {{tracking_url}}',
+    variables: [
+      { name: 'buyer_name' },
+      { name: 'product_name' },
+      { name: 'shipping_method' },
+      { name: 'tracking_number' },
+      { name: 'tracking_url' },
+    ],
+  };
+}
+
+describe('GenerateShippingNoticeUseCase', () => {
+  it('発送連絡テンプレートの変数を注文情報で置換して返す', async () => {
+    const orderRepository = new InMemoryOrderRepository([createShippedOrder('ORD-001')]);
+    const templateRepository = new InMemoryMessageTemplateRepository();
+    await templateRepository.save(shippingNoticeTemplate());
+    const useCase = new GenerateShippingNoticeUseCase(orderRepository, templateRepository);
+
+    const result = await useCase.execute({ orderId: 'ORD-001' });
+
+    expect(result.orderId).toBe('ORD-001');
+    expect(result.message).toContain('山田 太郎');
+    expect(result.message).toContain('ハンドメイドアクセサリー');
+    expect(result.message).toContain('click_post');
+    expect(result.message).toContain('CP123456789JP');
+    expect(result.message).toContain(
+      'https://trackings.post.japanpost.jp/services/srv/search/input',
+    );
+  });
+
+  it('テンプレートが見つからない場合は専用エラーを返す', async () => {
+    const orderRepository = new InMemoryOrderRepository([createShippedOrder('ORD-002')]);
+    const templateRepository = new InMemoryMessageTemplateRepository();
+    const useCase = new GenerateShippingNoticeUseCase(orderRepository, templateRepository);
+
+    await expect(useCase.execute({ orderId: 'ORD-002' })).rejects.toBeInstanceOf(
+      ShippingNoticeTemplateNotFoundError,
+    );
+  });
+
+  it('対象注文が存在しない場合は専用エラーを返す', async () => {
+    const orderRepository = new InMemoryOrderRepository();
+    const templateRepository = new InMemoryMessageTemplateRepository();
+    await templateRepository.save(shippingNoticeTemplate());
+    const useCase = new GenerateShippingNoticeUseCase(orderRepository, templateRepository);
+
+    await expect(useCase.execute({ orderId: 'ORD-404' })).rejects.toBeInstanceOf(
+      ShippingNoticeOrderNotFoundError,
+    );
+  });
+
+  it('発送済みではない注文は専用エラーを返す', async () => {
+    const orderRepository = new InMemoryOrderRepository([createPendingOrder('ORD-003')]);
+    const templateRepository = new InMemoryMessageTemplateRepository();
+    await templateRepository.save(shippingNoticeTemplate());
+    const useCase = new GenerateShippingNoticeUseCase(orderRepository, templateRepository);
+
+    await expect(useCase.execute({ orderId: 'ORD-003' })).rejects.toBeInstanceOf(
+      ShippingNoticeOrderNotShippedError,
+    );
+  });
+});
