@@ -71,6 +71,8 @@ describe('LocalStorageMessageTemplateRepository', () => {
     const found = await repository.findByType(MessageTemplateType.ShippingNotice);
     expect(found?.id).toBe('default-shipping-notice');
     expect(found?.content).toContain('{{tracking_url}}');
+    expect(found?.content).not.toContain('{{#if tracking_number}}');
+    expect(found?.content).not.toContain('{{/if}}');
   });
 
   it('findByType は不正JSONを検知した場合に null を返す', async () => {

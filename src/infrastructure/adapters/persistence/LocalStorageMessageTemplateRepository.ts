@@ -21,7 +21,7 @@ const DEFAULT_TEMPLATES: Record<string, Omit<MessageTemplate, 'type'>> = {
   },
   shipping_notice: {
     id: 'default-shipping-notice',
-    content: `{{buyer_name}} 様\n\nお待たせいたしました。\n本日、{{shipping_method}}にて発送いたしました。\n\n{{#if tracking_number}}\n追跡番号: {{tracking_number}}\n追跡URL: {{tracking_url}}\n{{/if}}\n\n届きましたら、ご確認をお願いいたします。\n\nこの度はご購入いただき、ありがとうございました。\nまたのご利用を心よりお待ちしております。`,
+    content: `{{buyer_name}} 様\n\nお待たせいたしました。\n本日、{{shipping_method}}にて発送いたしました。\n\n追跡番号: {{tracking_number}}\n追跡URL: {{tracking_url}}\n\n届きましたら、ご確認をお願いいたします。\n\nこの度はご購入いただき、ありがとうございました。\nまたのご利用を心よりお待ちしております。`,
     variables: [
       { name: 'buyer_name' },
       { name: 'shipping_method' },
