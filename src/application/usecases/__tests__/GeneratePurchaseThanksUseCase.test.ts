@@ -114,6 +114,7 @@ describe('GeneratePurchaseThanksUseCase', () => {
     expect(result.message).toContain('山田 太郎');
     expect(result.message).toContain('ハンドメイドアクセサリー');
     expect(result.message).toContain('¥2,500');
+    expect(result.message).toContain('ORD-001');
     expect(result.message).toContain('minne');
   });
 
