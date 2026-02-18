@@ -4,9 +4,7 @@ import {
   InvalidShipmentOperationError,
   OrderNotFoundError,
 } from '@/application/usecases/MarkOrderAsShippedErrors';
-import { MarkOrderAsShippedUseCase } from '@/application/usecases/MarkOrderAsShippedUseCase';
-import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
-import { GoogleSheetsClient } from '@/infrastructure/external/google/SheetsClient';
+import { createContainer } from '@/infrastructure/di/container';
 
 export async function POST(
   request: NextRequest,
@@ -41,20 +39,9 @@ export async function POST(
     return NextResponse.json({ error: '追跡番号は文字列で指定してください' }, { status: 400 });
   }
 
-  const accessToken = process.env.GOOGLE_SHEETS_ACCESS_TOKEN ?? '';
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID ?? '';
-  const sheetName = process.env.GOOGLE_SHEETS_SHEET_NAME ?? 'Orders';
-
-  const sheetsClient = new GoogleSheetsClient({
-    spreadsheetId,
-    sheetName,
-    accessToken,
-  });
-
-  const repository = new SpreadsheetOrderRepository(sheetsClient);
-  const useCase = new MarkOrderAsShippedUseCase(repository);
-
   try {
+    const container = createContainer();
+    const useCase = container.getMarkOrderAsShippedUseCase();
     const result = await useCase.execute({
       orderId,
       shippingMethod: shippingMethod.trim(),
