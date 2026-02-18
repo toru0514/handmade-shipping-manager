@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { SearchBuyersUseCase } from '@/application/usecases/SearchBuyersUseCase';
-import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
-import { GoogleSheetsClient } from '@/infrastructure/external/google/SheetsClient';
+import { createContainer } from '@/infrastructure/di/container';
 
 export async function GET(request: NextRequest) {
   const keyword = request.nextUrl.searchParams.get('name')?.trim() ?? '';
@@ -9,20 +7,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json([]);
   }
 
-  const accessToken = process.env.GOOGLE_SHEETS_ACCESS_TOKEN ?? '';
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID ?? '';
-  const sheetName = process.env.GOOGLE_SHEETS_SHEET_NAME ?? 'Orders';
-
-  const sheetsClient = new GoogleSheetsClient({
-    spreadsheetId,
-    sheetName,
-    accessToken,
-  });
-
-  const repository = new SpreadsheetOrderRepository(sheetsClient);
-  const useCase = new SearchBuyersUseCase(repository);
-
   try {
+    const container = createContainer();
+    const useCase = container.getSearchBuyersUseCase();
     const buyers = await useCase.execute({ buyerName: keyword });
     return NextResponse.json(buyers);
   } catch (err) {
