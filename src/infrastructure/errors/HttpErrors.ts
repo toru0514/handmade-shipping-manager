@@ -1,6 +1,7 @@
 export type ErrorCode =
   | 'AUTHENTICATION_ERROR'
   | 'NOT_FOUND'
+  | 'VALIDATION_ERROR'
   | 'EXTERNAL_SERVICE_ERROR'
   | 'INTERNAL_SERVER_ERROR';
 
@@ -25,6 +26,12 @@ export class AuthenticationError extends HttpError {
 export class NotFoundError extends HttpError {
   constructor(message: string = '対象が見つかりませんでした') {
     super(message, 'NOT_FOUND', 404);
+  }
+}
+
+export class ValidationError extends HttpError {
+  constructor(message: string = '入力値が不正です') {
+    super(message, 'VALIDATION_ERROR', 400);
   }
 }
 

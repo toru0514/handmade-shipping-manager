@@ -10,7 +10,7 @@ export async function GET() {
     return NextResponse.json(orders);
   } catch (err) {
     const normalizedError = normalizeHttpError(err, '注文の取得に失敗しました');
-    console.error('注文取得エラー:', normalizedError);
+    console.error('注文取得エラー:', err);
     return NextResponse.json(toApiErrorResponse(normalizedError), {
       status: normalizedError.statusCode,
     });

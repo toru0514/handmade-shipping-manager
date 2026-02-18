@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(buyers);
   } catch (err) {
     const normalizedError = normalizeHttpError(err, '購入者情報の検索に失敗しました');
-    console.error('購入者検索エラー:', normalizedError);
+    console.error('購入者検索エラー:', err);
     return NextResponse.json(toApiErrorResponse(normalizedError), {
       status: normalizedError.statusCode,
     });

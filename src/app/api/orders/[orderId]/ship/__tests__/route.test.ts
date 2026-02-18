@@ -16,7 +16,10 @@ describe('POST /api/orders/[orderId]/ship', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: 'リクエストボディが不正です',
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'リクエストボディが不正です',
+      },
     });
   });
 
@@ -36,7 +39,10 @@ describe('POST /api/orders/[orderId]/ship', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: '追跡番号は文字列で指定してください',
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: '追跡番号は文字列で指定してください',
+      },
     });
   });
 
@@ -53,7 +59,10 @@ describe('POST /api/orders/[orderId]/ship', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: '配送方法は必須です',
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: '配送方法は必須です',
+      },
     });
   });
 
@@ -72,7 +81,10 @@ describe('POST /api/orders/[orderId]/ship', () => {
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
-      error: '配送方法は必須です',
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: '配送方法は必須です',
+      },
     });
   });
 });
