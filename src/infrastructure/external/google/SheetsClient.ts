@@ -1,3 +1,9 @@
+import {
+  AuthenticationError,
+  ExternalServiceError,
+  NotFoundError,
+} from '@/infrastructure/errors/HttpErrors';
+
 export interface SheetsClient {
   readRows(range?: string): Promise<string[][]>;
   writeRows(rows: string[][], range?: string): Promise<void>;
@@ -34,7 +40,7 @@ export class GoogleSheetsClient implements SheetsClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Google Sheets API read failed: ${response.status}`);
+      throw this.toHttpError('read', response.status);
     }
 
     const payload = (await response.json()) as SheetsValuesResponse;
@@ -54,7 +60,7 @@ export class GoogleSheetsClient implements SheetsClient {
     });
 
     if (!response.ok) {
-      throw new Error(`Google Sheets API write failed: ${response.status}`);
+      throw this.toHttpError('write', response.status);
     }
   }
 
@@ -73,7 +79,7 @@ export class GoogleSheetsClient implements SheetsClient {
     );
 
     if (!response.ok) {
-      throw new Error(`Google Sheets API clear failed: ${response.status}`);
+      throw this.toHttpError('clear', response.status);
     }
   }
 
@@ -93,6 +99,18 @@ export class GoogleSheetsClient implements SheetsClient {
     return {
       Authorization: `Bearer ${this.config.accessToken}`,
     };
+  }
+
+  private toHttpError(operation: 'read' | 'write' | 'clear', status: number) {
+    if (status === 401 || status === 403) {
+      return new AuthenticationError(`Google Sheets API ${operation} の認証に失敗しました`);
+    }
+
+    if (status === 404) {
+      return new NotFoundError('Google Sheets の対象スプレッドシートが見つかりません');
+    }
+
+    return new ExternalServiceError(`Google Sheets API ${operation} に失敗しました (${status})`);
   }
 
   private getBaseUrl(): string {

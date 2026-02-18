@@ -5,6 +5,7 @@ import {
   OrderNotFoundError,
 } from '@/application/usecases/MarkOrderAsShippedErrors';
 import { createContainer } from '@/infrastructure/di/container';
+import { normalizeHttpError, toApiErrorResponse } from '@/infrastructure/errors/HttpErrors';
 
 export async function POST(
   request: NextRequest,
@@ -57,7 +58,10 @@ export async function POST(
       return NextResponse.json({ error: err.message }, { status: 400 });
     }
 
-    console.error('発送完了更新エラー:', err);
-    return NextResponse.json({ error: '発送完了の記録に失敗しました' }, { status: 500 });
+    const normalizedError = normalizeHttpError(err, '発送完了の記録に失敗しました');
+    console.error('発送完了更新エラー:', normalizedError);
+    return NextResponse.json(toApiErrorResponse(normalizedError), {
+      status: normalizedError.statusCode,
+    });
   }
 }
