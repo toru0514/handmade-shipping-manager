@@ -9,12 +9,9 @@ import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistenc
 import { GoogleSheetsClient } from '@/infrastructure/external/google/SheetsClient';
 
 type Env = Readonly<Record<string, string | undefined>>;
-type SheetsEnvKey =
-  | 'GOOGLE_SHEETS_ACCESS_TOKEN'
-  | 'GOOGLE_SHEETS_SPREADSHEET_ID'
-  | 'GOOGLE_SHEETS_SHEET_NAME';
+type RequiredEnvKey = 'GOOGLE_SHEETS_SPREADSHEET_ID';
 
-function resolveRequiredEnv(name: SheetsEnvKey, env: Env): string {
+function resolveRequiredEnv(name: RequiredEnvKey, env: Env): string {
   const value = env[name]?.trim();
   if (!value) {
     throw new Error(`${name} is not configured`);
@@ -26,7 +23,10 @@ function createOrderRepository(env: Env): SpreadsheetOrderRepository {
   const sheetsClient = new GoogleSheetsClient({
     spreadsheetId: resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env),
     sheetName: env.GOOGLE_SHEETS_SHEET_NAME?.trim() || 'Orders',
-    accessToken: resolveRequiredEnv('GOOGLE_SHEETS_ACCESS_TOKEN', env),
+    accessToken: env.GOOGLE_SHEETS_ACCESS_TOKEN?.trim(),
+    refreshToken: env.GOOGLE_SHEETS_REFRESH_TOKEN?.trim(),
+    clientId: env.GOOGLE_CLIENT_ID?.trim(),
+    clientSecret: env.GOOGLE_CLIENT_SECRET?.trim(),
   });
 
   return new SpreadsheetOrderRepository(sheetsClient);
