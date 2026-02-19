@@ -53,7 +53,9 @@ export class ClickPostAdapter implements ClickPostGateway {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(`クリックポスト伝票の発行に失敗しました: ${message}`, { cause: error });
     } finally {
-      await browser.close();
+      await browser.close().catch((closeError) => {
+        console.warn('[ClickPostAdapter] browser.close に失敗しました', closeError);
+      });
     }
   }
 }

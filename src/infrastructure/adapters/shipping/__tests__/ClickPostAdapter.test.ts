@@ -1,5 +1,5 @@
 import { Readable } from 'node:stream';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Order } from '@/domain/entities/Order';
 import { OrderFactory } from '@/domain/factories/OrderFactory';
 import { Platform } from '@/domain/valueObjects/Platform';
@@ -25,6 +25,10 @@ function createOrder(): Order {
 }
 
 describe('ClickPostAdapter', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('ClickPostGateway を実装し、PDFと追跡番号から ClickPostLabel を返す', async () => {
     const goto = vi.fn(async () => undefined);
     const fill = vi.fn(async () => undefined);
@@ -101,5 +105,69 @@ describe('ClickPostAdapter', () => {
       'クリックポスト伝票の発行に失敗しました',
     );
     expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('PDFストリームが空の場合はエラーになる', async () => {
+    const close = vi.fn(async () => undefined);
+    const browserFactory: PlaywrightBrowserFactory = {
+      launch: vi.fn(async () => ({
+        newPage: vi.fn(async () => ({
+          goto: vi.fn(async () => undefined),
+          fill: vi.fn(async () => undefined),
+          click: vi.fn(async () => undefined),
+          waitForEvent: vi.fn(async () => ({
+            createReadStream: vi.fn(async () => Readable.from([])),
+          })),
+          textContent: vi.fn(async () => 'CP123456789JP'),
+        })),
+        close,
+      })),
+    };
+    const adapter = new ClickPostAdapter({
+      browserFactory,
+      credentials: {
+        email: 'test@example.com',
+        password: 'secret',
+      },
+    });
+
+    await expect(adapter.issue(createOrder())).rejects.toThrow(
+      'クリックポスト伝票の発行に失敗しました: PDFデータが空です',
+    );
+    expect(close).toHaveBeenCalledTimes(1);
+  });
+
+  it('browser.close が失敗しても元のエラーを優先し、警告ログを出す', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const closeError = new Error('close failed');
+    const browserFactory: PlaywrightBrowserFactory = {
+      launch: vi.fn(async () => ({
+        newPage: vi.fn(async () => ({
+          goto: vi.fn(async () => undefined),
+          fill: vi.fn(async () => undefined),
+          click: vi.fn(async () => undefined),
+          waitForEvent: vi.fn(async () => ({
+            createReadStream: vi.fn(async () => null),
+          })),
+          textContent: vi.fn(async () => null),
+        })),
+        close: vi.fn(async () => {
+          throw closeError;
+        }),
+      })),
+    };
+    const adapter = new ClickPostAdapter({
+      browserFactory,
+      credentials: {
+        email: 'test@example.com',
+        password: 'secret',
+      },
+    });
+
+    await expect(adapter.issue(createOrder())).rejects.toThrow(
+      'クリックポスト伝票の発行に失敗しました: PDFストリームを取得できませんでした',
+    );
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]?.[0]).toContain('browser.close に失敗しました');
   });
 });
