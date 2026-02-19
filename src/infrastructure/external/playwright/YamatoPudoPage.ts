@@ -8,6 +8,7 @@ export interface YamatoCredentials {
 }
 
 export interface YamatoPlaywrightPageLike {
+  // TODO: アダプタが増えたら Playwright の共通ページ型（BasePlaywrightPageLike）へ統合する
   goto(url: string): Promise<void>;
   fill(selector: string, value: string): Promise<void>;
   click(selector: string): Promise<void>;

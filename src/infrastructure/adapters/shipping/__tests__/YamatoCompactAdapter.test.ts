@@ -72,6 +72,10 @@ describe('YamatoCompactAdapter', () => {
     expect(goto).toHaveBeenCalledWith('https://pudo.kuronekoyamato.co.jp/');
     expect(fill).toHaveBeenCalledWith('#member-id', 'yamato-id');
     expect(fill).toHaveBeenCalledWith('#password', 'secret');
+    expect(click).toHaveBeenCalledWith('text=ログイン');
+    expect(click).toHaveBeenCalledWith('text=宅急便コンパクト');
+    expect(click).toHaveBeenCalledWith('text=PUDO');
+    expect(click).toHaveBeenCalledWith('text=送り状を発行');
     expect(close).toHaveBeenCalledTimes(1);
   });
 

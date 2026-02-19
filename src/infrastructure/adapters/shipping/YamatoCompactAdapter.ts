@@ -9,12 +9,12 @@ import {
 } from '@/infrastructure/external/playwright/YamatoPudoPage';
 import { YamatoCompactGateway } from './YamatoCompactGateway';
 
-interface YamatoBrowserLike {
+export interface YamatoBrowserLike {
   newPage(): Promise<YamatoPlaywrightPageLike>;
   close(): Promise<void>;
 }
 
-interface YamatoBrowserFactory {
+export interface YamatoBrowserFactory {
   launch(): Promise<YamatoBrowserLike>;
 }
 
