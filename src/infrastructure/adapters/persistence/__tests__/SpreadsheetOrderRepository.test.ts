@@ -265,6 +265,8 @@ describe('SpreadsheetOrderRepository', () => {
     expect(orders[0]?.orderId.toString()).toBe('ORD-001');
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy.mock.calls[0]?.[0]).toContain('壊れた行をスキップしました');
+    expect(warnSpy.mock.calls[0]?.[0]).toContain('orderId=ORD-999');
+    expect(warnSpy.mock.calls[0]?.[0]).toContain('row=3');
 
     const broken = await repository.findById(new OrderId('ORD-999'));
     expect(broken).toBeNull();
