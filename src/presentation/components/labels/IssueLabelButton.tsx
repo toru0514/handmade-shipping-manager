@@ -27,6 +27,7 @@ export function IssueLabelButton({
         onChange={(event) => setShippingMethod(event.target.value)}
       >
         <option value={ShippingMethod.ClickPost.toString()}>クリックポスト</option>
+        <option value={ShippingMethod.YamatoCompact.toString()}>宅急便コンパクト</option>
       </select>
       <button
         type="button"

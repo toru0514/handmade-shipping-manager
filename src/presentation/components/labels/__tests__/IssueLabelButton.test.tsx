@@ -22,4 +22,16 @@ describe('IssueLabelButton', () => {
     expect(screen.getByRole('button', { name: '発行中...' })).toBeDisabled();
     expect(screen.getByLabelText('配送方法')).toBeDisabled();
   });
+
+  it('配送方法を宅急便コンパクトに変更して発行できる', () => {
+    const onIssue = vi.fn(async () => undefined);
+    render(<IssueLabelButton onIssue={onIssue} />);
+
+    fireEvent.change(screen.getByLabelText('配送方法'), {
+      target: { value: 'yamato_compact' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '伝票発行' }));
+
+    expect(onIssue).toHaveBeenCalledWith('yamato_compact');
+  });
 });
