@@ -14,6 +14,9 @@ export function LabelResultView({ result, onClose }: LabelResultViewProps) {
     result.labelType === 'click_post'
       ? `data:application/pdf;base64,${result.pdfData ?? ''}`
       : null;
+  const isYamatoCompact = result.labelType === 'yamato_compact';
+  const expiresAt = result.expiresAt ? new Date(result.expiresAt) : null;
+  const isExpired = expiresAt !== null && expiresAt.getTime() < Date.now();
 
   return (
     <section
@@ -39,6 +42,12 @@ export function LabelResultView({ result, onClose }: LabelResultViewProps) {
         </div>
       )}
 
+      {isYamatoCompact && isExpired && (
+        <div className="mb-3 rounded bg-red-100 px-3 py-2 text-sm text-red-700" role="alert">
+          このQRコードは有効期限切れです
+        </div>
+      )}
+
       <dl className="grid gap-1 text-sm text-emerald-900">
         <div>
           <dt className="inline font-medium">注文ID:</dt>{' '}
@@ -56,6 +65,12 @@ export function LabelResultView({ result, onClose }: LabelResultViewProps) {
           <dt className="inline font-medium">発行日時:</dt>{' '}
           <dd className="inline">{formatDateTime(result.issuedAt)}</dd>
         </div>
+        {expiresAt && (
+          <div>
+            <dt className="inline font-medium">有効期限:</dt>{' '}
+            <dd className="inline">{formatDateTime(expiresAt.toISOString())}</dd>
+          </div>
+        )}
         {result.trackingNumber && (
           <div>
             <dt className="inline font-medium">追跡番号:</dt>{' '}
@@ -63,6 +78,22 @@ export function LabelResultView({ result, onClose }: LabelResultViewProps) {
           </div>
         )}
       </dl>
+
+      {isYamatoCompact && result.qrCode && (
+        <div className="mt-3">
+          <p className="mb-2 text-sm font-medium text-emerald-900">QRコード</p>
+          <img
+            alt="宅急便コンパクトQRコード"
+            className="h-40 w-40 rounded border border-emerald-200 bg-white p-2"
+            src={result.qrCode}
+          />
+          {result.waybillNumber && (
+            <p className="mt-2 text-sm text-emerald-900">
+              送り状番号: <span className="font-medium">{result.waybillNumber}</span>
+            </p>
+          )}
+        </div>
+      )}
 
       {pdfDataUrl && (
         <a

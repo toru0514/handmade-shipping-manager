@@ -337,4 +337,78 @@ describe('OrdersPage (UC-006)', () => {
       expect(screen.getByRole('link', { name: 'PDFをダウンロード' })).toBeInTheDocument();
     });
   });
+
+  it('宅急便コンパクト発行でQRコードと有効期限を表示できる', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url === '/api/orders/pending') {
+        return new Response(
+          JSON.stringify([
+            {
+              orderId: 'ORD-010',
+              platform: 'minne',
+              buyerName: '佐藤 花子',
+              productName: 'ハンドメイドポーチ',
+              orderedAt: '2026-02-20T00:00:00.000Z',
+              daysSinceOrder: 1,
+              isOverdue: false,
+            },
+          ]),
+          { status: 200 },
+        );
+      }
+
+      if (url === '/api/orders/ORD-010/labels' && init?.method === 'POST') {
+        return new Response(
+          JSON.stringify({
+            orderId: 'ORD-010',
+            labelId: 'LBL-010',
+            shippingMethod: 'yamato_compact',
+            labelType: 'yamato_compact',
+            status: 'issued',
+            issuedAt: '2026-03-03T00:00:00.000Z',
+            expiresAt: '2026-03-17T00:00:00.000Z',
+            qrCode: 'data:image/png;base64,ZHVtbXk=',
+            waybillNumber: 'YMT-1234-5678',
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<OrdersPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('order-card-ORD-010')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('配送方法'), {
+      target: { value: 'yamato_compact' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '伝票発行' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('img', { name: '宅急便コンパクトQRコード' })).toBeInTheDocument();
+      expect(screen.getByText('有効期限:')).toBeInTheDocument();
+      expect(screen.getByText('YMT-1234-5678')).toBeInTheDocument();
+    });
+
+    const postCall = fetchMock.mock.calls.find(
+      (call) => String(call[0]) === '/api/orders/ORD-010/labels',
+    );
+    expect(postCall).toBeDefined();
+    expect(postCall?.[1]).toMatchObject({
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect(postCall?.[1]?.body).toBe(
+      JSON.stringify({
+        shippingMethod: 'yamato_compact',
+      }),
+    );
+  });
 });

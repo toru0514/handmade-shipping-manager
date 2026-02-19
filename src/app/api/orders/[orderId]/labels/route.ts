@@ -9,7 +9,9 @@ import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistenc
 import { SpreadsheetShippingLabelRepository } from '@/infrastructure/adapters/persistence/SpreadsheetShippingLabelRepository';
 import { ClickPostAdapter } from '@/infrastructure/adapters/shipping/ClickPostAdapter';
 import type { PlaywrightBrowserLike } from '@/infrastructure/adapters/shipping/ClickPostAdapter';
+import type { ClickPostGateway } from '@/infrastructure/adapters/shipping/ClickPostGateway';
 import { ShippingLabelIssuerImpl } from '@/infrastructure/adapters/shipping/ShippingLabelIssuerImpl';
+import { YamatoCompactAdapter } from '@/infrastructure/adapters/shipping/YamatoCompactAdapter';
 import { YamatoCompactGateway } from '@/infrastructure/adapters/shipping/YamatoCompactGateway';
 import {
   ExternalServiceError,
@@ -104,28 +106,51 @@ export async function createIssueShippingLabelUseCase(
   });
 
   const chromium = await loadPlaywrightChromium();
-  const clickPostEmail = env.CLICKPOST_EMAIL?.trim();
-  const clickPostPassword = env.CLICKPOST_PASSWORD?.trim();
-  if (!clickPostEmail || !clickPostPassword) {
-    throw new ExternalServiceError('CLICKPOST_EMAIL / CLICKPOST_PASSWORD が設定されていません');
-  }
-  const clickPostAdapter = new ClickPostAdapter({
-    browserFactory: {
-      launch: () => chromium.launch({ headless: true }),
-    },
-    credentials: {
-      email: clickPostEmail,
-      password: clickPostPassword,
-    },
-  });
+  const clickPostGateway: ClickPostGateway = {
+    issue: async (order) => {
+      const clickPostEmail = env.CLICKPOST_EMAIL?.trim();
+      const clickPostPassword = env.CLICKPOST_PASSWORD?.trim();
+      if (!clickPostEmail || !clickPostPassword) {
+        throw new ExternalServiceError('CLICKPOST_EMAIL / CLICKPOST_PASSWORD が設定されていません');
+      }
 
-  const unsupportedYamatoGateway: YamatoCompactGateway = {
-    issue: async () => {
-      throw new ValidationError('yamato_compact は未対応です');
+      const adapter = new ClickPostAdapter({
+        browserFactory: {
+          launch: () => chromium.launch({ headless: true }),
+        },
+        credentials: {
+          email: clickPostEmail,
+          password: clickPostPassword,
+        },
+      });
+
+      return adapter.issue(order);
     },
   };
 
-  const issuer = new ShippingLabelIssuerImpl(clickPostAdapter, unsupportedYamatoGateway);
+  const yamatoGateway: YamatoCompactGateway = {
+    issue: async (order) => {
+      const memberId = env.YAMATO_MEMBER_ID?.trim();
+      const password = env.YAMATO_PASSWORD?.trim();
+      if (!memberId || !password) {
+        throw new ExternalServiceError('YAMATO_MEMBER_ID / YAMATO_PASSWORD が設定されていません');
+      }
+
+      const adapter = new YamatoCompactAdapter({
+        browserFactory: {
+          launch: () => chromium.launch({ headless: true }),
+        },
+        credentials: {
+          memberId,
+          password,
+        },
+      });
+
+      return adapter.issue(order);
+    },
+  };
+
+  const issuer = new ShippingLabelIssuerImpl(clickPostGateway, yamatoGateway);
 
   return new IssueShippingLabelUseCase(
     new SpreadsheetOrderRepository(orderSheetsClient),
