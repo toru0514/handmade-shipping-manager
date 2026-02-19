@@ -1,3 +1,5 @@
+import { createSign } from 'node:crypto';
+
 import {
   AuthenticationError,
   ExternalServiceError,
@@ -10,6 +12,11 @@ export interface SheetsClient {
   clearRows(range?: string): Promise<void>;
 }
 
+export interface ServiceAccountKey {
+  readonly client_email: string;
+  readonly private_key: string;
+}
+
 interface SheetsValuesResponse {
   values?: string[][];
 }
@@ -17,6 +24,7 @@ interface SheetsValuesResponse {
 interface SheetsClientConfig {
   readonly spreadsheetId: string;
   readonly sheetName: string;
+  readonly serviceAccountKey?: ServiceAccountKey;
   readonly accessToken?: string;
   readonly refreshToken?: string;
   readonly clientId?: string;
@@ -110,7 +118,9 @@ export class GoogleSheetsClient implements SheetsClient {
       return this.accessToken;
     }
 
-    if (this.canRefreshToken()) {
+    if (this.config.serviceAccountKey) {
+      await this.fetchServiceAccountToken();
+    } else if (this.canRefreshToken()) {
       await this.refreshAccessToken();
     } else if (
       this.accessTokenExpiresAt !== undefined &&
@@ -207,11 +217,13 @@ export class GoogleSheetsClient implements SheetsClient {
     });
 
     if (!initialResponse.ok && (initialResponse.status === 401 || initialResponse.status === 403)) {
-      if (!this.canRefreshToken()) {
+      if (this.config.serviceAccountKey) {
+        await this.fetchServiceAccountToken();
+      } else if (this.canRefreshToken()) {
+        await this.refreshAccessToken();
+      } else {
         return initialResponse;
       }
-
-      await this.refreshAccessToken();
       const retryHeaders: Record<string, string> = await this.createAuthHeaders();
       if (options.contentType) {
         retryHeaders['Content-Type'] = options.contentType;
@@ -225,6 +237,64 @@ export class GoogleSheetsClient implements SheetsClient {
     }
 
     return initialResponse;
+  }
+
+  private createServiceAccountJwt(): string {
+    const key = this.config.serviceAccountKey!;
+    const now = Math.floor(Date.now() / 1000);
+
+    const header = JSON.stringify({ alg: 'RS256', typ: 'JWT' });
+    const claims = JSON.stringify({
+      iss: key.client_email,
+      scope: 'https://www.googleapis.com/auth/spreadsheets',
+      aud: this.getTokenUrl(),
+      exp: now + 3600,
+      iat: now,
+    });
+
+    const encodedHeader = Buffer.from(header).toString('base64url');
+    const encodedClaims = Buffer.from(claims).toString('base64url');
+    const signInput = `${encodedHeader}.${encodedClaims}`;
+
+    const signer = createSign('RSA-SHA256');
+    signer.update(signInput);
+    const signature = signer.sign(key.private_key, 'base64url');
+
+    return `${signInput}.${signature}`;
+  }
+
+  private async fetchServiceAccountToken(): Promise<void> {
+    const jwt = this.createServiceAccountJwt();
+
+    const body = new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion: jwt,
+    });
+
+    const response = await this.fetcher(this.getTokenUrl(), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body,
+    });
+
+    if (!response.ok) {
+      throw new AuthenticationError('サービスアカウントのアクセストークン取得に失敗しました');
+    }
+
+    const payload = (await response.json()) as {
+      access_token?: string;
+      expires_in?: number;
+    };
+
+    if (!payload.access_token) {
+      throw new AuthenticationError('サービスアカウントのトークンレスポンスが不正です');
+    }
+
+    this.accessToken = payload.access_token;
+    this.accessTokenExpiresAt =
+      typeof payload.expires_in === 'number' ? Date.now() + payload.expires_in * 1000 : undefined;
   }
 
   private toHttpError(operation: 'read' | 'write' | 'clear', status: number) {
