@@ -8,7 +8,6 @@ import {
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
 import { SpreadsheetShippingLabelRepository } from '@/infrastructure/adapters/persistence/SpreadsheetShippingLabelRepository';
 import { ClickPostAdapter } from '@/infrastructure/adapters/shipping/ClickPostAdapter';
-import type { PlaywrightBrowserLike } from '@/infrastructure/adapters/shipping/ClickPostAdapter';
 import type { ClickPostGateway } from '@/infrastructure/adapters/shipping/ClickPostGateway';
 import { ShippingLabelIssuerImpl } from '@/infrastructure/adapters/shipping/ShippingLabelIssuerImpl';
 import { YamatoCompactAdapter } from '@/infrastructure/adapters/shipping/YamatoCompactAdapter';
@@ -20,7 +19,7 @@ import {
   normalizeHttpError,
   toApiErrorResponse,
 } from '@/infrastructure/errors/HttpErrors';
-import type { PlaywrightPageLike } from '@/infrastructure/external/playwright/ClickPostPage';
+import { ChromiumBrowserFactory } from '@/infrastructure/external/playwright/ChromiumBrowserFactory';
 import { GoogleSheetsClient } from '@/infrastructure/external/google/SheetsClient';
 
 type Env = Readonly<Record<string, string | undefined>>;
@@ -65,28 +64,32 @@ function createAuth(env: Env) {
   };
 }
 
-async function loadPlaywrightChromium(): Promise<{
-  launch: (options: { headless: boolean }) => Promise<PlaywrightBrowserLike>;
-}> {
-  const moduleName = process.env.PLAYWRIGHT_MODULE?.trim() || 'playwright';
-  try {
-    const module = (await import(moduleName)) as {
-      chromium?: {
-        launch: (options: { headless: boolean }) => Promise<{
-          newPage(): Promise<PlaywrightPageLike>;
-          close(): Promise<void>;
-        }>;
-      };
-    };
-
-    if (!module.chromium?.launch) {
-      throw new Error('chromium launcher が見つかりません');
-    }
-    return module.chromium;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new ExternalServiceError(`Playwright 初期化に失敗しました: ${message}`);
+function resolvePlaywrightHeadless(env: Env): boolean {
+  const value = env.PLAYWRIGHT_HEADLESS?.trim().toLowerCase();
+  if (!value) {
+    return true;
   }
+  if (value === 'true' || value === '1') {
+    return true;
+  }
+  if (value === 'false' || value === '0') {
+    return false;
+  }
+  throw new Error('PLAYWRIGHT_HEADLESS は true/false（または 1/0）で指定してください');
+}
+
+function resolvePlaywrightTimeoutMs(env: Env): number | undefined {
+  const value = env.PLAYWRIGHT_LAUNCH_TIMEOUT_MS?.trim();
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error('PLAYWRIGHT_LAUNCH_TIMEOUT_MS は正の数値（ミリ秒）で指定してください');
+  }
+
+  return parsed;
 }
 
 export async function createIssueShippingLabelUseCase(
@@ -105,7 +108,17 @@ export async function createIssueShippingLabelUseCase(
     ...auth,
   });
 
-  const chromium = await loadPlaywrightChromium();
+  let browserFactory: ChromiumBrowserFactory;
+  try {
+    browserFactory = new ChromiumBrowserFactory({
+      headless: resolvePlaywrightHeadless(env),
+      timeoutMs: resolvePlaywrightTimeoutMs(env),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new ExternalServiceError(`Playwright 初期化に失敗しました: ${message}`);
+  }
+
   const clickPostGateway: ClickPostGateway = {
     issue: async (order) => {
       // 配送方法ごとに必要な認証情報だけを検証する。
@@ -117,9 +130,7 @@ export async function createIssueShippingLabelUseCase(
       }
 
       const adapter = new ClickPostAdapter({
-        browserFactory: {
-          launch: () => chromium.launch({ headless: true }),
-        },
+        browserFactory,
         credentials: {
           email: clickPostEmail,
           password: clickPostPassword,
@@ -139,9 +150,7 @@ export async function createIssueShippingLabelUseCase(
       }
 
       const adapter = new YamatoCompactAdapter({
-        browserFactory: {
-          launch: () => chromium.launch({ headless: true }),
-        },
+        browserFactory,
         credentials: {
           memberId,
           password,
