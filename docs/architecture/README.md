@@ -324,3 +324,16 @@ src/
 
 - [ドメインモデル](../domain/README.md)
 - [ユースケース](../usecases/README.md)
+
+## Spreadsheet Deserialize Error Handling
+
+永続化アダプター（`SpreadsheetOrderRepository` / `SpreadsheetShippingLabelRepository`）の
+デシリアライズ失敗時は、以下の方針を採用する。
+
+- 方針: `スキップ + ログ`
+- 理由: シート上の1行破損で一覧取得全体を止めず、運用を継続できるため
+- 実装: 破損行は `console.warn` で `row番号` と `ID` を記録し、その行だけ除外
+
+この方針は `SpreadsheetOrderRepository` で実装済みで、
+`SpreadsheetShippingLabelRepository` でも同じエラーハンドリング（行単位スキップ）を
+適用できる。

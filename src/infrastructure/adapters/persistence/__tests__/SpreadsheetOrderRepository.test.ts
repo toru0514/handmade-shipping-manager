@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Order } from '@/domain/entities/Order';
 import { OrderId } from '@/domain/valueObjects/OrderId';
 import { OrderStatus } from '@/domain/valueObjects/OrderStatus';
@@ -50,6 +50,10 @@ function createOrder(orderId: string, buyerName: string): Order {
 }
 
 describe('SpreadsheetOrderRepository', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('save/findById/exists を連携して扱える（統合）', async () => {
     const client = new InMemorySheetsClient();
     const repository = new SpreadsheetOrderRepository(client);
@@ -209,5 +213,60 @@ describe('SpreadsheetOrderRepository', () => {
 
     const second = await repository.findAll();
     expect(second[0]!.status.equals(OrderStatus.Pending)).toBe(true);
+  });
+
+  it('壊れた行はスキップし、警告ログを出して正常行のみ返す', async () => {
+    const client = new InMemorySheetsClient();
+    const repository = new SpreadsheetOrderRepository(client);
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    await client.writeRows([
+      [
+        'ORD-001',
+        'minne',
+        '山田 太郎',
+        '1500001',
+        '東京都',
+        '渋谷区',
+        '神宮前1-1-1',
+        '',
+        '09012345678',
+        'ハンドメイドアクセサリー',
+        '2500',
+        'pending',
+        '2026-02-14T00:00:00.000Z',
+        '',
+        '',
+        '',
+      ],
+      [
+        'ORD-999',
+        'minne',
+        '壊れた データ',
+        '1500001',
+        '東京都',
+        '渋谷区',
+        '神宮前1-1-1',
+        '',
+        '09012345678',
+        'ハンドメイドアクセサリー',
+        '2500',
+        'shipped',
+        '2026-02-14T00:00:00.000Z',
+        '2026-02-15T00:00:00.000Z',
+        'invalid_method',
+        'CP123456789JP',
+      ],
+    ]);
+
+    const orders = await repository.findAll();
+
+    expect(orders).toHaveLength(1);
+    expect(orders[0]?.orderId.toString()).toBe('ORD-001');
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]?.[0]).toContain('壊れた行をスキップしました');
+
+    const broken = await repository.findById(new OrderId('ORD-999'));
+    expect(broken).toBeNull();
   });
 });

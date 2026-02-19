@@ -80,9 +80,21 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
 
   async findAll(): Promise<Order[]> {
     const rows = await this.getRows();
-    return rows
-      .filter((row) => (row[COL.orderId] ?? '').trim().length > 0)
-      .map((row) => this.deserialize(row));
+    const orders: Order[] = [];
+
+    rows.forEach((row, index) => {
+      if ((row[COL.orderId] ?? '').trim().length === 0) {
+        return;
+      }
+
+      try {
+        orders.push(this.deserialize(row));
+      } catch (error) {
+        this.warnDeserializeError(index, row, error);
+      }
+    });
+
+    return orders;
   }
 
   private async getRows(): Promise<string[][]> {
@@ -101,6 +113,16 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
 
   private cloneRows(rows: string[][]): string[][] {
     return rows.map((row) => [...row]);
+  }
+
+  private warnDeserializeError(index: number, row: string[], error: unknown): void {
+    const rowNumber = index + 2;
+    const orderId = row[COL.orderId] ?? '(empty)';
+    const message = error instanceof Error ? error.message : String(error);
+
+    console.warn(
+      `[SpreadsheetOrderRepository] 壊れた行をスキップしました (row=${rowNumber}, orderId=${orderId}): ${message}`,
+    );
   }
 
   private serialize(order: Order): string[] {
