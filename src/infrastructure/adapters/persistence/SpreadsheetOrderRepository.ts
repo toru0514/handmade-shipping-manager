@@ -92,7 +92,7 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
 
     const rows = await this.sheetsClient.readRows();
     this.cachedRows = this.cloneRows(rows);
-    return this.cloneRows(rows);
+    return this.cloneRows(this.cachedRows);
   }
 
   private invalidateCache(): void {
