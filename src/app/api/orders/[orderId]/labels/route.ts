@@ -134,6 +134,18 @@ export async function createIssueShippingLabelUseCase(
   );
 }
 
+let issueShippingLabelUseCaseFactory = createIssueShippingLabelUseCase;
+
+export function setIssueShippingLabelUseCaseFactoryForTest(
+  factory: typeof createIssueShippingLabelUseCase,
+): void {
+  issueShippingLabelUseCaseFactory = factory;
+}
+
+export function resetIssueShippingLabelUseCaseFactoryForTest(): void {
+  issueShippingLabelUseCaseFactory = createIssueShippingLabelUseCase;
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ orderId: string }> },
@@ -161,7 +173,7 @@ export async function POST(
   }
 
   try {
-    const useCase = await createIssueShippingLabelUseCase();
+    const useCase = await issueShippingLabelUseCaseFactory();
     const result = await useCase.execute({
       orderId,
       shippingMethod: shippingMethod.trim(),

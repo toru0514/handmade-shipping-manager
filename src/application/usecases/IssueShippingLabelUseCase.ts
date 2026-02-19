@@ -74,6 +74,7 @@ export class IssueShippingLabelUseCase {
       status: issuedLabel.status,
       issuedAt: issuedLabel.issuedAt.toISOString(),
       expiresAt: issuedLabel.expiresAt?.toISOString(),
+      // TODO: 新しい配送方法を追加する場合は ShippingLabel.toLabelData() の抽象メソッド化を検討
       pdfData: issuedLabel instanceof ClickPostLabel ? issuedLabel.pdfData : undefined,
       trackingNumber:
         issuedLabel instanceof ClickPostLabel ? issuedLabel.trackingNumber.toString() : undefined,
