@@ -102,8 +102,8 @@ describe('ShippingLabelIssuerImpl', () => {
 
     const issuer = new ShippingLabelIssuerImpl(clickPostGateway, yamatoGateway);
     const unknownMethod = {
-      toString: () => 'unknown_method',
-    } as ShippingMethod;
+      value: 'unknown_method',
+    } as unknown as ShippingMethod;
 
     await expect(issuer.issue(order, unknownMethod)).rejects.toThrow(
       '未対応の配送方法です: unknown_method',
