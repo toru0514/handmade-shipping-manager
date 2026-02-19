@@ -89,6 +89,8 @@ npm test
 
 ```env
 # Google API
+# サービスアカウントJSONをbase64化した値
+GOOGLE_SERVICE_ACCOUNT_BASE64=
 # 初回アクセストークン（任意。未指定時は refresh token で自動取得）
 GOOGLE_SHEETS_ACCESS_TOKEN=
 # 必須
@@ -118,6 +120,12 @@ AMAZON_PASSWORD=
 # ヤマト運輸（クロネコメンバーズ）
 KURONEKO_EMAIL=
 KURONEKO_PASSWORD=
+```
+
+`GOOGLE_SERVICE_ACCOUNT_BASE64` は次のコマンドで作成できます。
+
+```bash
+node -e "const fs=require('fs');process.stdout.write(Buffer.from(fs.readFileSync('service-account.json','utf8')).toString('base64'))"
 ```
 
 ## ライセンス
