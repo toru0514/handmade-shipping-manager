@@ -1,3 +1,5 @@
+import { generateKeyPairSync } from 'node:crypto';
+
 import { describe, expect, it, vi } from 'vitest';
 import {
   AuthenticationError,
@@ -5,6 +7,18 @@ import {
   NotFoundError,
 } from '@/infrastructure/errors/HttpErrors';
 import { GoogleSheetsClient } from '../SheetsClient';
+import type { ServiceAccountKey } from '../SheetsClient';
+
+const TEST_PRIVATE_KEY = generateKeyPairSync('rsa', {
+  modulusLength: 2048,
+  privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  publicKeyEncoding: { type: 'spki', format: 'pem' },
+}).privateKey;
+
+const TEST_SERVICE_ACCOUNT_KEY: ServiceAccountKey = {
+  client_email: 'test-sa@test-project.iam.gserviceaccount.com',
+  private_key: TEST_PRIVATE_KEY,
+};
 
 describe('GoogleSheetsClient', () => {
   it('readRows は Authorization ヘッダー付きで GET する', async () => {
@@ -358,5 +372,182 @@ describe('GoogleSheetsClient', () => {
 
     await expect(client.readRows()).rejects.toBeInstanceOf(AuthenticationError);
     expect(fetcher).not.toHaveBeenCalled();
+  });
+
+  it('サービスアカウントキーで JWT を発行しトークンを取得する', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'sa-token-123', expires_in: 3600 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ values: [['SA', 'data']] }),
+      });
+
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        serviceAccountKey: TEST_SERVICE_ACCOUNT_KEY,
+        tokenUrl: 'https://oauth2.example/token',
+      },
+      fetcher,
+    );
+
+    const rows = await client.readRows();
+    expect(rows).toEqual([['SA', 'data']]);
+
+    const [tokenUrl, tokenInit] = fetcher.mock.calls[0] as [string, RequestInit];
+    expect(tokenUrl).toBe('https://oauth2.example/token');
+    expect(tokenInit.method).toBe('POST');
+    expect((tokenInit.headers as Record<string, string>)['Content-Type']).toBe(
+      'application/x-www-form-urlencoded',
+    );
+    const tokenBody = tokenInit.body as URLSearchParams;
+    expect(tokenBody.get('grant_type')).toBe('urn:ietf:params:oauth:grant-type:jwt-bearer');
+    expect(tokenBody.get('assertion')).toBeTruthy();
+
+    const [, readInit] = fetcher.mock.calls[1] as [string, RequestInit];
+    expect((readInit.headers as Record<string, string>).Authorization).toBe('Bearer sa-token-123');
+  });
+
+  it('サービスアカウントのトークン取得失敗時は AuthenticationError を投げる', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce({ ok: false, status: 400 });
+
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        serviceAccountKey: TEST_SERVICE_ACCOUNT_KEY,
+      },
+      fetcher,
+    );
+
+    await expect(client.readRows()).rejects.toBeInstanceOf(AuthenticationError);
+  });
+
+  it('サービスアカウントのトークンレスポンスに access_token がない場合は AuthenticationError を投げる', async () => {
+    const fetcher = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ expires_in: 3600 }),
+    });
+
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        serviceAccountKey: TEST_SERVICE_ACCOUNT_KEY,
+      },
+      fetcher,
+    );
+
+    await expect(client.readRows()).rejects.toBeInstanceOf(AuthenticationError);
+  });
+
+  it('サービスアカウントのトークンがキャッシュされ再利用される', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'sa-cached', expires_in: 3600 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ values: [['A']] }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ values: [['B']] }),
+      });
+
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        serviceAccountKey: TEST_SERVICE_ACCOUNT_KEY,
+      },
+      fetcher,
+    );
+
+    await client.readRows();
+    await client.readRows();
+
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    const urls = fetcher.mock.calls.map((c: unknown[]) => c[0] as string);
+    const tokenCalls = urls.filter((u: string) => u.includes('googleapis.com/token'));
+    expect(tokenCalls).toHaveLength(1);
+  });
+
+  it('サービスアカウントで 401 時にトークンを再取得してリトライする', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'sa-initial', expires_in: 3600 }),
+      })
+      .mockResolvedValueOnce({ ok: false, status: 401 })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'sa-refreshed', expires_in: 3600 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ values: [['retried']] }),
+      });
+
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        serviceAccountKey: TEST_SERVICE_ACCOUNT_KEY,
+      },
+      fetcher,
+    );
+
+    const rows = await client.readRows();
+    expect(rows).toEqual([['retried']]);
+
+    const [, retryInit] = fetcher.mock.calls[3] as [string, RequestInit];
+    expect((retryInit.headers as Record<string, string>).Authorization).toBe('Bearer sa-refreshed');
+  });
+
+  it('サービスアカウントの JWT に正しい claims が含まれる', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ access_token: 'sa-jwt-test', expires_in: 3600 }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ values: [] }),
+      });
+
+    const client = new GoogleSheetsClient(
+      {
+        spreadsheetId: 'spreadsheet-id',
+        sheetName: 'Orders',
+        serviceAccountKey: TEST_SERVICE_ACCOUNT_KEY,
+        tokenUrl: 'https://oauth2.example/token',
+      },
+      fetcher,
+    );
+
+    await client.readRows();
+
+    const tokenBody = (fetcher.mock.calls[0] as [string, RequestInit])[1].body as URLSearchParams;
+    const jwt = tokenBody.get('assertion')!;
+    const [headerB64, claimsB64] = jwt.split('.');
+
+    const header = JSON.parse(Buffer.from(headerB64, 'base64url').toString());
+    expect(header).toEqual({ alg: 'RS256', typ: 'JWT' });
+
+    const claims = JSON.parse(Buffer.from(claimsB64, 'base64url').toString());
+    expect(claims.iss).toBe('test-sa@test-project.iam.gserviceaccount.com');
+    expect(claims.scope).toBe('https://www.googleapis.com/auth/spreadsheets');
+    expect(claims.aud).toBe('https://oauth2.example/token');
+    expect(claims.exp).toBeGreaterThan(claims.iat);
   });
 });

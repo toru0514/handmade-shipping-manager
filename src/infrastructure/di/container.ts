@@ -6,7 +6,10 @@ import { SearchBuyersUseCase } from '@/application/usecases/SearchBuyersUseCase'
 import { OverdueOrderSpecification } from '@/domain/specifications/OverdueOrderSpecification';
 import { DefaultMessageTemplateRepository } from '@/infrastructure/adapters/persistence/DefaultMessageTemplateRepository';
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
-import { GoogleSheetsClient } from '@/infrastructure/external/google/SheetsClient';
+import {
+  GoogleSheetsClient,
+  type ServiceAccountKey,
+} from '@/infrastructure/external/google/SheetsClient';
 
 type Env = Readonly<Record<string, string | undefined>>;
 type RequiredEnvKey = 'GOOGLE_SHEETS_SPREADSHEET_ID';
@@ -19,12 +22,36 @@ function resolveRequiredEnv(name: RequiredEnvKey, env: Env): string {
   return value;
 }
 
+function parseServiceAccountKey(json: string): ServiceAccountKey {
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY の JSON パースに失敗しました');
+  }
+
+  if (typeof parsed.client_email !== 'string' || typeof parsed.private_key !== 'string') {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY に client_email と private_key が含まれていません');
+  }
+
+  return {
+    client_email: parsed.client_email,
+    private_key: parsed.private_key,
+  };
+}
+
 function createOrderRepository(env: Env): SpreadsheetOrderRepository {
+  const serviceAccountKeyJson = env.GOOGLE_SERVICE_ACCOUNT_KEY?.trim();
   const accessToken = env.GOOGLE_SHEETS_ACCESS_TOKEN?.trim();
   const refreshToken = env.GOOGLE_SHEETS_REFRESH_TOKEN?.trim();
   const clientId = env.GOOGLE_CLIENT_ID?.trim();
   const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
 
+  const serviceAccountKey = serviceAccountKeyJson
+    ? parseServiceAccountKey(serviceAccountKeyJson)
+    : undefined;
+
+  const hasServiceAccountKey = Boolean(serviceAccountKey);
   const hasAccessToken = Boolean(accessToken);
   const hasRefreshToken = Boolean(refreshToken);
   const hasClientId = Boolean(clientId);
@@ -38,15 +65,16 @@ function createOrderRepository(env: Env): SpreadsheetOrderRepository {
 
   const hasRefreshTokenConfig = Boolean(refreshToken && clientId && clientSecret);
 
-  if (!hasAccessToken && !hasRefreshTokenConfig) {
+  if (!hasServiceAccountKey && !hasAccessToken && !hasRefreshTokenConfig) {
     throw new Error(
-      'Google Sheets 認証情報が不足しています: GOOGLE_SHEETS_ACCESS_TOKEN または GOOGLE_SHEETS_REFRESH_TOKEN + GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET を設定してください',
+      'Google Sheets 認証情報が不足しています: GOOGLE_SERVICE_ACCOUNT_KEY, GOOGLE_SHEETS_ACCESS_TOKEN, または GOOGLE_SHEETS_REFRESH_TOKEN + GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET を設定してください',
     );
   }
 
   const sheetsClient = new GoogleSheetsClient({
     spreadsheetId: resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env),
     sheetName: env.GOOGLE_SHEETS_SHEET_NAME?.trim() || 'Orders',
+    serviceAccountKey,
     accessToken,
     refreshToken,
     clientId,
