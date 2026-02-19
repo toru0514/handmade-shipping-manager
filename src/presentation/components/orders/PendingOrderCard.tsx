@@ -1,10 +1,14 @@
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
+import { IssueLabelButton } from '@/presentation/components/labels/IssueLabelButton';
 
 interface PendingOrderCardProps {
   order: PendingOrderDto;
   onRequestShipmentComplete: (order: PendingOrderDto) => void;
   onRequestPurchaseThanks: (order: PendingOrderDto) => void;
+  onRequestIssueLabel?: (order: PendingOrderDto, shippingMethod: string) => Promise<void>;
   isGeneratingPurchaseThanks?: boolean;
+  isIssuingLabel?: boolean;
+  canIssueLabel?: boolean;
 }
 
 function formatDate(isoString: string): string {
@@ -27,7 +31,10 @@ export function PendingOrderCard({
   order,
   onRequestShipmentComplete,
   onRequestPurchaseThanks,
+  onRequestIssueLabel,
   isGeneratingPurchaseThanks = false,
+  isIssuingLabel = false,
+  canIssueLabel = true,
 }: PendingOrderCardProps) {
   return (
     <div
@@ -77,6 +84,16 @@ export function PendingOrderCard({
           {isGeneratingPurchaseThanks ? '生成中...' : '購入お礼'}
         </button>
       </div>
+
+      {onRequestIssueLabel && (
+        <div className="mt-3 border-t border-gray-100 pt-3">
+          <IssueLabelButton
+            disabled={!canIssueLabel}
+            isIssuing={isIssuingLabel}
+            onIssue={async (shippingMethod) => onRequestIssueLabel(order, shippingMethod)}
+          />
+        </div>
+      )}
     </div>
   );
 }

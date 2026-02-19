@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { IssueShippingLabelResultDto } from '@/application/usecases/IssueShippingLabelUseCase';
 import type { MarkOrderAsShippedResultDto } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
 import { PendingOrderList } from '@/presentation/components/orders/PendingOrderList';
+import { LabelResultView } from '@/presentation/components/labels/LabelResultView';
 import { MessagePreviewDialog } from '@/presentation/components/messages/MessagePreviewDialog';
 import {
   ShipmentCompleteData,
@@ -16,6 +18,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [labelIssueError, setLabelIssueError] = useState<string | null>(null);
   const [purchaseThanksError, setPurchaseThanksError] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<PendingOrderDto | null>(null);
   const [isSubmittingShipment, setIsSubmittingShipment] = useState(false);
@@ -26,6 +29,10 @@ export default function OrdersPage() {
     orderId: string;
     message: string;
   } | null>(null);
+  const [labelIssueResult, setLabelIssueResult] = useState<IssueShippingLabelResultDto | null>(
+    null,
+  );
+  const [issuingLabelOrderId, setIssuingLabelOrderId] = useState<string | null>(null);
   const [completeData, setCompleteData] = useState<ShipmentCompleteData | null>(null);
   const [isCompleteMessageOpen, setIsCompleteMessageOpen] = useState(false);
 
@@ -123,6 +130,44 @@ export default function OrdersPage() {
     }
   }, []);
 
+  const handleIssueLabel = useCallback(
+    async (order: PendingOrderDto, shippingMethod: string): Promise<void> => {
+      setLabelIssueError(null);
+      setIssuingLabelOrderId(order.orderId);
+
+      try {
+        const response = await fetch(`/api/orders/${order.orderId}/labels`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            shippingMethod,
+          }),
+        });
+
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as {
+            error?: { message?: string } | string;
+          };
+          const message =
+            typeof body.error === 'string'
+              ? body.error
+              : (body.error?.message ?? '伝票発行に失敗しました');
+          throw new Error(message);
+        }
+
+        const payload = (await response.json()) as IssueShippingLabelResultDto;
+        setLabelIssueResult(payload);
+      } catch (error) {
+        setLabelIssueError(error instanceof Error ? error.message : '伝票発行に失敗しました');
+      } finally {
+        setIssuingLabelOrderId(null);
+      }
+    },
+    [],
+  );
+
   return (
     <main className="mx-auto max-w-6xl p-6">
       <h1 className="mb-6 text-2xl font-bold">発送前注文一覧</h1>
@@ -143,6 +188,11 @@ export default function OrdersPage() {
           {purchaseThanksError}
         </div>
       )}
+      {labelIssueError && (
+        <div className="mb-4 rounded bg-red-100 px-4 py-3 text-red-700" role="alert">
+          {labelIssueError}
+        </div>
+      )}
 
       {!loading && !loadError && (
         <PendingOrderList
@@ -155,7 +205,13 @@ export default function OrdersPage() {
           onRequestPurchaseThanks={(order) => {
             void handleRequestPurchaseThanks(order);
           }}
+          onRequestIssueLabel={(order, shippingMethod) => handleIssueLabel(order, shippingMethod)}
+          issuingLabelOrderId={issuingLabelOrderId}
         />
+      )}
+
+      {labelIssueResult && (
+        <LabelResultView result={labelIssueResult} onClose={() => setLabelIssueResult(null)} />
       )}
 
       <ShipmentConfirmDialog
