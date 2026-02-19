@@ -12,7 +12,7 @@ import type { PlaywrightBrowserLike } from '@/infrastructure/adapters/shipping/C
 import type { ClickPostGateway } from '@/infrastructure/adapters/shipping/ClickPostGateway';
 import { ShippingLabelIssuerImpl } from '@/infrastructure/adapters/shipping/ShippingLabelIssuerImpl';
 import { YamatoCompactAdapter } from '@/infrastructure/adapters/shipping/YamatoCompactAdapter';
-import { YamatoCompactGateway } from '@/infrastructure/adapters/shipping/YamatoCompactGateway';
+import type { YamatoCompactGateway } from '@/infrastructure/adapters/shipping/YamatoCompactGateway';
 import {
   ExternalServiceError,
   NotFoundError,
@@ -108,6 +108,8 @@ export async function createIssueShippingLabelUseCase(
   const chromium = await loadPlaywrightChromium();
   const clickPostGateway: ClickPostGateway = {
     issue: async (order) => {
+      // 配送方法ごとに必要な認証情報だけを検証する。
+      // これにより、yamato_compact 発行時に CLICKPOST_* 未設定でも失敗しない。
       const clickPostEmail = env.CLICKPOST_EMAIL?.trim();
       const clickPostPassword = env.CLICKPOST_PASSWORD?.trim();
       if (!clickPostEmail || !clickPostPassword) {
