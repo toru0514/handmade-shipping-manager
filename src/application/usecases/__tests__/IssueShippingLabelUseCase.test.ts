@@ -209,4 +209,25 @@ describe('IssueShippingLabelUseCase', () => {
     ).rejects.toBeInstanceOf(InvalidLabelIssueInputError);
     expect(issuer.issue).not.toHaveBeenCalled();
   });
+
+  it('伝票発行でエラーが起きた場合は例外が伝播し、保存されない', async () => {
+    const order = createPendingOrder('ORD-006');
+    const orderRepository = new InMemoryOrderRepository([order]);
+    const labelRepository = new InMemoryShippingLabelRepository();
+    const saveSpy = vi.spyOn(labelRepository, 'save');
+    const issuer: ShippingLabelIssuer<Order, ShippingLabel> = {
+      issue: vi.fn(async () => {
+        throw new Error('外部APIエラー');
+      }),
+    };
+    const useCase = new IssueShippingLabelUseCase(orderRepository, labelRepository, issuer);
+
+    await expect(
+      useCase.execute({
+        orderId: 'ORD-006',
+        shippingMethod: 'click_post',
+      }),
+    ).rejects.toThrow('外部APIエラー');
+    expect(saveSpy).not.toHaveBeenCalled();
+  });
 });
