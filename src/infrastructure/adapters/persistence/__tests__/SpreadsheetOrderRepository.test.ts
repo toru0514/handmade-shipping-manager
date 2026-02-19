@@ -11,10 +11,12 @@ import { SpreadsheetOrderRepository } from '../SpreadsheetOrderRepository';
 
 class InMemorySheetsClient implements SheetsClient {
   private rows: string[][] = [];
+  readCount = 0;
   clearCount = 0;
   writeCount = 0;
 
   async readRows(): Promise<string[][]> {
+    this.readCount += 1;
     return this.rows.map((row) => [...row]);
   }
 
@@ -129,5 +131,83 @@ describe('SpreadsheetOrderRepository', () => {
 
     expect(client.clearCount).toBe(2);
     expect(client.writeCount).toBe(2);
+  });
+
+  it('同一インスタンス内で複数クエリを呼んでも readRows は1回だけ', async () => {
+    const client = new InMemorySheetsClient();
+    await client.writeRows([
+      [
+        'ORD-001',
+        'minne',
+        '山田 太郎',
+        '1500001',
+        '東京都',
+        '渋谷区',
+        '神宮前1-1-1',
+        '',
+        '09012345678',
+        'ハンドメイドアクセサリー',
+        '2500',
+        'pending',
+        '2026-02-14T00:00:00.000Z',
+        '',
+        '',
+        '',
+      ],
+    ]);
+    const repository = new SpreadsheetOrderRepository(client);
+
+    await repository.findById(new OrderId('ORD-001'));
+    await repository.findByStatus(OrderStatus.Pending);
+    await repository.findByBuyerName('山田');
+    await repository.exists(new OrderId('ORD-001'));
+    await repository.findAll();
+
+    expect(client.readCount).toBe(1);
+  });
+
+  it('save 後はキャッシュが無効化され、次の検索で再読込される', async () => {
+    const client = new InMemorySheetsClient();
+    const repository = new SpreadsheetOrderRepository(client);
+    await client.writeRows([
+      [
+        'ORD-001',
+        'minne',
+        '山田 太郎',
+        '1500001',
+        '東京都',
+        '渋谷区',
+        '神宮前1-1-1',
+        '',
+        '09012345678',
+        'ハンドメイドアクセサリー',
+        '2500',
+        'pending',
+        '2026-02-14T00:00:00.000Z',
+        '',
+        '',
+        '',
+      ],
+    ]);
+
+    await repository.findAll();
+    expect(client.readCount).toBe(1);
+
+    await repository.save(createOrder('ORD-001', '田中 花子'));
+    await repository.findAll();
+
+    expect(client.readCount).toBe(2);
+  });
+
+  it('キャッシュ有無で検索結果の振る舞いが変わらない（再取得で再デシリアライズ）', async () => {
+    const client = new InMemorySheetsClient();
+    const repository = new SpreadsheetOrderRepository(client);
+    await repository.save(createOrder('ORD-001', '山田 太郎'));
+
+    const first = await repository.findAll();
+    first[0]!.status = OrderStatus.Shipped;
+
+    const second = await repository.findAll();
+    expect(second[0]!.status.equals(OrderStatus.Pending)).toBe(true);
   });
 });

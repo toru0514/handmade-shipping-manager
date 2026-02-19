@@ -36,6 +36,8 @@ const COL = {
 } as const;
 
 export class SpreadsheetOrderRepository implements OrderRepository<Order> {
+  private cachedRows: string[][] | null = null;
+
   constructor(private readonly sheetsClient: SheetsClient) {}
 
   async findById(orderId: OrderId): Promise<Order | null> {
@@ -55,7 +57,7 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
   }
 
   async save(order: Order): Promise<void> {
-    const rows = await this.sheetsClient.readRows();
+    const rows = await this.getRows();
     const serialized = this.serialize(order);
     const index = rows.findIndex((row) => row[COL.orderId] === order.orderId.toString());
 
@@ -68,6 +70,7 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
     // NOTE: 現状は全行置換で整合性を保つ実装。高頻度/同時書き込みには非対応。
     await this.sheetsClient.clearRows();
     await this.sheetsClient.writeRows(rows, DEFAULT_RANGE);
+    this.invalidateCache();
   }
 
   async exists(orderId: OrderId): Promise<boolean> {
@@ -76,10 +79,28 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
   }
 
   async findAll(): Promise<Order[]> {
-    const rows = await this.sheetsClient.readRows();
+    const rows = await this.getRows();
     return rows
       .filter((row) => (row[COL.orderId] ?? '').trim().length > 0)
       .map((row) => this.deserialize(row));
+  }
+
+  private async getRows(): Promise<string[][]> {
+    if (this.cachedRows !== null) {
+      return this.cloneRows(this.cachedRows);
+    }
+
+    const rows = await this.sheetsClient.readRows();
+    this.cachedRows = this.cloneRows(rows);
+    return this.cloneRows(this.cachedRows);
+  }
+
+  private invalidateCache(): void {
+    this.cachedRows = null;
+  }
+
+  private cloneRows(rows: string[][]): string[][] {
+    return rows.map((row) => [...row]);
   }
 
   private serialize(order: Order): string[] {
