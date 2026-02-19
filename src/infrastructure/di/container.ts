@@ -27,11 +27,13 @@ function parseServiceAccountKey(json: string): ServiceAccountKey {
   try {
     parsed = JSON.parse(json) as Record<string, unknown>;
   } catch {
-    throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY の JSON パースに失敗しました');
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_BASE64 のデコードまたは JSON パースに失敗しました');
   }
 
   if (typeof parsed.client_email !== 'string' || typeof parsed.private_key !== 'string') {
-    throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY に client_email と private_key が含まれていません');
+    throw new Error(
+      'GOOGLE_SERVICE_ACCOUNT_BASE64 をデコードした JSON に client_email と private_key が含まれていません',
+    );
   }
 
   return {
@@ -41,14 +43,14 @@ function parseServiceAccountKey(json: string): ServiceAccountKey {
 }
 
 function createOrderRepository(env: Env): SpreadsheetOrderRepository {
-  const serviceAccountKeyJson = env.GOOGLE_SERVICE_ACCOUNT_KEY?.trim();
+  const serviceAccountBase64 = env.GOOGLE_SERVICE_ACCOUNT_BASE64?.trim();
   const accessToken = env.GOOGLE_SHEETS_ACCESS_TOKEN?.trim();
   const refreshToken = env.GOOGLE_SHEETS_REFRESH_TOKEN?.trim();
   const clientId = env.GOOGLE_CLIENT_ID?.trim();
   const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
 
-  const serviceAccountKey = serviceAccountKeyJson
-    ? parseServiceAccountKey(serviceAccountKeyJson)
+  const serviceAccountKey = serviceAccountBase64
+    ? parseServiceAccountKey(Buffer.from(serviceAccountBase64, 'base64').toString('utf8'))
     : undefined;
 
   const hasServiceAccountKey = Boolean(serviceAccountKey);
@@ -67,7 +69,7 @@ function createOrderRepository(env: Env): SpreadsheetOrderRepository {
 
   if (!hasServiceAccountKey && !hasAccessToken && !hasRefreshTokenConfig) {
     throw new Error(
-      'Google Sheets 認証情報が不足しています: GOOGLE_SERVICE_ACCOUNT_KEY, GOOGLE_SHEETS_ACCESS_TOKEN, または GOOGLE_SHEETS_REFRESH_TOKEN + GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET を設定してください',
+      'Google Sheets 認証情報が不足しています: GOOGLE_SERVICE_ACCOUNT_BASE64, GOOGLE_SHEETS_ACCESS_TOKEN, または GOOGLE_SHEETS_REFRESH_TOKEN + GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET を設定してください',
     );
   }
 
