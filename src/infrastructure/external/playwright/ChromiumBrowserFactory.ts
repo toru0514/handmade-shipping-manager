@@ -9,7 +9,7 @@ import type {
 } from '@/infrastructure/adapters/shipping/YamatoCompactAdapter';
 
 interface ChromiumLike {
-  launch(options: { headless: boolean; timeout?: number }): Promise<PlaywrightBrowserLike>;
+  launch(options: { headless: boolean; timeout?: number }): Promise<unknown>;
 }
 
 export interface ChromiumBrowserFactoryOptions {
@@ -30,9 +30,10 @@ export class ChromiumBrowserFactory implements PlaywrightBrowserFactory, YamatoB
   }
 
   async launch(): Promise<PlaywrightBrowserLike & YamatoBrowserLike> {
-    return this.chromiumInstance.launch({
+    const browser = await this.chromiumInstance.launch({
       headless: this.headless,
       timeout: this.timeoutMs,
     });
+    return browser as PlaywrightBrowserLike & YamatoBrowserLike;
   }
 }
