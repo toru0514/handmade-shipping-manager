@@ -146,4 +146,20 @@ describe('PendingOrderCard', () => {
 
     expect(screen.getByRole('button', { name: '生成中...' })).toBeDisabled();
   });
+
+  it('伝票発行ボタン押下時にコールバックが呼ばれる', async () => {
+    const onRequestIssueLabel = vi.fn(async () => undefined);
+
+    render(
+      <PendingOrderCard
+        order={createDto()}
+        onRequestShipmentComplete={noop}
+        onRequestPurchaseThanks={noop}
+        onRequestIssueLabel={onRequestIssueLabel}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '伝票発行' }));
+    expect(onRequestIssueLabel).toHaveBeenCalledWith(createDto(), 'click_post');
+  });
 });

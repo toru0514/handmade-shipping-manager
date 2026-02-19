@@ -280,4 +280,61 @@ describe('OrdersPage (UC-006)', () => {
       expect(screen.getByRole('status')).toHaveTextContent('コピーしました');
     });
   });
+
+  it('伝票発行フローで結果と重複警告を表示できる', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url === '/api/orders/pending') {
+        return new Response(
+          JSON.stringify([
+            {
+              orderId: 'ORD-001',
+              platform: 'minne',
+              buyerName: '山田 太郎',
+              productName: 'ハンドメイドアクセサリー',
+              orderedAt: '2026-02-15T00:00:00.000Z',
+              daysSinceOrder: 2,
+              isOverdue: false,
+            },
+          ]),
+          { status: 200 },
+        );
+      }
+
+      if (url === '/api/orders/ORD-001/labels' && init?.method === 'POST') {
+        return new Response(
+          JSON.stringify({
+            orderId: 'ORD-001',
+            labelId: 'LBL-001',
+            shippingMethod: 'click_post',
+            labelType: 'click_post',
+            status: 'issued',
+            issuedAt: '2026-03-03T00:00:00.000Z',
+            pdfData: 'ZHVtbXk=',
+            trackingNumber: 'CP123456789JP',
+            warnings: ['同一注文に既存の伝票があります（重複発行）'],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<OrdersPage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('order-card-ORD-001')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '伝票発行' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: '伝票発行結果' })).toBeInTheDocument();
+      expect(screen.getByRole('alert')).toHaveTextContent('同一注文に既存の伝票があります');
+      expect(screen.getByRole('link', { name: 'PDFをダウンロード' })).toBeInTheDocument();
+    });
+  });
 });

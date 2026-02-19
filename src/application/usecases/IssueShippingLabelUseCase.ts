@@ -1,5 +1,7 @@
+import { ClickPostLabel } from '@/domain/entities/ClickPostLabel';
 import { Order } from '@/domain/entities/Order';
 import { ShippingLabel } from '@/domain/entities/ShippingLabel';
+import { YamatoCompactLabel } from '@/domain/entities/YamatoCompactLabel';
 import { OrderRepository } from '@/domain/ports/OrderRepository';
 import { ShippingLabelIssuer } from '@/domain/ports/ShippingLabelIssuer';
 import { ShippingLabelRepository } from '@/domain/ports/ShippingLabelRepository';
@@ -26,6 +28,10 @@ export interface IssueShippingLabelResultDto {
   readonly status: string;
   readonly issuedAt: string;
   readonly expiresAt?: string;
+  readonly pdfData?: string;
+  readonly trackingNumber?: string;
+  readonly qrCode?: string;
+  readonly waybillNumber?: string;
   readonly warnings?: string[];
 }
 
@@ -68,6 +74,13 @@ export class IssueShippingLabelUseCase {
       status: issuedLabel.status,
       issuedAt: issuedLabel.issuedAt.toISOString(),
       expiresAt: issuedLabel.expiresAt?.toISOString(),
+      // TODO: 新しい配送方法を追加する場合は ShippingLabel.toLabelData() の抽象メソッド化を検討
+      pdfData: issuedLabel instanceof ClickPostLabel ? issuedLabel.pdfData : undefined,
+      trackingNumber:
+        issuedLabel instanceof ClickPostLabel ? issuedLabel.trackingNumber.toString() : undefined,
+      qrCode: issuedLabel instanceof YamatoCompactLabel ? issuedLabel.qrCode : undefined,
+      waybillNumber:
+        issuedLabel instanceof YamatoCompactLabel ? issuedLabel.waybillNumber : undefined,
       warnings,
     };
   }
