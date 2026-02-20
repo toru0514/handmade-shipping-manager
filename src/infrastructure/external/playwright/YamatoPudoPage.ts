@@ -1,11 +1,22 @@
 import { Order } from '@/domain/entities/Order';
 
-const YAMATO_PUDO_URL = 'https://pudo.kuronekoyamato.co.jp/';
+const YAMATO_AUTH_LOGIN_URL = 'https://auth.kms.kuronekoyamato.co.jp/auth/login';
+const YAMATO_SHIP_BOOK_MENU_URL =
+  'https://ship-book.kuronekoyamato.co.jp/ship_book/index.jsp?_A=OTODOKE&_R=menu_personal_portal&utm_source=NRCWBMM0120';
 const SHORT_TIMEOUT_MS = 1_500;
 
 const SELECTORS = {
-  memberId: ['#member-id', 'input[name="member_id"]', 'input[name="memberId"]'] as const,
-  password: ['#password', 'input[name="password"]'] as const,
+  memberId: [
+    '#member-id',
+    '#loginId',
+    'input[name="member_id"]',
+    'input[name="memberId"]',
+    'input[name="login_id"]',
+    'input[name="loginId"]',
+    'input[name="mailAddress"]',
+    'input[type="email"]',
+  ] as const,
+  password: ['#password', 'input[name="password"]', 'input[name="passwd"]'] as const,
   loginButton: [
     'text=ログイン',
     'button:has-text("ログイン")',
@@ -66,9 +77,11 @@ export class YamatoPudoPage {
   constructor(private readonly page: YamatoPlaywrightPageLike) {}
 
   async issueLabel(order: Order, credentials: YamatoCredentials): Promise<YamatoIssueResult> {
-    await this.page.goto(YAMATO_PUDO_URL);
+    await this.page.goto(YAMATO_AUTH_LOGIN_URL);
     await this.page.waitForLoadState?.('domcontentloaded');
     await this.login(credentials);
+    await this.page.goto(YAMATO_SHIP_BOOK_MENU_URL);
+    await this.page.waitForLoadState?.('domcontentloaded');
     await this.openIssueForm();
     await this.fillOrder(order);
     await this.clickFirst(SELECTORS.issueButton, '送り状発行ボタン');
