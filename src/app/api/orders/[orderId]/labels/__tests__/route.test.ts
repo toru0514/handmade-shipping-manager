@@ -159,16 +159,16 @@ describe('POST /api/orders/[orderId]/labels', () => {
   });
 });
 
-describe('parseServiceAccountKeyFromBase64ForTest', () => {
+describe('parseServiceAccountKeyFromBase64', () => {
   it('不正な Base64 文字列はエラー', () => {
-    expect(() => routeModule.parseServiceAccountKeyFromBase64ForTest('%%%invalid%%%')).toThrow(
+    expect(() => routeModule.parseServiceAccountKeyFromBase64('%%%invalid%%%')).toThrow(
       'GOOGLE_SERVICE_ACCOUNT_BASE64 のデコードまたは JSON パースに失敗しました',
     );
   });
 
   it('デコード後 JSON に必須キーがない場合はエラー', () => {
     const payload = Buffer.from(JSON.stringify({ project_id: 'dummy' }), 'utf8').toString('base64');
-    expect(() => routeModule.parseServiceAccountKeyFromBase64ForTest(payload)).toThrow(
+    expect(() => routeModule.parseServiceAccountKeyFromBase64(payload)).toThrow(
       'GOOGLE_SERVICE_ACCOUNT_BASE64 をデコードした JSON に client_email と private_key が含まれていません',
     );
   });
@@ -182,7 +182,7 @@ describe('parseServiceAccountKeyFromBase64ForTest', () => {
       'utf8',
     ).toString('base64');
 
-    const key = routeModule.parseServiceAccountKeyFromBase64ForTest(payload);
+    const key = routeModule.parseServiceAccountKeyFromBase64(payload);
     expect(key).toEqual({
       client_email: 'service-account@example.iam.gserviceaccount.com',
       private_key: '-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----\\n',

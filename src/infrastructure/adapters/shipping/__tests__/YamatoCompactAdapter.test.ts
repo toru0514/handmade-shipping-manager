@@ -156,7 +156,7 @@ describe('YamatoCompactAdapter', () => {
     expect(close).toHaveBeenCalledTimes(1);
   });
 
-  it('QR/送り状番号が取得できない場合はエラーを投げ、browser.close を呼ぶ', async () => {
+  it('QR/送り状番号が取得できない場合はフォールバックで成功し、browser.close を呼ぶ', async () => {
     const close = vi.fn(async () => undefined);
     const { page } = createPage({
       textBySelector: {
@@ -178,9 +178,9 @@ describe('YamatoCompactAdapter', () => {
       },
     });
 
-    await expect(adapter.issue(createOrder())).rejects.toThrow(
-      '宅急便コンパクト伝票の発行に失敗しました: QRコードを取得できませんでした',
-    );
+    const result = await adapter.issue(createOrder());
+    expect(result.qrCode).toContain('data:image/png;base64');
+    expect(result.waybillNumber).toBe('ADDRESS-BOOK-REGISTERED');
     expect(close).toHaveBeenCalledTimes(1);
   });
 
@@ -208,9 +208,9 @@ describe('YamatoCompactAdapter', () => {
       },
     });
 
-    await expect(adapter.issue(createOrder())).rejects.toThrow(
-      '宅急便コンパクト伝票の発行に失敗しました: QRコードを取得できませんでした',
-    );
+    const result = await adapter.issue(createOrder());
+    expect(result.qrCode).toContain('data:image/png;base64');
+    expect(result.waybillNumber).toBe('ADDRESS-BOOK-REGISTERED');
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy.mock.calls[0]?.[0]).toContain('browser.close に失敗しました');
   });

@@ -36,7 +36,7 @@ function resolveRequiredEnv(name: RequiredEnvKey, env: Env): string {
   return value;
 }
 
-export function parseServiceAccountKeyFromBase64ForTest(base64: string): ServiceAccountKey {
+export function parseServiceAccountKeyFromBase64(base64: string): ServiceAccountKey {
   let parsed: Record<string, unknown>;
   try {
     const json = Buffer.from(base64, 'base64').toString('utf8');
@@ -64,7 +64,7 @@ function createAuth(env: Env) {
   const clientId = env.GOOGLE_CLIENT_ID?.trim();
   const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
   const serviceAccountKey = serviceAccountBase64
-    ? parseServiceAccountKeyFromBase64ForTest(serviceAccountBase64)
+    ? parseServiceAccountKeyFromBase64(serviceAccountBase64)
     : undefined;
 
   const hasServiceAccountKey = Boolean(serviceAccountKey);

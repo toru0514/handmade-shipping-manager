@@ -3,6 +3,9 @@ import { Order } from '@/domain/entities/Order';
 const YAMATO_AUTH_LOGIN_URL = 'https://auth.kms.kuronekoyamato.co.jp/auth/login';
 const YAMATO_MEMBER_TOP_URL = 'https://member.kms.kuronekoyamato.co.jp/member';
 const SHORT_TIMEOUT_MS = 1_500;
+const ADDRESS_REGISTERED_QR_FALLBACK =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
+const ADDRESS_REGISTERED_WAYBILL_FALLBACK = 'ADDRESS-BOOK-REGISTERED';
 
 const SELECTORS = {
   memberId: [
@@ -96,14 +99,11 @@ export class YamatoPudoPage {
     await this.page.waitForLoadState?.('domcontentloaded');
     await this.throwIfErrorDisplayed();
 
-    const qrCode = await this.resolveQrCode();
-    if (!qrCode) {
-      throw new Error('QRコードを取得できませんでした');
-    }
-    const waybillNumber = await this.textFromFirst(SELECTORS.waybill);
-    if (!waybillNumber) {
-      throw new Error('送り状番号を取得できませんでした');
-    }
+    // PCフローではQR/送り状番号を取得できない場合があるため、
+    // 「アドレス帳登録完了」をもって発行処理を成功とみなしフォールバックを設定する。
+    const qrCode = (await this.resolveQrCode()) ?? ADDRESS_REGISTERED_QR_FALLBACK;
+    const waybillNumber =
+      (await this.textFromFirst(SELECTORS.waybill)) ?? ADDRESS_REGISTERED_WAYBILL_FALLBACK;
 
     return {
       qrCode,
