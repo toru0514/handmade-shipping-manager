@@ -302,6 +302,14 @@ class CreemaAdapter implements OrderFetcher {
 }
 ```
 
+#### 購入者名（buyerName）の運用方針
+
+- `PlatformOrderData.buyerName` は「姓 + 半角/全角スペース + 名」の単一文字列で扱う
+- `BuyerName` は単一の値オブジェクトとして維持し、ドメイン層では姓/名へ分割しない
+- minne/creema 側が姓/名を別フィールドで返す場合も、アダプター層で連結して `buyerName` に渡す
+- クリックポスト/ヤマトなど外部フォーム都合の分割は、ドメインではなくアダプター層で吸収する
+- ヤマト連携では、姓欄へ氏名全体を入力し名欄を空で送信する挙動を許容する
+
 ### NotificationSender（通知送信ポート）
 
 通知を送信するポート。
