@@ -20,7 +20,10 @@ import {
   toApiErrorResponse,
 } from '@/infrastructure/errors/HttpErrors';
 import { ChromiumBrowserFactory } from '@/infrastructure/external/playwright/ChromiumBrowserFactory';
-import { GoogleSheetsClient } from '@/infrastructure/external/google/SheetsClient';
+import {
+  GoogleSheetsClient,
+  type ServiceAccountKey,
+} from '@/infrastructure/external/google/SheetsClient';
 
 type Env = Readonly<Record<string, string | undefined>>;
 type RequiredEnvKey = 'GOOGLE_SHEETS_SPREADSHEET_ID';
@@ -33,12 +36,38 @@ function resolveRequiredEnv(name: RequiredEnvKey, env: Env): string {
   return value;
 }
 
+function parseServiceAccountKeyFromBase64(base64: string): ServiceAccountKey {
+  let parsed: Record<string, unknown>;
+  try {
+    const json = Buffer.from(base64, 'base64').toString('utf8');
+    parsed = JSON.parse(json) as Record<string, unknown>;
+  } catch {
+    throw new Error('GOOGLE_SERVICE_ACCOUNT_BASE64 のデコードまたは JSON パースに失敗しました');
+  }
+
+  if (typeof parsed.client_email !== 'string' || typeof parsed.private_key !== 'string') {
+    throw new Error(
+      'GOOGLE_SERVICE_ACCOUNT_BASE64 をデコードした JSON に client_email と private_key が含まれていません',
+    );
+  }
+
+  return {
+    client_email: parsed.client_email,
+    private_key: parsed.private_key,
+  };
+}
+
 function createAuth(env: Env) {
+  const serviceAccountBase64 = env.GOOGLE_SERVICE_ACCOUNT_BASE64?.trim();
   const accessToken = env.GOOGLE_SHEETS_ACCESS_TOKEN?.trim();
   const refreshToken = env.GOOGLE_SHEETS_REFRESH_TOKEN?.trim();
   const clientId = env.GOOGLE_CLIENT_ID?.trim();
   const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
+  const serviceAccountKey = serviceAccountBase64
+    ? parseServiceAccountKeyFromBase64(serviceAccountBase64)
+    : undefined;
 
+  const hasServiceAccountKey = Boolean(serviceAccountKey);
   const hasRefreshToken = Boolean(refreshToken);
   const hasClientId = Boolean(clientId);
   const hasClientSecret = Boolean(clientSecret);
@@ -50,13 +79,14 @@ function createAuth(env: Env) {
   }
 
   const hasRefreshTokenConfig = Boolean(refreshToken && clientId && clientSecret);
-  if (!accessToken && !hasRefreshTokenConfig) {
+  if (!hasServiceAccountKey && !accessToken && !hasRefreshTokenConfig) {
     throw new Error(
-      'Google Sheets 認証情報が不足しています: GOOGLE_SHEETS_ACCESS_TOKEN または GOOGLE_SHEETS_REFRESH_TOKEN + GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET を設定してください',
+      'Google Sheets 認証情報が不足しています: GOOGLE_SERVICE_ACCOUNT_BASE64, GOOGLE_SHEETS_ACCESS_TOKEN, または GOOGLE_SHEETS_REFRESH_TOKEN + GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET を設定してください',
     );
   }
 
   return {
+    serviceAccountKey,
     accessToken,
     refreshToken,
     clientId,
