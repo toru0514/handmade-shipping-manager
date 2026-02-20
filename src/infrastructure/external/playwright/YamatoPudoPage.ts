@@ -7,6 +7,7 @@ const SHORT_TIMEOUT_MS = 1_500;
 
 const SELECTORS = {
   memberId: [
+    '#login-form-id',
     '#member-id',
     '#loginId',
     'input[name="member_id"]',
@@ -16,7 +17,12 @@ const SELECTORS = {
     'input[name="mailAddress"]',
     'input[type="email"]',
   ] as const,
-  password: ['#password', 'input[name="password"]', 'input[name="passwd"]'] as const,
+  password: [
+    '#login-form-password',
+    '#password',
+    'input[name="password"]',
+    'input[name="passwd"]',
+  ] as const,
   loginButton: [
     'text=ログイン',
     'button:has-text("ログイン")',
@@ -79,6 +85,7 @@ export class YamatoPudoPage {
   async issueLabel(order: Order, credentials: YamatoCredentials): Promise<YamatoIssueResult> {
     await this.page.goto(YAMATO_AUTH_LOGIN_URL);
     await this.page.waitForLoadState?.('domcontentloaded');
+    await this.page.waitForLoadState?.('networkidle');
     await this.login(credentials);
     await this.page.goto(YAMATO_SHIP_BOOK_MENU_URL);
     await this.page.waitForLoadState?.('domcontentloaded');

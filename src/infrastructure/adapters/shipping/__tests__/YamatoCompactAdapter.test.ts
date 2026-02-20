@@ -74,8 +74,8 @@ describe('YamatoCompactAdapter', () => {
       2,
       'https://ship-book.kuronekoyamato.co.jp/ship_book/index.jsp?_A=OTODOKE&_R=menu_personal_portal&utm_source=NRCWBMM0120',
     );
-    expect(fill).toHaveBeenCalledWith('#member-id', 'yamato-id');
-    expect(fill).toHaveBeenCalledWith('#password', 'secret');
+    expect(fill).toHaveBeenCalledWith('#login-form-id', 'yamato-id');
+    expect(fill).toHaveBeenCalledWith('#login-form-password', 'secret');
     expect(click).toHaveBeenCalledWith('text=ログイン');
     expect(click).toHaveBeenCalledWith('text=宅急便コンパクト');
     expect(click).toHaveBeenCalledWith('text=PUDO');
