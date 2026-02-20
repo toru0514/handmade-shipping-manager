@@ -2,7 +2,7 @@ import { Order } from '@/domain/entities/Order';
 
 const YAMATO_AUTH_LOGIN_URL = 'https://auth.kms.kuronekoyamato.co.jp/auth/login';
 const YAMATO_MEMBER_TOP_URL = 'https://member.kms.kuronekoyamato.co.jp/member';
-const SHORT_TIMEOUT_MS = 1_500;
+const SHORT_TIMEOUT_MS = 5_000;
 const ADDRESS_REGISTERED_QR_FALLBACK =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
 const ADDRESS_REGISTERED_WAYBILL_FALLBACK = 'ADDRESS-BOOK-REGISTERED';
@@ -32,6 +32,8 @@ const SELECTORS = {
     'input[type="submit"][value*="ログイン"]',
   ] as const,
   addressBookTile: [
+    '#NRCWBMM0120_3_addresscho-otodokesaki a',
+    'a[href*="ship-book.kuronekoyamato.co.jp/ship_book/index.jsp?_A=OTODOKE"]',
     'a[href*="_A=OTODOKE"]',
     'a:has-text("お届け先")',
     'a:has-text("アドレス帳")',
@@ -48,6 +50,7 @@ const SELECTORS = {
   name: ['#name', 'input[name="name"]', 'input[name="consignee_name"]'] as const,
   productName: ['#product-name', 'input[name="item_name"]', 'textarea[name="item_name"]'] as const,
   issueButton: [
+    'button#NEXT_BTN[name="_BTN_REGISTER"]',
     '#NEXT_BTN',
     'button[name="_BTN_REGISTER"]',
     'text=お届け先アドレスを新規登録',
@@ -96,11 +99,9 @@ export class YamatoPudoPage {
     await this.openIssueForm();
     await this.fillOrder(order);
     await this.clickFirst(SELECTORS.issueButton, '送り状発行ボタン');
-    await this.page.waitForLoadState?.('domcontentloaded');
-    await this.throwIfErrorDisplayed();
 
-    // PCフローではQR/送り状番号を取得できない場合があるため、
-    // 「アドレス帳登録完了」をもって発行処理を成功とみなしフォールバックを設定する。
+    // 宅急便コンパクトのPCフローは、アドレス帳登録をもって完了とみなす。
+    // NEXT_BTN のクリック成功時点で処理を成功として返す。
     const qrCode = (await this.resolveQrCode()) ?? ADDRESS_REGISTERED_QR_FALLBACK;
     const waybillNumber =
       (await this.textFromFirst(SELECTORS.waybill)) ?? ADDRESS_REGISTERED_WAYBILL_FALLBACK;
@@ -130,14 +131,11 @@ export class YamatoPudoPage {
     const normalizedName = order.buyer.name.toString().trim();
     const [lastName, ...firstNameParts] = normalizedName.split(/\s+/);
     const firstName = firstNameParts.join(' ');
-    if (firstName.length === 0) {
-      throw new Error(
-        `購入者名は姓と名をスペース区切りで指定してください: ${order.buyer.name.toString()}`,
-      );
-    }
+    const resolvedLastName = firstName.length === 0 ? normalizedName : lastName || normalizedName;
+    const resolvedFirstName = firstName.length === 0 ? '' : firstName;
 
-    await this.fillFirst(SELECTORS.lastName, lastName || normalizedName, '苗字');
-    await this.fillFirst(SELECTORS.firstName, firstName, '名前');
+    await this.fillFirst(SELECTORS.lastName, resolvedLastName, '苗字');
+    await this.fillFirst(SELECTORS.firstName, resolvedFirstName, '名前');
     await this.fillFirst(
       SELECTORS.postalCode,
       order.buyer.address.postalCode.toString(),

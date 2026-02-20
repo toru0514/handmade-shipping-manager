@@ -215,9 +215,9 @@ describe('YamatoCompactAdapter', () => {
     expect(warnSpy.mock.calls[0]?.[0]).toContain('browser.close に失敗しました');
   });
 
-  it('購入者名がスペース区切りでない場合はエラーを投げる', async () => {
+  it('購入者名がスペース区切りでない場合もエラーにせず処理できる', async () => {
     const close = vi.fn(async () => undefined);
-    const { page } = createPage();
+    const { page, spies } = createPage();
     const browserFactory = {
       launch: vi.fn(async () => ({
         newPage: vi.fn(async () => page),
@@ -232,9 +232,11 @@ describe('YamatoCompactAdapter', () => {
       },
     });
 
-    await expect(adapter.issue(createOrderWithoutSpace())).rejects.toThrow(
-      '宅急便コンパクト伝票の発行に失敗しました: 購入者名は姓と名をスペース区切りで指定してください: 山田花子',
-    );
+    const result = await adapter.issue(createOrderWithoutSpace());
+    expect(result.qrCode).toBe('YAMATO-QR-DATA');
+    expect(result.waybillNumber).toBe('YMT-1234-5678');
+    expect(spies.fill).toHaveBeenCalledWith('#lastNmCenter', '山田花子');
+    expect(spies.fill).toHaveBeenCalledWith('#firstNmCenter', '');
     expect(close).toHaveBeenCalledTimes(1);
   });
 });
