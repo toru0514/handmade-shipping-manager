@@ -3,9 +3,6 @@ import { Order } from '@/domain/entities/Order';
 const YAMATO_AUTH_LOGIN_URL = 'https://auth.kms.kuronekoyamato.co.jp/auth/login';
 const YAMATO_MEMBER_TOP_URL = 'https://member.kms.kuronekoyamato.co.jp/member';
 const SHORT_TIMEOUT_MS = 1_500;
-const ADDRESS_REGISTERED_QR_FALLBACK =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
-const ADDRESS_REGISTERED_WAYBILL_FALLBACK = 'ADDRESS-BOOK-REGISTERED';
 
 const SELECTORS = {
   memberId: [
@@ -56,13 +53,7 @@ const SELECTORS = {
   qrImageSrc: ['img[alt*="QR"]', 'img[src^="data:image"]', 'canvas + img'] as const,
   qrInputValue: ['input[name="qrCode"]', 'input[name="qr_code"]'] as const,
   waybill: ['#waybill-number', '[data-testid="waybill-number"]', '.waybill-number'] as const,
-  error: [
-    '[role="alert"]',
-    '.error',
-    '.error-message',
-    'text=エラー',
-    'text=ログインに失敗',
-  ] as const,
+  error: ['[role="alert"]', '.error', '.error-message', 'text=ログインに失敗しました'] as const,
 } as const;
 
 export interface YamatoCredentials {
@@ -105,10 +96,14 @@ export class YamatoPudoPage {
     await this.page.waitForLoadState?.('domcontentloaded');
     await this.throwIfErrorDisplayed();
 
-    // アドレス帳登録フローでは QR / 送り状番号が表示されない場合があるためフォールバックを許容する。
-    const qrCode = (await this.resolveQrCode()) ?? ADDRESS_REGISTERED_QR_FALLBACK;
-    const waybillNumber =
-      (await this.textFromFirst(SELECTORS.waybill)) ?? ADDRESS_REGISTERED_WAYBILL_FALLBACK;
+    const qrCode = await this.resolveQrCode();
+    if (!qrCode) {
+      throw new Error('QRコードを取得できませんでした');
+    }
+    const waybillNumber = await this.textFromFirst(SELECTORS.waybill);
+    if (!waybillNumber) {
+      throw new Error('送り状番号を取得できませんでした');
+    }
 
     return {
       qrCode,
@@ -132,11 +127,17 @@ export class YamatoPudoPage {
   }
 
   private async fillOrder(order: Order): Promise<void> {
-    const [lastName, ...firstNameParts] = order.buyer.name.toString().trim().split(/\s+/);
+    const normalizedName = order.buyer.name.toString().trim();
+    const [lastName, ...firstNameParts] = normalizedName.split(/\s+/);
     const firstName = firstNameParts.join(' ');
+    if (firstName.length === 0) {
+      throw new Error(
+        `購入者名は姓と名をスペース区切りで指定してください: ${order.buyer.name.toString()}`,
+      );
+    }
 
-    await this.fillFirst(SELECTORS.lastName, lastName || order.buyer.name.toString(), '苗字');
-    await this.fillFirst(SELECTORS.firstName, firstName || '.', '名前');
+    await this.fillFirst(SELECTORS.lastName, lastName || normalizedName, '苗字');
+    await this.fillFirst(SELECTORS.firstName, firstName, '名前');
     await this.fillFirst(
       SELECTORS.postalCode,
       order.buyer.address.postalCode.toString(),
@@ -263,7 +264,7 @@ export class YamatoPudoPage {
 
   private async selectorExists(selector: string): Promise<boolean> {
     if (!this.page.waitForSelector) {
-      return true;
+      return false;
     }
 
     try {
