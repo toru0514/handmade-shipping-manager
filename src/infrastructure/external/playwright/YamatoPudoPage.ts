@@ -1,8 +1,7 @@
 import { Order } from '@/domain/entities/Order';
 
 const YAMATO_AUTH_LOGIN_URL = 'https://auth.kms.kuronekoyamato.co.jp/auth/login';
-const YAMATO_SHIP_BOOK_MENU_URL =
-  'https://ship-book.kuronekoyamato.co.jp/ship_book/index.jsp?_A=OTODOKE&_R=menu_personal_portal&utm_source=NRCWBMM0120';
+const YAMATO_MEMBER_TOP_URL = 'https://member.kms.kuronekoyamato.co.jp/member';
 const SHORT_TIMEOUT_MS = 1_500;
 
 const SELECTORS = {
@@ -29,14 +28,12 @@ const SELECTORS = {
     'button:has-text("ログイン")',
     'input[type="submit"][value*="ログイン"]',
   ] as const,
-  issueMenu: [
-    'text=送り状を発行する',
-    'text=送り状を発行',
-    'text=お届け先',
-    'text=新規登録',
+  addressBookTile: [
+    'a[href*="_A=OTODOKE"]',
+    'a:has-text("お届け先")',
+    'a:has-text("アドレス帳")',
   ] as const,
-  compactType: ['text=宅急便コンパクト'] as const,
-  pudoType: ['text=PUDO', 'text=宅配便ロッカー'] as const,
+  addressRegisterButton: ['#button_regist', 'a[href*="_A=REGISTER"]'] as const,
   postalCode: ['#postal-code', 'input[name="postal_code"]', 'input[name="zip"]'] as const,
   fullAddress: ['#address', 'textarea[name="address"]', 'input[name="address"]'] as const,
   prefecture: ['select[name="prefecture"]', 'input[name="prefecture"]'] as const,
@@ -92,7 +89,7 @@ export class YamatoPudoPage {
     await this.page.goto(YAMATO_AUTH_LOGIN_URL);
     await this.page.waitForLoadState?.('domcontentloaded');
     await this.login(credentials);
-    await this.page.goto(YAMATO_SHIP_BOOK_MENU_URL);
+    await this.page.goto(YAMATO_MEMBER_TOP_URL);
     await this.page.waitForLoadState?.('domcontentloaded');
     await this.openIssueForm();
     await this.fillOrder(order);
@@ -125,11 +122,9 @@ export class YamatoPudoPage {
   }
 
   private async openIssueForm(): Promise<void> {
-    // ship-book 側の画面種別により入口の文言が変わるため optional で進める。
-    await this.clickFirstOptional(SELECTORS.issueMenu);
+    await this.clickFirst(SELECTORS.addressBookTile, 'お届け先アドレス帳');
     await this.page.waitForLoadState?.('domcontentloaded');
-    await this.clickFirstOptional(SELECTORS.compactType);
-    await this.clickFirstOptional(SELECTORS.pudoType);
+    await this.clickFirst(SELECTORS.addressRegisterButton, 'お届け先アドレスを新規登録');
     await this.page.waitForLoadState?.('domcontentloaded');
   }
 
@@ -214,15 +209,6 @@ export class YamatoPudoPage {
       throw new Error(`${actionLabel} の要素が見つかりませんでした`);
     }
     await this.page.click(selector);
-  }
-
-  private async clickFirstOptional(selectors: readonly string[]): Promise<boolean> {
-    const selector = await this.firstExistingSelector(selectors);
-    if (!selector) {
-      return false;
-    }
-    await this.page.click(selector);
-    return true;
   }
 
   private async textFromFirst(selectors: readonly string[]): Promise<string | null> {

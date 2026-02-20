@@ -70,15 +70,12 @@ describe('YamatoCompactAdapter', () => {
     expect(result.expiresAt?.toISOString()).toBe('2026-03-25T00:00:00.000Z');
 
     expect(goto).toHaveBeenNthCalledWith(1, 'https://auth.kms.kuronekoyamato.co.jp/auth/login');
-    expect(goto).toHaveBeenNthCalledWith(
-      2,
-      'https://ship-book.kuronekoyamato.co.jp/ship_book/index.jsp?_A=OTODOKE&_R=menu_personal_portal&utm_source=NRCWBMM0120',
-    );
+    expect(goto).toHaveBeenNthCalledWith(2, 'https://member.kms.kuronekoyamato.co.jp/member');
     expect(fill).toHaveBeenCalledWith('#login-form-id', 'yamato-id');
     expect(fill).toHaveBeenCalledWith('#login-form-password', 'secret');
     expect(click).toHaveBeenCalledWith('#login-form-submit');
-    expect(click).toHaveBeenCalledWith('text=宅急便コンパクト');
-    expect(click).toHaveBeenCalledWith('text=PUDO');
+    expect(click).toHaveBeenCalledWith('a[href*="_A=OTODOKE"]');
+    expect(click).toHaveBeenCalledWith('#button_regist');
     expect(click).toHaveBeenCalledWith('text=送り状を発行');
     expect(close).toHaveBeenCalledTimes(1);
   });
