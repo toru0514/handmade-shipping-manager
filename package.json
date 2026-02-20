@@ -12,7 +12,6 @@
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write 'src/**/*.{ts,tsx}'",
     "format:check": "prettier --check 'src/**/*.{ts,tsx}'",
-    "postinstall": "npm run playwright:install",
     "prepare": "husky",
     "test": "vitest run",
     "test:watch": "vitest",

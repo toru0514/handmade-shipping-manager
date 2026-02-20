@@ -34,6 +34,8 @@ export class ChromiumBrowserFactory implements PlaywrightBrowserFactory, YamatoB
       headless: this.headless,
       timeout: this.timeoutMs,
     });
+    // Playwright Browser 型と adapter 側の BrowserLike 型を疎結合に保つため、
+    // launch の戻り値はこの境界で明示的にキャストする。
     return browser as PlaywrightBrowserLike & YamatoBrowserLike;
   }
 }

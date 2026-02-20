@@ -78,12 +78,21 @@ minne、creemaなどのハンドメイドプラットフォームで販売した
 # 依存関係のインストール
 npm install
 
+# Playwright (Chromium) のインストール
+npm run playwright:install
+
 # 開発サーバー起動
 npm run dev
 
 # テスト実行
 npm test
 ```
+
+## Playwright 実行環境について
+
+- 伝票発行 API はサーバーサイドで Playwright (Chromium) を実行します。
+- そのため、ブラウザ実行が可能な環境（VM / コンテナ / 自前サーバーなど）での運用を前提としています。
+- Vercel Serverless Functions 上での Playwright 実行は制約が多く、現構成では非推奨です。
 
 ## 環境変数
 
