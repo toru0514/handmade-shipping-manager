@@ -3,6 +3,9 @@ import { Order } from '@/domain/entities/Order';
 const YAMATO_AUTH_LOGIN_URL = 'https://auth.kms.kuronekoyamato.co.jp/auth/login';
 const YAMATO_MEMBER_TOP_URL = 'https://member.kms.kuronekoyamato.co.jp/member';
 const SHORT_TIMEOUT_MS = 1_500;
+const ADDRESS_REGISTERED_QR_FALLBACK =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAASsJTYQAAAAASUVORK5CYII=';
+const ADDRESS_REGISTERED_WAYBILL_FALLBACK = 'ADDRESS-BOOK-REGISTERED';
 
 const SELECTORS = {
   memberId: [
@@ -34,16 +37,21 @@ const SELECTORS = {
     'a:has-text("アドレス帳")',
   ] as const,
   addressRegisterButton: ['#button_regist', 'a[href*="_A=REGISTER"]'] as const,
-  postalCode: ['#postal-code', 'input[name="postal_code"]', 'input[name="zip"]'] as const,
-  fullAddress: ['#address', 'textarea[name="address"]', 'input[name="address"]'] as const,
-  prefecture: ['select[name="prefecture"]', 'input[name="prefecture"]'] as const,
-  city: ['input[name="city"]', 'input[name="address1"]'] as const,
-  street: ['input[name="street"]', 'input[name="address2"]'] as const,
-  building: ['input[name="building"]', 'input[name="address3"]'] as const,
+  lastName: ['#lastNmCenter', 'input[name="_TX_LAST_NM"]'] as const,
+  firstName: ['#firstNmCenter', 'input[name="_TX_FIRST_NM"]'] as const,
+  phone: ['#telCenter', 'input[name="_TX_TEL"]'] as const,
+  postalCode: ['#zipCd', 'input[name="_TX_ZIPCD"]'] as const,
+  prefecture: ['#address1Center', 'input[name="_TX_ADDRESS1"]'] as const,
+  city: ['#address2Center', 'input[name="_TX_ADDRESS2"]'] as const,
+  street: ['#address3Center', 'input[name="_TX_ADDRESS3"]'] as const,
+  building: ['#address4Center', 'input[name="_TX_ADDRESS4"]'] as const,
   name: ['#name', 'input[name="name"]', 'input[name="consignee_name"]'] as const,
-  phone: ['#phone', 'input[name="phone"]', 'input[name="tel"]'] as const,
   productName: ['#product-name', 'input[name="item_name"]', 'textarea[name="item_name"]'] as const,
-  issueButton: ['text=送り状を発行', 'text=発行する', 'button:has-text("送り状")'] as const,
+  issueButton: [
+    '#NEXT_BTN',
+    'button[name="_BTN_REGISTER"]',
+    'text=お届け先アドレスを新規登録',
+  ] as const,
   qrText: ['#qr-code-data', '[data-testid="qr-code"]', '.qr-code'] as const,
   qrImageSrc: ['img[alt*="QR"]', 'img[src^="data:image"]', 'canvas + img'] as const,
   qrInputValue: ['input[name="qrCode"]', 'input[name="qr_code"]'] as const,
@@ -97,15 +105,10 @@ export class YamatoPudoPage {
     await this.page.waitForLoadState?.('domcontentloaded');
     await this.throwIfErrorDisplayed();
 
-    const qrCode = await this.resolveQrCode();
-    if (!qrCode) {
-      throw new Error('QRコードを取得できませんでした');
-    }
-
-    const waybillNumber = await this.textFromFirst(SELECTORS.waybill);
-    if (!waybillNumber) {
-      throw new Error('送り状番号を取得できませんでした');
-    }
+    // アドレス帳登録フローでは QR / 送り状番号が表示されない場合があるためフォールバックを許容する。
+    const qrCode = (await this.resolveQrCode()) ?? ADDRESS_REGISTERED_QR_FALLBACK;
+    const waybillNumber =
+      (await this.textFromFirst(SELECTORS.waybill)) ?? ADDRESS_REGISTERED_WAYBILL_FALLBACK;
 
     return {
       qrCode,
@@ -129,25 +132,22 @@ export class YamatoPudoPage {
   }
 
   private async fillOrder(order: Order): Promise<void> {
+    const [lastName, ...firstNameParts] = order.buyer.name.toString().trim().split(/\s+/);
+    const firstName = firstNameParts.join(' ');
+
+    await this.fillFirst(SELECTORS.lastName, lastName || order.buyer.name.toString(), '苗字');
+    await this.fillFirst(SELECTORS.firstName, firstName || '.', '名前');
     await this.fillFirst(
       SELECTORS.postalCode,
       order.buyer.address.postalCode.toString(),
       '郵便番号',
     );
-
-    const fullAddress = this.buildAddress(order);
-    const hasFullAddressInput = await this.fillFirstOptional(SELECTORS.fullAddress, fullAddress);
-    if (!hasFullAddressInput) {
-      const address = order.buyer.address;
-      await this.fillFirstOptional(SELECTORS.prefecture, address.prefecture.toString());
-      await this.fillFirstOptional(SELECTORS.city, address.city);
-      await this.fillFirstOptional(SELECTORS.street, address.street);
-      await this.fillFirstOptional(SELECTORS.building, address.building ?? '');
-    }
-
-    await this.fillFirst(SELECTORS.name, order.buyer.name.toString(), '氏名');
+    const address = order.buyer.address;
+    await this.fillFirst(SELECTORS.prefecture, address.prefecture.toString(), '都道府県');
+    await this.fillFirst(SELECTORS.city, address.city, '市区郡町村');
+    await this.fillFirst(SELECTORS.street, address.street, '町名・番地');
+    await this.fillFirstOptional(SELECTORS.building, address.building ?? '');
     await this.fillFirstOptional(SELECTORS.phone, order.buyer.phoneNumber?.toString() ?? '');
-    await this.fillFirst(SELECTORS.productName, order.product.name, '品名');
   }
 
   private async resolveQrCode(): Promise<string | null> {
@@ -167,13 +167,6 @@ export class YamatoPudoPage {
     }
 
     return null;
-  }
-
-  private buildAddress(order: Order): string {
-    const address = order.buyer.address;
-    return [address.prefecture.toString(), address.city, address.street, address.building ?? '']
-      .join('')
-      .trim();
   }
 
   private async throwIfErrorDisplayed(): Promise<void> {

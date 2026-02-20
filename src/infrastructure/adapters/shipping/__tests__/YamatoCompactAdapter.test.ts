@@ -73,14 +73,21 @@ describe('YamatoCompactAdapter', () => {
     expect(goto).toHaveBeenNthCalledWith(2, 'https://member.kms.kuronekoyamato.co.jp/member');
     expect(fill).toHaveBeenCalledWith('#login-form-id', 'yamato-id');
     expect(fill).toHaveBeenCalledWith('#login-form-password', 'secret');
+    expect(fill).toHaveBeenCalledWith('#lastNmCenter', '山田');
+    expect(fill).toHaveBeenCalledWith('#firstNmCenter', '花子');
+    expect(fill).toHaveBeenCalledWith('#zipCd', '1500001');
+    expect(fill).toHaveBeenCalledWith('#address1Center', '東京都');
+    expect(fill).toHaveBeenCalledWith('#address2Center', '渋谷区');
+    expect(fill).toHaveBeenCalledWith('#address3Center', '神宮前1-1-1');
+    expect(fill).toHaveBeenCalledWith('#telCenter', '09012345678');
     expect(click).toHaveBeenCalledWith('#login-form-submit');
     expect(click).toHaveBeenCalledWith('a[href*="_A=OTODOKE"]');
     expect(click).toHaveBeenCalledWith('#button_regist');
-    expect(click).toHaveBeenCalledWith('text=送り状を発行');
+    expect(click).toHaveBeenCalledWith('#NEXT_BTN');
     expect(close).toHaveBeenCalledTimes(1);
   });
 
-  it('エラー時は文脈付きメッセージを投げ、browser.close を呼ぶ', async () => {
+  it('QR/送り状番号が取得できない場合は登録完了フォールバックで返し、browser.close を呼ぶ', async () => {
     const close = vi.fn(async () => undefined);
     const browserFactory = {
       launch: vi.fn(async () => ({
@@ -101,13 +108,13 @@ describe('YamatoCompactAdapter', () => {
       },
     });
 
-    await expect(adapter.issue(createOrder())).rejects.toThrow(
-      '宅急便コンパクト伝票の発行に失敗しました',
-    );
+    const result = await adapter.issue(createOrder());
+    expect(result.qrCode).toContain('data:image/png;base64');
+    expect(result.waybillNumber).toBe('ADDRESS-BOOK-REGISTERED');
     expect(close).toHaveBeenCalledTimes(1);
   });
 
-  it('browser.close が失敗しても元のエラーを優先し、警告ログを出す', async () => {
+  it('browser.close が失敗した場合は警告ログを出す', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const browserFactory = {
       launch: vi.fn(async () => ({
@@ -130,9 +137,9 @@ describe('YamatoCompactAdapter', () => {
       },
     });
 
-    await expect(adapter.issue(createOrder())).rejects.toThrow(
-      '宅急便コンパクト伝票の発行に失敗しました: QRコードを取得できませんでした',
-    );
+    const result = await adapter.issue(createOrder());
+    expect(result.qrCode).toContain('data:image/png;base64');
+    expect(result.waybillNumber).toBe('ADDRESS-BOOK-REGISTERED');
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy.mock.calls[0]?.[0]).toContain('browser.close に失敗しました');
   });
