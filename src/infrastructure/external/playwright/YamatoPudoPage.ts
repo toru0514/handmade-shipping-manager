@@ -85,14 +85,13 @@ export class YamatoPudoPage {
   async issueLabel(order: Order, credentials: YamatoCredentials): Promise<YamatoIssueResult> {
     await this.page.goto(YAMATO_AUTH_LOGIN_URL);
     await this.page.waitForLoadState?.('domcontentloaded');
-    await this.page.waitForLoadState?.('networkidle');
     await this.login(credentials);
     await this.page.goto(YAMATO_SHIP_BOOK_MENU_URL);
     await this.page.waitForLoadState?.('domcontentloaded');
     await this.openIssueForm();
     await this.fillOrder(order);
     await this.clickFirst(SELECTORS.issueButton, '送り状発行ボタン');
-    await this.page.waitForLoadState?.('networkidle');
+    await this.page.waitForLoadState?.('domcontentloaded');
     await this.throwIfErrorDisplayed();
 
     const qrCode = await this.resolveQrCode();
