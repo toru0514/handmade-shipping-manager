@@ -24,11 +24,17 @@ const SELECTORS = {
     'input[name="passwd"]',
   ] as const,
   loginButton: [
+    '#login-form-submit',
     'text=ログイン',
     'button:has-text("ログイン")',
     'input[type="submit"][value*="ログイン"]',
   ] as const,
-  issueMenu: ['text=送り状を発行する', 'text=送り状を発行'] as const,
+  issueMenu: [
+    'text=送り状を発行する',
+    'text=送り状を発行',
+    'text=お届け先',
+    'text=新規登録',
+  ] as const,
   compactType: ['text=宅急便コンパクト'] as const,
   pudoType: ['text=PUDO', 'text=宅配便ロッカー'] as const,
   postalCode: ['#postal-code', 'input[name="postal_code"]', 'input[name="zip"]'] as const,
@@ -119,10 +125,11 @@ export class YamatoPudoPage {
   }
 
   private async openIssueForm(): Promise<void> {
-    await this.clickFirst(SELECTORS.issueMenu, '送り状発行メニュー');
+    // ship-book 側の画面種別により入口の文言が変わるため optional で進める。
+    await this.clickFirstOptional(SELECTORS.issueMenu);
     await this.page.waitForLoadState?.('domcontentloaded');
-    await this.clickFirst(SELECTORS.compactType, '宅急便コンパクト');
-    await this.clickFirst(SELECTORS.pudoType, 'PUDO');
+    await this.clickFirstOptional(SELECTORS.compactType);
+    await this.clickFirstOptional(SELECTORS.pudoType);
     await this.page.waitForLoadState?.('domcontentloaded');
   }
 
@@ -207,6 +214,15 @@ export class YamatoPudoPage {
       throw new Error(`${actionLabel} の要素が見つかりませんでした`);
     }
     await this.page.click(selector);
+  }
+
+  private async clickFirstOptional(selectors: readonly string[]): Promise<boolean> {
+    const selector = await this.firstExistingSelector(selectors);
+    if (!selector) {
+      return false;
+    }
+    await this.page.click(selector);
+    return true;
   }
 
   private async textFromFirst(selectors: readonly string[]): Promise<string | null> {

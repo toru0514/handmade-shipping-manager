@@ -76,7 +76,7 @@ describe('YamatoCompactAdapter', () => {
     );
     expect(fill).toHaveBeenCalledWith('#login-form-id', 'yamato-id');
     expect(fill).toHaveBeenCalledWith('#login-form-password', 'secret');
-    expect(click).toHaveBeenCalledWith('text=ログイン');
+    expect(click).toHaveBeenCalledWith('#login-form-submit');
     expect(click).toHaveBeenCalledWith('text=宅急便コンパクト');
     expect(click).toHaveBeenCalledWith('text=PUDO');
     expect(click).toHaveBeenCalledWith('text=送り状を発行');
