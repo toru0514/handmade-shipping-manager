@@ -40,3 +40,5 @@ yarn-error.log*
 # Playwright
 playwright-report/
 playwright/.cache/
+test-results/
+ms-playwright/
