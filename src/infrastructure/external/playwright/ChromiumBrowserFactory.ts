@@ -2,12 +2,12 @@ import { chromium } from 'playwright';
 import type {
   PlaywrightBrowserFactory,
   PlaywrightBrowserLike,
-  PlaywrightPageLike,
 } from '@/infrastructure/adapters/shipping/ClickPostAdapter';
 import type {
   YamatoBrowserFactory,
   YamatoBrowserLike,
 } from '@/infrastructure/adapters/shipping/YamatoCompactAdapter';
+import type { PlaywrightPageLike } from './ClickPostPage';
 
 interface ChromiumLike {
   launch(options: { headless: boolean; timeout?: number }): Promise<BrowserInstance>;
