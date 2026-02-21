@@ -33,6 +33,7 @@ describe('ClickPostAdapter', () => {
     const goto = vi.fn(async () => undefined);
     const fill = vi.fn(async () => undefined);
     const click = vi.fn(async () => undefined);
+    const waitForSelector = vi.fn(async () => ({}));
     const waitForEvent = vi.fn(async () => ({
       createReadStream: vi.fn(async () => Readable.from([Buffer.from('dummy-pdf')])),
     }));
@@ -44,6 +45,7 @@ describe('ClickPostAdapter', () => {
           goto,
           fill,
           click,
+          waitForSelector,
           waitForEvent,
           textContent,
         })),
@@ -72,19 +74,21 @@ describe('ClickPostAdapter', () => {
 
     expect(browserFactory.launch).toHaveBeenCalledTimes(1);
     expect(goto).toHaveBeenCalledWith('https://clickpost.jp/');
-    expect(fill).toHaveBeenCalledWith('#email', 'test@example.com');
-    expect(fill).toHaveBeenCalledWith('#password', 'secret');
+    expect(fill).toHaveBeenCalledWith('#ap_email', 'test@example.com');
+    expect(fill).toHaveBeenCalledWith('#ap_password', 'secret');
     expect(close).toHaveBeenCalledTimes(1);
   });
 
   it('エラー時は文脈付きメッセージを投げ、browser.close を呼ぶ', async () => {
     const close = vi.fn(async () => undefined);
+    const waitForSelector = vi.fn(async () => ({}));
     const browserFactory: PlaywrightBrowserFactory = {
       launch: vi.fn(async () => ({
         newPage: vi.fn(async () => ({
           goto: vi.fn(async () => undefined),
           fill: vi.fn(async () => undefined),
           click: vi.fn(async () => undefined),
+          waitForSelector,
           waitForEvent: vi.fn(async () => ({
             createReadStream: vi.fn(async () => null),
           })),
@@ -109,12 +113,14 @@ describe('ClickPostAdapter', () => {
 
   it('PDFストリームが空の場合はエラーになる', async () => {
     const close = vi.fn(async () => undefined);
+    const waitForSelector = vi.fn(async () => ({}));
     const browserFactory: PlaywrightBrowserFactory = {
       launch: vi.fn(async () => ({
         newPage: vi.fn(async () => ({
           goto: vi.fn(async () => undefined),
           fill: vi.fn(async () => undefined),
           click: vi.fn(async () => undefined),
+          waitForSelector,
           waitForEvent: vi.fn(async () => ({
             createReadStream: vi.fn(async () => Readable.from([])),
           })),
@@ -140,12 +146,14 @@ describe('ClickPostAdapter', () => {
   it('browser.close が失敗しても元のエラーを優先し、警告ログを出す', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const closeError = new Error('close failed');
+    const waitForSelector = vi.fn(async () => ({}));
     const browserFactory: PlaywrightBrowserFactory = {
       launch: vi.fn(async () => ({
         newPage: vi.fn(async () => ({
           goto: vi.fn(async () => undefined),
           fill: vi.fn(async () => undefined),
           click: vi.fn(async () => undefined),
+          waitForSelector,
           waitForEvent: vi.fn(async () => ({
             createReadStream: vi.fn(async () => null),
           })),
@@ -169,5 +177,46 @@ describe('ClickPostAdapter', () => {
     );
     expect(warnSpy).toHaveBeenCalledTimes(1);
     expect(warnSpy.mock.calls[0]?.[0]).toContain('browser.close に失敗しました');
+  });
+
+  it('manualLogin=true の場合は手動ログイン完了を待って処理を継続する', async () => {
+    const goto = vi.fn(async () => undefined);
+    const fill = vi.fn(async () => undefined);
+    const click = vi.fn(async () => undefined);
+    const waitForSelector = vi.fn(async () => ({}));
+    const waitForEvent = vi.fn(async () => ({
+      createReadStream: vi.fn(async () => Readable.from([Buffer.from('dummy-pdf')])),
+    }));
+    const textContent = vi.fn(async (selector: string) =>
+      selector === '#tracking-number' ? 'CP123456789JP' : 'dummy',
+    );
+    const close = vi.fn(async () => undefined);
+    const browserFactory: PlaywrightBrowserFactory = {
+      launch: vi.fn(async () => ({
+        newPage: vi.fn(async () => ({
+          goto,
+          fill,
+          click,
+          waitForSelector,
+          waitForEvent,
+          textContent,
+        })),
+        close,
+      })),
+    };
+
+    const adapter = new ClickPostAdapter({
+      browserFactory,
+      credentials: { email: '', password: '' },
+      manualLogin: true,
+    });
+
+    const result = await adapter.issue(createOrder());
+    expect(result.trackingNumber.toString()).toBe('CP123456789JP');
+    expect(waitForSelector).toHaveBeenCalledWith(
+      'input[type="submit"][value="1件申込"]',
+      expect.objectContaining({ state: 'visible' }),
+    );
+    expect(close).toHaveBeenCalledTimes(1);
   });
 });

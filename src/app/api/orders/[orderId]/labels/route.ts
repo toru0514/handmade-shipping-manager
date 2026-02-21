@@ -7,7 +7,10 @@ import {
 } from '@/application/usecases/IssueShippingLabelErrors';
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
 import { SpreadsheetShippingLabelRepository } from '@/infrastructure/adapters/persistence/SpreadsheetShippingLabelRepository';
-import { ClickPostAdapter } from '@/infrastructure/adapters/shipping/ClickPostAdapter';
+import {
+  ClickPostAdapter,
+  ClickPostDryRunCompletedError,
+} from '@/infrastructure/adapters/shipping/ClickPostAdapter';
 import type { ClickPostGateway } from '@/infrastructure/adapters/shipping/ClickPostGateway';
 import { ShippingLabelIssuerImpl } from '@/infrastructure/adapters/shipping/ShippingLabelIssuerImpl';
 import { YamatoCompactAdapter } from '@/infrastructure/adapters/shipping/YamatoCompactAdapter';
@@ -122,6 +125,26 @@ function resolvePlaywrightTimeoutMs(env: Env): number | undefined {
   return parsed;
 }
 
+function resolvePlaywrightIgnoreHTTPSErrors(env: Env): boolean {
+  const value = env.PLAYWRIGHT_IGNORE_HTTPS_ERRORS?.trim().toLowerCase();
+  if (!value) {
+    return false;
+  }
+  return value === 'true' || value === '1';
+}
+
+function resolveManualLoginTimeoutMs(env: Env): number | undefined {
+  const value = env.CLICKPOST_MANUAL_LOGIN_TIMEOUT_MS?.trim();
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error('CLICKPOST_MANUAL_LOGIN_TIMEOUT_MS は正の数値（ミリ秒）で指定してください');
+  }
+  return parsed;
+}
+
 export async function createIssueShippingLabelUseCase(
   env: Env = process.env,
 ): Promise<IssueShippingLabelUseCase> {
@@ -143,6 +166,7 @@ export async function createIssueShippingLabelUseCase(
     browserFactory = new ChromiumBrowserFactory({
       headless: resolvePlaywrightHeadless(env),
       timeoutMs: resolvePlaywrightTimeoutMs(env),
+      ignoreHTTPSErrors: resolvePlaywrightIgnoreHTTPSErrors(env),
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -153,18 +177,25 @@ export async function createIssueShippingLabelUseCase(
     issue: async (order) => {
       // 配送方法ごとに必要な認証情報だけを検証する。
       // これにより、yamato_compact 発行時に CLICKPOST_* 未設定でも失敗しない。
+      const manualLogin = env.CLICKPOST_MANUAL_LOGIN?.trim().toLowerCase() === 'true';
       const clickPostEmail = env.CLICKPOST_EMAIL?.trim();
       const clickPostPassword = env.CLICKPOST_PASSWORD?.trim();
-      if (!clickPostEmail || !clickPostPassword) {
+      if (!manualLogin && (!clickPostEmail || !clickPostPassword)) {
         throw new ExternalServiceError('CLICKPOST_EMAIL / CLICKPOST_PASSWORD が設定されていません');
       }
 
+      const dryRun = env.CLICKPOST_DRY_RUN?.trim().toLowerCase() === 'true';
       const adapter = new ClickPostAdapter({
         browserFactory,
         credentials: {
-          email: clickPostEmail,
-          password: clickPostPassword,
+          email: clickPostEmail ?? '',
+          password: clickPostPassword ?? '',
         },
+        manualLogin,
+        manualLoginTimeoutMs: resolveManualLoginTimeoutMs(env),
+        keepBrowserOpenOnError:
+          env.CLICKPOST_KEEP_BROWSER_OPEN_ON_ERROR?.trim().toLowerCase() === 'true',
+        dryRun,
       });
 
       return adapter.issue(order);
@@ -246,6 +277,16 @@ export async function POST(
     });
     return NextResponse.json(result);
   } catch (error) {
+    // ドライラン完了は正常終了（ブラウザで手動支払いを促す）
+    if (error instanceof ClickPostDryRunCompletedError) {
+      return NextResponse.json({
+        success: true,
+        dryRun: true,
+        message:
+          'ドライラン完了: 確認画面まで到達しました。ブラウザで支払いを手動で完了してください。',
+      });
+    }
+
     if (error instanceof OrderNotFoundError) {
       const httpError = new NotFoundError(error.message);
       return NextResponse.json(toApiErrorResponse(httpError), { status: httpError.statusCode });
