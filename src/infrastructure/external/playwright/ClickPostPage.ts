@@ -1,6 +1,21 @@
 import { Order } from '@/domain/entities/Order';
 
 const CLICK_POST_URL = 'https://clickpost.jp/';
+const CONFIRMATION_PAGE_TIMEOUT_MS = 30_000;
+const APPLY_FORM_TRANSITION_TIMEOUT_MS = 30_000;
+const MANUAL_LOGIN_TIMEOUT_MS = 300_000;
+const CLICK_TIMEOUT_DEFAULT_MS = 2_000;
+const CLICK_TIMEOUT_CONSENT_MS = 500;
+const CLICK_TIMEOUT_PAYMENT_MS = 5_000;
+const WAIT_FOR_SELECTOR_SHORT_MS = 500;
+const WAIT_FOR_SELECTOR_MEDIUM_MS = 1_000;
+const WAIT_FOR_SELECTOR_LONG_MS = 5_000;
+const WAIT_FOR_SELECTOR_XLONG_MS = 10_000;
+const WAIT_FOR_SELECTOR_XXLONG_MS = 15_000;
+const PAGE_GOTO_TIMEOUT_MS = 60_000;
+const POLLING_INTERVAL_MS = 1_000;
+const POLLING_INTERVAL_FAST_MS = 500;
+const ADDRESS_LINE_MAX_LENGTH = 20;
 const AMAZON_LOGIN_SELECTORS = [
   'a:has(img[src*="btn-login-amazon"])',
   'button:has(img[src*="btn-login-amazon"])',
@@ -103,10 +118,9 @@ export class ClickPostPage {
       '#confirm-form',
     ];
 
-    const timeout = 30_000;
     const startAt = Date.now();
 
-    while (Date.now() - startAt < timeout) {
+    while (Date.now() - startAt < CONFIRMATION_PAGE_TIMEOUT_MS) {
       const currentUrl = this.page.url?.() ?? '';
       console.log(`[ClickPostPage] 確認画面待機中 (currentUrl=${currentUrl})`);
 
@@ -125,7 +139,7 @@ export class ClickPostPage {
         for (const selector of confirmationSelectors) {
           try {
             await this.page.waitForSelector(selector, {
-              timeout: 2_000,
+              timeout: CLICK_TIMEOUT_DEFAULT_MS,
               state: 'visible',
             });
             console.log(`[ClickPostPage] 確認画面検出 (selector=${selector})`);
@@ -153,7 +167,7 @@ export class ClickPostPage {
         return;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1_000));
+      await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL_MS));
     }
 
     const currentUrl = this.page.url?.() ?? 'unknown';
@@ -181,7 +195,7 @@ export class ClickPostPage {
       for (const selector of amazonPaySelectors) {
         try {
           await this.page.waitForSelector(selector, {
-            timeout: 5_000,
+            timeout: WAIT_FOR_SELECTOR_LONG_MS,
             state: 'visible',
           });
           console.log(`[ClickPostPage] Amazon Payボタン検出: ${selector}`);
@@ -193,7 +207,7 @@ export class ClickPostPage {
     }
 
     // ボタンが安定するまで少し待機（JavaScriptの初期化完了を待つ）
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL_MS));
 
     // ダウンロードイベントの待機を開始
     const downloadPromise = this.page.waitForEvent('download');
@@ -201,7 +215,10 @@ export class ClickPostPage {
     console.log('[ClickPostPage] 支払いボタンをクリック');
 
     // Amazon Payボタンをクリック（長めのタイムアウト）
-    let clicked = await this.clickIfPresent(amazonPaySelectors, { timeout: 5_000 });
+    // Amazon Pay は描画完了まで時間がかかるため、通常クリックより長いタイムアウトを使う。
+    let clicked = await this.clickIfPresent(amazonPaySelectors, {
+      timeout: CLICK_TIMEOUT_PAYMENT_MS,
+    });
 
     // Playwrightのclickが失敗した場合、JavaScriptでクリックを試行
     if (!clicked) {
@@ -219,7 +236,9 @@ export class ClickPostPage {
     // Amazon Payボタンが失敗した場合、従来のボタンを試行
     if (!clicked) {
       console.log('[ClickPostPage] Amazon Payボタン失敗、従来のボタンを試行');
-      clicked = await this.clickIfPresent(legacyButtonSelectors, { timeout: 3_000 });
+      clicked = await this.clickIfPresent(legacyButtonSelectors, {
+        timeout: CLICK_TIMEOUT_DEFAULT_MS,
+      });
     }
 
     if (!clicked) {
@@ -268,7 +287,7 @@ export class ClickPostPage {
       for (const selector of confirmButtonSelectors) {
         try {
           await this.page.waitForSelector(selector, {
-            timeout: 10_000,
+            timeout: WAIT_FOR_SELECTOR_XLONG_MS,
             state: 'visible',
           });
           console.log(`[ClickPostPage] Amazon Pay確認ボタン検出: ${selector}`);
@@ -280,10 +299,12 @@ export class ClickPostPage {
     }
 
     // 少し待機してボタンが安定するのを待つ
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL_FAST_MS));
 
     // 確認ボタンをクリック
-    let clicked = await this.clickIfPresent(confirmButtonSelectors, { timeout: 5_000 });
+    let clicked = await this.clickIfPresent(confirmButtonSelectors, {
+      timeout: CLICK_TIMEOUT_PAYMENT_MS,
+    });
 
     // Playwrightのclickが失敗した場合、JavaScriptでクリックを試行
     if (!clicked) {
@@ -318,7 +339,7 @@ export class ClickPostPage {
       for (const selector of finalButtonSelectors) {
         try {
           await this.page.waitForSelector(selector, {
-            timeout: 10_000,
+            timeout: WAIT_FOR_SELECTOR_XLONG_MS,
             state: 'visible',
           });
           console.log(`[ClickPostPage] 最終確認ボタン検出: ${selector}`);
@@ -330,10 +351,12 @@ export class ClickPostPage {
     }
 
     // 少し待機してボタンが安定するのを待つ
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL_FAST_MS));
 
     // 最終確認ボタンをクリック
-    let clicked = await this.clickIfPresent(finalButtonSelectors, { timeout: 5_000 });
+    let clicked = await this.clickIfPresent(finalButtonSelectors, {
+      timeout: CLICK_TIMEOUT_PAYMENT_MS,
+    });
 
     // Playwrightのclickが失敗した場合、JavaScriptでクリックを試行
     if (!clicked) {
@@ -376,7 +399,7 @@ export class ClickPostPage {
       for (const selector of checkboxSelectors) {
         try {
           await this.page.waitForSelector(selector, {
-            timeout: 10_000,
+            timeout: WAIT_FOR_SELECTOR_XLONG_MS,
             state: 'visible',
           });
           console.log(`[ClickPostPage] 印刷同意チェックボックス検出: ${selector}`);
@@ -411,7 +434,7 @@ export class ClickPostPage {
     }
 
     if (!checked) {
-      checked = await this.clickIfPresent(checkboxSelectors, { timeout: 3_000 });
+      checked = await this.clickIfPresent(checkboxSelectors, { timeout: CLICK_TIMEOUT_DEFAULT_MS });
     }
 
     if (!checked) {
@@ -422,14 +445,14 @@ export class ClickPostPage {
     console.log('[ClickPostPage] 印刷同意チェック完了、印字ボタンを待機');
 
     // 少し待機してボタンが有効になるのを待つ
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL_FAST_MS));
 
     // 印字ボタンが表示されるまで待機
     if (this.page.waitForSelector) {
       for (const selector of printButtonSelectors) {
         try {
           await this.page.waitForSelector(selector, {
-            timeout: 5_000,
+            timeout: WAIT_FOR_SELECTOR_LONG_MS,
             state: 'visible',
           });
           console.log(`[ClickPostPage] 印字ボタン検出: ${selector}`);
@@ -441,7 +464,9 @@ export class ClickPostPage {
     }
 
     // 印字ボタンをクリック
-    let clicked = await this.clickIfPresent(printButtonSelectors, { timeout: 5_000 });
+    let clicked = await this.clickIfPresent(printButtonSelectors, {
+      timeout: CLICK_TIMEOUT_PAYMENT_MS,
+    });
 
     // Playwrightのclickが失敗した場合、JavaScriptでクリックを試行
     if (!clicked) {
@@ -523,7 +548,10 @@ export class ClickPostPage {
       throw new Error('CLICKPOST_EMAIL / CLICKPOST_PASSWORD が設定されていません');
     }
 
-    await this.page.waitForSelector?.('#ap_email', { timeout: 15_000, state: 'visible' });
+    await this.page.waitForSelector?.('#ap_email', {
+      timeout: WAIT_FOR_SELECTOR_XXLONG_MS,
+      state: 'visible',
+    });
 
     // Amazonログイン（旧フォーム互換として #email/#password も探索）
     const emailFilled =
@@ -570,9 +598,10 @@ export class ClickPostPage {
     console.log('[ClickPostPage] ログインボタンクリック完了、同意画面チェック開始');
 
     // 連携同意画面が出る場合のみ押下（短いタイムアウトで素早くスキップ）
+    // 同意画面は出ないケースが多いため、短いタイムアウトで即スキップする。
     const consentClicked = await this.clickIfPresent(
       ['input[name="consentApproved"]', 'button:has-text("許可")', 'button:has-text("続行")'],
-      { timeout: 500 },
+      { timeout: CLICK_TIMEOUT_CONSENT_MS },
     );
     if (consentClicked) {
       console.log('[ClickPostPage] 同意画面でボタンをクリック');
@@ -596,14 +625,12 @@ export class ClickPostPage {
     ] as const;
 
     // 遷移待機のタイムアウト（サイトが遅い場合を考慮して長めに設定）
-    const transitionTimeoutMs = 30_000;
-
     // ボタンが表示されるまで待機
     if (this.page.waitForSelector) {
       for (const selector of buttonSelectors) {
         try {
           await this.page.waitForSelector(selector, {
-            timeout: 10_000,
+            timeout: WAIT_FOR_SELECTOR_XLONG_MS,
             state: 'visible',
           });
           break;
@@ -625,29 +652,29 @@ export class ClickPostPage {
           if (attempt === maxAttempts) {
             throw new Error('1件申込ボタンを検出できませんでした');
           }
-          await new Promise((resolve) => setTimeout(resolve, 2_000));
+          await new Promise((resolve) => setTimeout(resolve, CLICK_TIMEOUT_DEFAULT_MS));
           continue;
         }
       }
 
       // クリック後の遷移を待機
-      const transitioned = await this.waitForApplyFormReady(transitionTimeoutMs);
+      const transitioned = await this.waitForApplyFormReady(APPLY_FORM_TRANSITION_TIMEOUT_MS);
       if (transitioned) {
         return;
       }
 
       // 遷移しなかった場合、少し待ってからリトライ
       if (attempt < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 2_000));
+        await new Promise((resolve) => setTimeout(resolve, CLICK_TIMEOUT_DEFAULT_MS));
       }
     }
 
     // 全ての試行が失敗した場合のみ直接URLナビゲーション
     // セッションクッキーが有効なはずなので、直接遷移を試みる
     try {
-      await this.page.goto('https://clickpost.jp/packages/new', { timeout: 60_000 });
+      await this.page.goto('https://clickpost.jp/packages/new', { timeout: PAGE_GOTO_TIMEOUT_MS });
       await this.page.waitForLoadState?.('domcontentloaded');
-      const ready = await this.waitForApplyFormReady(transitionTimeoutMs);
+      const ready = await this.waitForApplyFormReady(APPLY_FORM_TRANSITION_TIMEOUT_MS);
       if (ready) {
         return;
       }
@@ -752,7 +779,7 @@ export class ClickPostPage {
       for (const selector of nextButtonSelectors) {
         try {
           await this.page.waitForSelector(selector, {
-            timeout: 5_000,
+            timeout: WAIT_FOR_SELECTOR_LONG_MS,
             state: 'visible',
           });
           break;
@@ -776,7 +803,7 @@ export class ClickPostPage {
     await this.page.waitForLoadState?.('domcontentloaded');
 
     // 少し待ってからバリデーションエラーをチェック
-    await new Promise((resolve) => setTimeout(resolve, 1_000));
+    await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL_MS));
     const bodyText = await this.page.textContent('body');
     if (bodyText?.includes('入力してください') || bodyText?.includes('必須')) {
       console.log('[ClickPostPage] 警告: フォームにバリデーションエラーがある可能性があります');
@@ -850,7 +877,7 @@ export class ClickPostPage {
     selectors: string[],
     options?: { timeout?: number },
   ): Promise<boolean> {
-    const timeout = options?.timeout ?? 2_000; // デフォルト2秒（30秒のPlaywrightデフォルトは長すぎる）
+    const timeout = options?.timeout ?? CLICK_TIMEOUT_DEFAULT_MS;
     for (const selector of selectors) {
       try {
         await this.page.click(selector, { timeout });
@@ -864,7 +891,7 @@ export class ClickPostPage {
 
   private async waitForLoginCompleted(): Promise<void> {
     const startAt = Date.now();
-    const timeout = this.options.manualLoginTimeoutMs ?? 300_000;
+    const timeout = this.options.manualLoginTimeoutMs ?? MANUAL_LOGIN_TIMEOUT_MS;
     let lastLoggedUrl = '';
     let mfaLoggedOnce = false;
 
@@ -889,7 +916,7 @@ export class ClickPostPage {
         if (this.page.waitForSelector) {
           try {
             await this.page.waitForSelector('input[type="submit"][value="1件申込"]', {
-              timeout: 5_000,
+              timeout: WAIT_FOR_SELECTOR_LONG_MS,
               state: 'visible',
             });
             console.log('[ClickPostPage] 1件申込ボタン検出完了');
@@ -911,7 +938,8 @@ export class ClickPostPage {
           console.log('[ClickPostPage] MFA/認証画面検出、手動入力を待機中...');
           mfaLoggedOnce = true;
         }
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // MFA画面は短い間隔でポーリングして復帰を早く検出する。
+        await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL_FAST_MS));
         continue;
       }
 
@@ -932,7 +960,7 @@ export class ClickPostPage {
       if (this.page.waitForSelector) {
         try {
           await this.page.waitForSelector('input[type="submit"][value="1件申込"]', {
-            timeout: 300,
+            timeout: CLICK_TIMEOUT_CONSENT_MS,
             state: 'visible',
           });
           console.log('[ClickPostPage] 1件申込ボタンを検出（URL待機を省略）');
@@ -943,7 +971,7 @@ export class ClickPostPage {
       }
 
       // ポーリング間隔を短縮（500ms）
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL_FAST_MS));
     }
     throw new Error('手動ログインの完了待機がタイムアウトしました');
   }
@@ -969,7 +997,7 @@ export class ClickPostPage {
           for (const selector of formReadySelectors) {
             try {
               await this.page.waitForSelector(selector, {
-                timeout: 1_000,
+                timeout: WAIT_FOR_SELECTOR_MEDIUM_MS,
                 state: 'visible',
               });
               return true;
@@ -979,7 +1007,7 @@ export class ClickPostPage {
           }
         }
         // URLは正しいがセレクタが見つからない場合、少し待機して再チェック
-        await new Promise((resolve) => setTimeout(resolve, 1_000));
+        await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL_MS));
         continue;
       }
 
@@ -988,7 +1016,7 @@ export class ClickPostPage {
         for (const selector of formReadySelectors) {
           try {
             await this.page.waitForSelector(selector, {
-              timeout: 500,
+              timeout: WAIT_FOR_SELECTOR_SHORT_MS,
               state: 'visible',
             });
             return true;
@@ -998,13 +1026,14 @@ export class ClickPostPage {
         }
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1_000));
+      await new Promise((resolve) => setTimeout(resolve, POLLING_INTERVAL_MS));
     }
     return false;
   }
 
   private limitLineLength(value: string): string {
-    return [...value].slice(0, 20).join('');
+    // クリックポスト住所入力の仕様: 1行あたり最大20文字まで。
+    return [...value].slice(0, ADDRESS_LINE_MAX_LENGTH).join('');
   }
 
   private async ensureAddressSaveChecked(): Promise<void> {
