@@ -5,6 +5,7 @@ import {
   InvalidLabelIssueOperationError,
   OrderNotFoundError,
 } from '@/application/usecases/IssueShippingLabelErrors';
+import { ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
 import * as routeModule from '../route';
 
 describe('POST /api/orders/[orderId]/labels', () => {
@@ -156,5 +157,28 @@ describe('POST /api/orders/[orderId]/labels', () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  it('ExternalServiceError は 503 を返す', async () => {
+    routeModule.setIssueShippingLabelUseCaseFactoryForTest(async () => {
+      throw new ExternalServiceError('CLICKPOST_EMAIL / CLICKPOST_PASSWORD が設定されていません');
+    });
+
+    const request = new NextRequest('http://localhost/api/orders/ORD-001/labels', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ shippingMethod: 'click_post' }),
+    });
+    const response = await routeModule.POST(request, {
+      params: Promise.resolve({ orderId: 'ORD-001' }),
+    });
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'EXTERNAL_SERVICE_ERROR',
+        message: 'CLICKPOST_EMAIL / CLICKPOST_PASSWORD が設定されていません',
+      },
+    });
   });
 });

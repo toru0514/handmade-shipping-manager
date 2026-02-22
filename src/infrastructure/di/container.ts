@@ -13,6 +13,7 @@ import type { ClickPostGateway } from '@/infrastructure/adapters/shipping/ClickP
 import { ShippingLabelIssuerImpl } from '@/infrastructure/adapters/shipping/ShippingLabelIssuerImpl';
 import { YamatoCompactAdapter } from '@/infrastructure/adapters/shipping/YamatoCompactAdapter';
 import type { YamatoCompactGateway } from '@/infrastructure/adapters/shipping/YamatoCompactGateway';
+import { ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
 import { ChromiumBrowserFactory } from '@/infrastructure/external/playwright/ChromiumBrowserFactory';
 import {
   GoogleSheetsClient,
@@ -151,13 +152,24 @@ function resolveManualLoginTimeoutMs(env: Env): number | undefined {
 }
 
 function createIssueShippingLabelUseCase(env: Env): IssueShippingLabelUseCase {
-  const auth = createAuth(env);
-  const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
-  const browserFactory = new ChromiumBrowserFactory({
-    headless: resolvePlaywrightHeadless(env),
-    timeoutMs: resolvePlaywrightTimeoutMs(env),
-    ignoreHTTPSErrors: resolvePlaywrightIgnoreHTTPSErrors(env),
-  });
+  let auth: ReturnType<typeof createAuth>;
+  let spreadsheetId: string;
+  let browserFactory: ChromiumBrowserFactory;
+  try {
+    auth = createAuth(env);
+    spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+    browserFactory = new ChromiumBrowserFactory({
+      headless: resolvePlaywrightHeadless(env),
+      timeoutMs: resolvePlaywrightTimeoutMs(env),
+      ignoreHTTPSErrors: resolvePlaywrightIgnoreHTTPSErrors(env),
+    });
+  } catch (error) {
+    if (error instanceof ExternalServiceError) {
+      throw error;
+    }
+    const message = error instanceof Error ? error.message : String(error);
+    throw new ExternalServiceError(message);
+  }
 
   const clickPostGateway: ClickPostGateway = {
     issue: async (order) => {
@@ -166,10 +178,17 @@ function createIssueShippingLabelUseCase(env: Env): IssueShippingLabelUseCase {
       const clickPostEmail = env.CLICKPOST_EMAIL?.trim();
       const clickPostPassword = env.CLICKPOST_PASSWORD?.trim();
       if (!manualLogin && (!clickPostEmail || !clickPostPassword)) {
-        throw new Error('CLICKPOST_EMAIL / CLICKPOST_PASSWORD が設定されていません');
+        throw new ExternalServiceError('CLICKPOST_EMAIL / CLICKPOST_PASSWORD が設定されていません');
       }
 
       const dryRun = env.CLICKPOST_DRY_RUN?.trim().toLowerCase() === 'true';
+      let manualLoginTimeoutMs: number | undefined;
+      try {
+        manualLoginTimeoutMs = resolveManualLoginTimeoutMs(env);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new ExternalServiceError(message);
+      }
       const adapter = new ClickPostAdapter({
         browserFactory,
         credentials: {
@@ -177,7 +196,7 @@ function createIssueShippingLabelUseCase(env: Env): IssueShippingLabelUseCase {
           password: clickPostPassword ?? '',
         },
         manualLogin,
-        manualLoginTimeoutMs: resolveManualLoginTimeoutMs(env),
+        manualLoginTimeoutMs,
         keepBrowserOpenOnError:
           env.CLICKPOST_KEEP_BROWSER_OPEN_ON_ERROR?.trim().toLowerCase() === 'true',
         dryRun,
@@ -192,7 +211,7 @@ function createIssueShippingLabelUseCase(env: Env): IssueShippingLabelUseCase {
       const memberId = env.YAMATO_MEMBER_ID?.trim();
       const password = env.YAMATO_PASSWORD?.trim();
       if (!memberId || !password) {
-        throw new Error('YAMATO_MEMBER_ID / YAMATO_PASSWORD が設定されていません');
+        throw new ExternalServiceError('YAMATO_MEMBER_ID / YAMATO_PASSWORD が設定されていません');
       }
 
       const adapter = new YamatoCompactAdapter({
