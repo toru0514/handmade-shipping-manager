@@ -41,7 +41,19 @@ export class FetchOrderUseCase {
     try {
       const platformOrder = await this.orderFetcher.fetch(orderId, platform);
       const order = this.orderFactory.createFromPlatformData(platformOrder);
-      await this.orderRepository.save(order);
+      try {
+        await this.orderRepository.save(order);
+      } catch (saveError) {
+        // exists() -> save() の間で他プロセスが同一注文を登録した場合は重複スキップとして扱う。
+        if (await this.orderRepository.exists(orderId)) {
+          return {
+            orderId: orderId.toString(),
+            platform: platform.toString(),
+            status: 'skipped_duplicate',
+          };
+        }
+        throw saveError;
+      }
       return {
         orderId: orderId.toString(),
         platform: platform.toString(),

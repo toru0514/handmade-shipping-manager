@@ -30,6 +30,7 @@ export class GmailPoller {
     let skipped = 0;
     let failed = 0;
 
+    // Gmail/各プラットフォーム側のレート制限を考慮して逐次処理にしている。
     for (const notification of notifications) {
       try {
         const result = await this.fetchOrderExecutor.execute({

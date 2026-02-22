@@ -103,6 +103,42 @@ describe('FetchOrderUseCase', () => {
     expect(notificationSender.notify).not.toHaveBeenCalled();
   });
 
+  it('保存時に重複競合が起きた場合は skipped_duplicate を返す', async () => {
+    const duplicateError = new Error('duplicate key');
+    const repository: OrderRepository<Order> = {
+      findById: vi.fn(async () => null),
+      findByStatus: vi.fn(async () => []),
+      findByBuyerName: vi.fn(async () => []),
+      save: vi.fn(async () => {
+        throw duplicateError;
+      }),
+      exists: vi
+        .fn<() => Promise<boolean>>()
+        .mockResolvedValueOnce(false)
+        .mockResolvedValueOnce(true),
+      findAll: vi.fn(async () => []),
+    };
+    const fetcher: OrderFetcher = {
+      fetch: vi.fn(async () => createPlatformOrderData()),
+    };
+    const notificationSender: NotificationSender = {
+      notify: vi.fn(async () => undefined),
+    };
+    const useCase = new FetchOrderUseCase(repository, fetcher, notificationSender);
+
+    const result = await useCase.execute({
+      orderId: 'MN-0001',
+      platform: 'minne',
+    });
+
+    expect(result).toEqual({
+      orderId: 'MN-0001',
+      platform: 'minne',
+      status: 'skipped_duplicate',
+    });
+    expect(notificationSender.notify).not.toHaveBeenCalled();
+  });
+
   it('取得失敗時は通知を送信してエラーを投げる（保存しない）', async () => {
     const repository = new InMemoryOrderRepository();
     const fetcher: OrderFetcher = {
