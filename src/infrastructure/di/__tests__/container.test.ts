@@ -37,6 +37,31 @@ describe('createContainer', () => {
     expect(container.getListPendingOrdersUseCase).toBeDefined();
   });
 
+  it('伝票発行ユースケースを取得できる', () => {
+    const env = baseEnv({
+      GOOGLE_SHEETS_ACCESS_TOKEN: 'test-token',
+      CLICKPOST_EMAIL: 'clickpost@example.com',
+      CLICKPOST_PASSWORD: 'password',
+      YAMATO_MEMBER_ID: 'member-id',
+      YAMATO_PASSWORD: 'password',
+    });
+
+    const container = createContainer(env);
+    const useCase = container.getIssueShippingLabelUseCase();
+    expect(useCase.execute).toBeDefined();
+  });
+
+  it('PLAYWRIGHT_HEADLESS が不正値の場合、伝票発行ユースケース取得時にエラー', () => {
+    const env = baseEnv({
+      GOOGLE_SHEETS_ACCESS_TOKEN: 'test-token',
+      PLAYWRIGHT_HEADLESS: 'invalid',
+    });
+    const container = createContainer(env);
+    expect(() => container.getIssueShippingLabelUseCase()).toThrow(
+      'PLAYWRIGHT_HEADLESS は true/false（または 1/0）で指定してください',
+    );
+  });
+
   it('認証情報がない場合はエラーを投げる', () => {
     const env = baseEnv();
     expect(() => createContainer(env)).toThrow('Google Sheets 認証情報が不足しています');

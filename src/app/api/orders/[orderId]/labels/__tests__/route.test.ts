@@ -5,6 +5,7 @@ import {
   InvalidLabelIssueOperationError,
   OrderNotFoundError,
 } from '@/application/usecases/IssueShippingLabelErrors';
+import { ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
 import * as routeModule from '../route';
 
 describe('POST /api/orders/[orderId]/labels', () => {
@@ -157,35 +158,27 @@ describe('POST /api/orders/[orderId]/labels', () => {
 
     expect(response.status).toBe(400);
   });
-});
 
-describe('parseServiceAccountKeyFromBase64', () => {
-  it('不正な Base64 文字列はエラー', () => {
-    expect(() => routeModule.parseServiceAccountKeyFromBase64('%%%invalid%%%')).toThrow(
-      'GOOGLE_SERVICE_ACCOUNT_BASE64 のデコードまたは JSON パースに失敗しました',
-    );
-  });
+  it('ExternalServiceError は 503 を返す', async () => {
+    routeModule.setIssueShippingLabelUseCaseFactoryForTest(async () => {
+      throw new ExternalServiceError('CLICKPOST_EMAIL / CLICKPOST_PASSWORD が設定されていません');
+    });
 
-  it('デコード後 JSON に必須キーがない場合はエラー', () => {
-    const payload = Buffer.from(JSON.stringify({ project_id: 'dummy' }), 'utf8').toString('base64');
-    expect(() => routeModule.parseServiceAccountKeyFromBase64(payload)).toThrow(
-      'GOOGLE_SERVICE_ACCOUNT_BASE64 をデコードした JSON に client_email と private_key が含まれていません',
-    );
-  });
+    const request = new NextRequest('http://localhost/api/orders/ORD-001/labels', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ shippingMethod: 'click_post' }),
+    });
+    const response = await routeModule.POST(request, {
+      params: Promise.resolve({ orderId: 'ORD-001' }),
+    });
 
-  it('正常なサービスアカウントキーをデコードできる', () => {
-    const payload = Buffer.from(
-      JSON.stringify({
-        client_email: 'service-account@example.iam.gserviceaccount.com',
-        private_key: '-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----\\n',
-      }),
-      'utf8',
-    ).toString('base64');
-
-    const key = routeModule.parseServiceAccountKeyFromBase64(payload);
-    expect(key).toEqual({
-      client_email: 'service-account@example.iam.gserviceaccount.com',
-      private_key: '-----BEGIN PRIVATE KEY-----\\nABC\\n-----END PRIVATE KEY-----\\n',
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'EXTERNAL_SERVICE_ERROR',
+        message: 'CLICKPOST_EMAIL / CLICKPOST_PASSWORD が設定されていません',
+      },
     });
   });
 });
