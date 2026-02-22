@@ -1,11 +1,19 @@
 import { GeneratePurchaseThanksUseCase } from '@/application/usecases/GeneratePurchaseThanksUseCase';
 import { GenerateShippingNoticeUseCase } from '@/application/usecases/GenerateShippingNoticeUseCase';
+import { IssueShippingLabelUseCase } from '@/application/usecases/IssueShippingLabelUseCase';
 import { ListPendingOrdersUseCase } from '@/application/usecases/ListPendingOrdersUseCase';
 import { MarkOrderAsShippedUseCase } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import { SearchBuyersUseCase } from '@/application/usecases/SearchBuyersUseCase';
 import { OverdueOrderSpecification } from '@/domain/specifications/OverdueOrderSpecification';
 import { DefaultMessageTemplateRepository } from '@/infrastructure/adapters/persistence/DefaultMessageTemplateRepository';
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
+import { SpreadsheetShippingLabelRepository } from '@/infrastructure/adapters/persistence/SpreadsheetShippingLabelRepository';
+import { ClickPostAdapter } from '@/infrastructure/adapters/shipping/ClickPostAdapter';
+import type { ClickPostGateway } from '@/infrastructure/adapters/shipping/ClickPostGateway';
+import { ShippingLabelIssuerImpl } from '@/infrastructure/adapters/shipping/ShippingLabelIssuerImpl';
+import { YamatoCompactAdapter } from '@/infrastructure/adapters/shipping/YamatoCompactAdapter';
+import type { YamatoCompactGateway } from '@/infrastructure/adapters/shipping/YamatoCompactGateway';
+import { ChromiumBrowserFactory } from '@/infrastructure/external/playwright/ChromiumBrowserFactory';
 import {
   GoogleSheetsClient,
   type ServiceAccountKey,
@@ -43,6 +51,18 @@ function parseServiceAccountKey(json: string): ServiceAccountKey {
 }
 
 function createOrderRepository(env: Env): SpreadsheetOrderRepository {
+  const auth = createAuth(env);
+  const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+  const sheetsClient = new GoogleSheetsClient({
+    spreadsheetId,
+    sheetName: env.GOOGLE_SHEETS_SHEET_NAME?.trim() || 'Orders',
+    ...auth,
+  });
+
+  return new SpreadsheetOrderRepository(sheetsClient);
+}
+
+function createAuth(env: Env) {
   const serviceAccountBase64 = env.GOOGLE_SERVICE_ACCOUNT_BASE64?.trim();
   const accessToken = env.GOOGLE_SHEETS_ACCESS_TOKEN?.trim();
   const refreshToken = env.GOOGLE_SHEETS_REFRESH_TOKEN?.trim();
@@ -73,17 +93,137 @@ function createOrderRepository(env: Env): SpreadsheetOrderRepository {
     );
   }
 
-  const sheetsClient = new GoogleSheetsClient({
-    spreadsheetId: resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env),
-    sheetName: env.GOOGLE_SHEETS_SHEET_NAME?.trim() || 'Orders',
+  return {
     serviceAccountKey,
     accessToken,
     refreshToken,
     clientId,
     clientSecret,
+  };
+}
+
+function resolvePlaywrightHeadless(env: Env): boolean {
+  const value = env.PLAYWRIGHT_HEADLESS?.trim().toLowerCase();
+  if (!value) {
+    return true;
+  }
+  if (value === 'true' || value === '1') {
+    return true;
+  }
+  if (value === 'false' || value === '0') {
+    return false;
+  }
+  throw new Error('PLAYWRIGHT_HEADLESS は true/false（または 1/0）で指定してください');
+}
+
+function resolvePlaywrightTimeoutMs(env: Env): number | undefined {
+  const value = env.PLAYWRIGHT_LAUNCH_TIMEOUT_MS?.trim();
+  if (!value) {
+    return undefined;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error('PLAYWRIGHT_LAUNCH_TIMEOUT_MS は正の数値（ミリ秒）で指定してください');
+  }
+
+  return parsed;
+}
+
+function resolvePlaywrightIgnoreHTTPSErrors(env: Env): boolean {
+  const value = env.PLAYWRIGHT_IGNORE_HTTPS_ERRORS?.trim().toLowerCase();
+  if (!value) {
+    return false;
+  }
+  return value === 'true' || value === '1';
+}
+
+function resolveManualLoginTimeoutMs(env: Env): number | undefined {
+  const value = env.CLICKPOST_MANUAL_LOGIN_TIMEOUT_MS?.trim();
+  if (!value) {
+    return undefined;
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    throw new Error('CLICKPOST_MANUAL_LOGIN_TIMEOUT_MS は正の数値（ミリ秒）で指定してください');
+  }
+  return parsed;
+}
+
+function createIssueShippingLabelUseCase(env: Env): IssueShippingLabelUseCase {
+  const auth = createAuth(env);
+  const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+  const browserFactory = new ChromiumBrowserFactory({
+    headless: resolvePlaywrightHeadless(env),
+    timeoutMs: resolvePlaywrightTimeoutMs(env),
+    ignoreHTTPSErrors: resolvePlaywrightIgnoreHTTPSErrors(env),
   });
 
-  return new SpreadsheetOrderRepository(sheetsClient);
+  const clickPostGateway: ClickPostGateway = {
+    issue: async (order) => {
+      // 配送方法ごとに必要な認証情報だけを検証する。
+      const manualLogin = env.CLICKPOST_MANUAL_LOGIN?.trim().toLowerCase() === 'true';
+      const clickPostEmail = env.CLICKPOST_EMAIL?.trim();
+      const clickPostPassword = env.CLICKPOST_PASSWORD?.trim();
+      if (!manualLogin && (!clickPostEmail || !clickPostPassword)) {
+        throw new Error('CLICKPOST_EMAIL / CLICKPOST_PASSWORD が設定されていません');
+      }
+
+      const dryRun = env.CLICKPOST_DRY_RUN?.trim().toLowerCase() === 'true';
+      const adapter = new ClickPostAdapter({
+        browserFactory,
+        credentials: {
+          email: clickPostEmail ?? '',
+          password: clickPostPassword ?? '',
+        },
+        manualLogin,
+        manualLoginTimeoutMs: resolveManualLoginTimeoutMs(env),
+        keepBrowserOpenOnError:
+          env.CLICKPOST_KEEP_BROWSER_OPEN_ON_ERROR?.trim().toLowerCase() === 'true',
+        dryRun,
+      });
+
+      return adapter.issue(order);
+    },
+  };
+
+  const yamatoGateway: YamatoCompactGateway = {
+    issue: async (order) => {
+      const memberId = env.YAMATO_MEMBER_ID?.trim();
+      const password = env.YAMATO_PASSWORD?.trim();
+      if (!memberId || !password) {
+        throw new Error('YAMATO_MEMBER_ID / YAMATO_PASSWORD が設定されていません');
+      }
+
+      const adapter = new YamatoCompactAdapter({
+        browserFactory,
+        credentials: {
+          memberId,
+          password,
+        },
+      });
+
+      return adapter.issue(order);
+    },
+  };
+
+  const orderSheetsClient = new GoogleSheetsClient({
+    spreadsheetId,
+    sheetName: env.GOOGLE_SHEETS_SHEET_NAME?.trim() || 'Orders',
+    ...auth,
+  });
+  const labelSheetsClient = new GoogleSheetsClient({
+    spreadsheetId,
+    sheetName: env.GOOGLE_SHEETS_LABEL_SHEET_NAME?.trim() || 'ShippingLabels',
+    ...auth,
+  });
+
+  const issuer = new ShippingLabelIssuerImpl(clickPostGateway, yamatoGateway);
+  return new IssueShippingLabelUseCase(
+    new SpreadsheetOrderRepository(orderSheetsClient),
+    new SpreadsheetShippingLabelRepository(labelSheetsClient),
+    issuer,
+  );
 }
 
 export interface Container {
@@ -92,6 +232,7 @@ export interface Container {
   getSearchBuyersUseCase(): SearchBuyersUseCase;
   getGeneratePurchaseThanksUseCase(): GeneratePurchaseThanksUseCase;
   getGenerateShippingNoticeUseCase(): GenerateShippingNoticeUseCase;
+  getIssueShippingLabelUseCase(): IssueShippingLabelUseCase;
 }
 
 export function createContainer(env: Env = process.env): Container {
@@ -107,5 +248,6 @@ export function createContainer(env: Env = process.env): Container {
       new GeneratePurchaseThanksUseCase(orderRepository, templateRepository),
     getGenerateShippingNoticeUseCase: () =>
       new GenerateShippingNoticeUseCase(orderRepository, templateRepository),
+    getIssueShippingLabelUseCase: () => createIssueShippingLabelUseCase(env),
   };
 }
