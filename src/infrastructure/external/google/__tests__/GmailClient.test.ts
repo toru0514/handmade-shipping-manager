@@ -131,4 +131,10 @@ describe('GmailClient', () => {
     expect(GmailClient.extractOrderId('Order ID #ZXCVB12345')).toBe('ZXCVB12345');
     expect(GmailClient.extractOrderId('注文情報なし')).toBeNull();
   });
+
+  it('extractOrderId は件名の [注文ID: 53539011] 形式を抽出できる', () => {
+    expect(GmailClient.extractOrderId('【minne】作品の注文が入りました [注文ID: 53539011]')).toBe(
+      '53539011',
+    );
+  });
 });

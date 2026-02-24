@@ -20,15 +20,14 @@ describe('MinneAdapter', () => {
     const goto = vi.fn(async () => undefined);
     const close = vi.fn(async () => undefined);
     const textContent = createTextContentMock({
-      '.buyer-name': '山田 花子',
-      '.shipping-postal-code': '150-0001',
-      '.shipping-prefecture': '東京都',
-      '.shipping-city': '渋谷区',
-      '.shipping-address-line1': '神宮前1-2-3',
-      '.shipping-address-line2': 'サンプルビル101',
-      '.shipping-phone': '090-1234-5678',
-      '.product-name': 'ハンドメイドピアス',
-      '.ordered-at': '2026-02-22T12:34:56.000Z',
+      '.p-orders-item:has(a[href*="/account/orders/MN-00001/invoice"]) .p-orders__shipping-address':
+        '〒150-0001\n東京都渋谷区神宮前1-2-3 サンプルビル101\n山田 花子',
+      '.p-orders-item:has(a[href*="/account/orders/MN-00001/invoice"]) .p-orders-item__buyer-tel':
+        'TEL：090-1234-5678',
+      '.p-orders-item:has(a[href*="/account/orders/MN-00001/invoice"]) .p-orders-item__title':
+        'ハンドメイドピアス',
+      '.p-orders-item:has(a[href*="/account/orders/MN-00001/invoice"]) .p-orders-item__date':
+        '2026-02-22T12:34:56.000Z',
     });
 
     const browserFactory: MinneBrowserFactory = {
@@ -60,14 +59,15 @@ describe('MinneAdapter', () => {
       buyerPostalCode: '1500001',
       buyerPrefecture: '東京都',
       buyerCity: '渋谷区',
-      buyerAddress1: '神宮前1-2-3',
-      buyerAddress2: 'サンプルビル101',
+      buyerAddress1: '神宮前1-2-3 サンプルビル101',
+      buyerAddress2: undefined,
       buyerPhone: '09012345678',
       productName: 'ハンドメイドピアス',
       orderedAt: new Date('2026-02-22T12:34:56.000Z'),
     });
-    expect(goto).toHaveBeenCalledWith('https://minne.com/signin');
-    expect(goto).toHaveBeenCalledWith('https://minne.com/orders/MN-00001');
+    expect(goto).toHaveBeenNthCalledWith(1, 'https://minne.com/signin');
+    expect(goto).toHaveBeenNthCalledWith(2, 'https://minne.com/account');
+    expect(goto).toHaveBeenNthCalledWith(3, 'https://minne.com/account/orders');
     expect(fill).toHaveBeenCalledWith('#email', 'minne@example.com');
     expect(fill).toHaveBeenCalledWith('#password', 'secret');
     expect(click).toHaveBeenCalledWith('button[type="submit"]');
@@ -76,13 +76,12 @@ describe('MinneAdapter', () => {
 
   it('OrderFactory.createFromPlatformData で Order に変換できる', async () => {
     const textContent = createTextContentMock({
-      '.buyer-name': '山田 花子',
-      '.shipping-postal-code': '150-0001',
-      '.shipping-prefecture': '東京都',
-      '.shipping-city': '渋谷区',
-      '.shipping-address-line1': '神宮前1-2-3',
-      '.product-name': 'ハンドメイドピアス',
-      '.ordered-at': '2026-02-22T12:34:56.000Z',
+      '.p-orders-item:has(a[href*="/account/orders/MN-00002/invoice"]) .p-orders__shipping-address':
+        '〒150-0001\n東京都渋谷区神宮前1-2-3\n山田 花子',
+      '.p-orders-item:has(a[href*="/account/orders/MN-00002/invoice"]) .p-orders-item__title':
+        'ハンドメイドピアス',
+      '.p-orders-item:has(a[href*="/account/orders/MN-00002/invoice"]) .p-orders-item__date':
+        '2026-02-22T12:34:56.000Z',
     });
     const browserFactory: MinneBrowserFactory = {
       launch: vi.fn(async () => ({

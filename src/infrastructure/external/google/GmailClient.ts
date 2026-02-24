@@ -56,7 +56,7 @@ export interface GmailClientConfig {
   readonly baseUrl?: string;
 }
 
-const DEFAULT_QUERY = 'is:unread newer_than:7d (from:minne.com OR from:creema.jp)';
+const DEFAULT_QUERY = 'is:unread newer_than:7d (from:order@minne.com OR from:info@creema.jp)';
 const DEFAULT_BASE_URL = 'https://gmail.googleapis.com/gmail/v1/users/me';
 
 export class GmailClient {
@@ -86,7 +86,7 @@ export class GmailClient {
         continue;
       }
 
-      const orderId = GmailClient.extractOrderId(message.body);
+      const orderId = GmailClient.extractOrderId(`${message.subject}\n${message.body}`);
       if (!orderId) {
         continue;
       }
