@@ -137,10 +137,6 @@ describe('GmailClient', () => {
 // GoogleGmailClient — OAuth2 リフレッシュトークン対応 / minne 購入通知対応
 // ---------------------------------------------------------------------------
 
-function toBase64UrlGoogle(value: string): string {
-  return Buffer.from(value, 'utf-8').toString('base64url');
-}
-
 /** minne 購入通知メール本文（URL形式で注文ID含む）のモック */
 function buildOrderEmailBody(orderId: string): string {
   return (
@@ -163,7 +159,7 @@ function messageResponse(id: string, body: string) {
       internalDate: '1700000000000',
       payload: {
         mimeType: 'text/plain',
-        body: { data: toBase64UrlGoogle(body) },
+        body: { data: toBase64Url(body) },
       },
     }),
     { status: 200 },
@@ -259,9 +255,8 @@ describe('GoogleGmailClient', () => {
 
     it('API エラー時は ExternalServiceError を投げる', async () => {
       const fetcher = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
-      fetcher
-        .mockResolvedValueOnce(new Response('error', { status: 500 }))
-        .mockResolvedValueOnce(new Response('error', { status: 500 })); // retry
+      // リトライ条件は 401/403 のみ。500 は即エラーになる
+      fetcher.mockResolvedValueOnce(new Response('error', { status: 500 }));
 
       const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
       await expect(client.markAsRead('message-xyz')).rejects.toThrow(ExternalServiceError);
