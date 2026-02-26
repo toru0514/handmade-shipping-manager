@@ -294,6 +294,86 @@ describe('GoogleGmailClient', () => {
     });
   });
 
+  describe('fetchMinneMagicLink', () => {
+    /** getMessageDetail レスポンス（internalDate 指定可能版） */
+    function detailResponse(id: string, internalDateMs: number, bodyText: string) {
+      return new Response(
+        JSON.stringify({
+          id,
+          internalDate: String(internalDateMs),
+          payload: {
+            mimeType: 'text/plain',
+            body: { data: toBase64Url(bodyText) },
+          },
+        }),
+        { status: 200 },
+      );
+    }
+
+    it('マジックリンクURLを取得して返す', async () => {
+      const sentAfter = new Date('2026-01-01T00:00:00Z');
+      const msgDate = sentAfter.getTime() + 60_000; // sentAfter の 1 分後
+      const magicLink = 'https://minne.com/users/sign_in/magic_link/abc123token';
+      const body = `ログインリンクはこちらです。\n${magicLink}\n以上。`;
+
+      const fetcher = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+      fetcher
+        .mockResolvedValueOnce(listResponse(['m1'])) // messages list
+        .mockResolvedValueOnce(detailResponse('m1', msgDate, body)) // date check
+        .mockResolvedValueOnce(detailResponse('m1', msgDate, body)); // body extract
+
+      const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
+      const result = await client.fetchMinneMagicLink(sentAfter, {
+        timeoutMs: 5_000,
+        intervalMs: 100,
+      });
+
+      expect(result).toBe(magicLink);
+    });
+
+    it('timeoutMs: 0 の場合は即座に ExternalServiceError を投げる', async () => {
+      const fetcher = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+      const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
+
+      await expect(client.fetchMinneMagicLink(new Date(), { timeoutMs: 0 })).rejects.toThrow(
+        ExternalServiceError,
+      );
+      // timeoutMs: 0 ではループに入らないため API 呼び出しなし
+      expect(fetcher).not.toHaveBeenCalled();
+    });
+
+    it('sentAfter より古いメールはスキップしてタイムアウトする', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T12:00:00Z'));
+      try {
+        const sentAfter = new Date('2026-01-01T12:00:00Z');
+        const oldDate = new Date('2026-01-01T11:00:00Z').getTime(); // 1 時間前
+
+        const fetcher =
+          vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+        fetcher.mockImplementation(async (url: RequestInfo | URL) => {
+          if (String(url).includes('/messages?')) {
+            return listResponse(['m1']);
+          }
+          return detailResponse('m1', oldDate, 'https://minne.com/users/sign_in/magic_link/old');
+        });
+
+        const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
+        const promise = client.fetchMinneMagicLink(sentAfter, {
+          timeoutMs: 200,
+          intervalMs: 100,
+        });
+
+        // rejection ハンドラを先に登録してから時間を進める（Unhandled Rejection を防ぐ）
+        const assertion = expect(promise).rejects.toThrow(ExternalServiceError);
+        await vi.advanceTimersByTimeAsync(300);
+        await assertion;
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   describe('markAsRead', () => {
     it('指定メッセージIDに removeLabelIds: [UNREAD] を POST する', async () => {
       const fetcher = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
@@ -357,6 +437,76 @@ describe('GoogleGmailClient', () => {
       const client = new GoogleGmailClient({}, fetcher);
 
       await expect(client.fetchUnreadMinneOrderEmails()).rejects.toThrow(AuthenticationError);
+    });
+
+    it('有効期限内のアクセストークンは 2 回目のリクエストで再リフレッシュしない', async () => {
+      const fetcher = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+      // 1回目: トークンリフレッシュ
+      fetcher.mockResolvedValueOnce(
+        new Response(JSON.stringify({ access_token: 'token-1', expires_in: 3600 }), {
+          status: 200,
+        }),
+      );
+      // 2回目: 1回目の API コール
+      fetcher.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+      // 3回目: 2回目の API コール（リフレッシュなし）
+      fetcher.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+
+      const client = new GoogleGmailClient(
+        { refreshToken: 'r', clientId: 'c', clientSecret: 's' },
+        fetcher,
+      );
+
+      await client.fetchUnreadMinneOrderEmails();
+      await client.fetchUnreadMinneOrderEmails();
+
+      // 計3回: トークン取得1回 + API 2回
+      expect(fetcher).toHaveBeenCalledTimes(3);
+    });
+
+    it('アクセストークンが期限切れの場合は再リフレッシュする', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      try {
+        const fetcher =
+          vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+        // 1回目: 最初のトークンリフレッシュ
+        fetcher.mockResolvedValueOnce(
+          new Response(JSON.stringify({ access_token: 'token-1', expires_in: 3600 }), {
+            status: 200,
+          }),
+        );
+        // 2回目: 1回目の API コール
+        fetcher.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+        // 3回目: 2回目のトークンリフレッシュ（期限切れ後）
+        fetcher.mockResolvedValueOnce(
+          new Response(JSON.stringify({ access_token: 'token-2', expires_in: 3600 }), {
+            status: 200,
+          }),
+        );
+        // 4回目: 2回目の API コール
+        fetcher.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+
+        const client = new GoogleGmailClient(
+          { refreshToken: 'r', clientId: 'c', clientSecret: 's' },
+          fetcher,
+        );
+
+        await client.fetchUnreadMinneOrderEmails();
+
+        // 有効期限 3600 秒 - バッファ 30 秒 = 3570 秒後に失効するため、それ以降に設定
+        vi.setSystemTime(new Date('2026-01-01T01:00:01Z')); // +3601 秒
+
+        await client.fetchUnreadMinneOrderEmails();
+
+        // 計4回: トークン取得2回 + API 2回
+        expect(fetcher).toHaveBeenCalledTimes(4);
+        const lastAuthHeader = (fetcher.mock.calls[3][1]?.headers as Record<string, string>)
+          ?.Authorization;
+        expect(lastAuthHeader).toBe('Bearer token-2');
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 });
