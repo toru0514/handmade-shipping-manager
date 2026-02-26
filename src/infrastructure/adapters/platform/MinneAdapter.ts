@@ -24,7 +24,7 @@ interface MinneAdapterDependencies {
    * - テスト時: ターミナルでユーザーが入力
    * - Phase 5: GmailAdapter を使って自動取得予定
    */
-  readonly getLoginUrl: (email: string) => Promise<string>;
+  readonly getLoginUrl: (params: { email: string; sentAfter: Date }) => Promise<string>;
 }
 
 export class MinneAdapter implements OrderFetcher {
@@ -36,8 +36,12 @@ export class MinneAdapter implements OrderFetcher {
       const page = await browser.newPage();
       const minnePage = new MinnePage(page);
 
+      const sentAfter = new Date();
       await minnePage.sendLoginLink(this.dependencies.email);
-      const loginUrl = await this.dependencies.getLoginUrl(this.dependencies.email);
+      const loginUrl = await this.dependencies.getLoginUrl({
+        email: this.dependencies.email,
+        sentAfter,
+      });
       await minnePage.openLoginLink(loginUrl);
       const result = await minnePage.fetchOrderData(orderId.toString());
 

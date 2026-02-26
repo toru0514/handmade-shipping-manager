@@ -196,8 +196,8 @@ function createFetchNewOrdersUseCase(
   const orderFetcher = new MinneAdapter({
     browserFactory,
     email: minneEmail,
-    getLoginUrl: async () => {
-      return gmailClient.fetchMinneMagicLink(new Date(), {
+    getLoginUrl: async ({ sentAfter }) => {
+      return gmailClient.fetchMinneMagicLink(sentAfter, {
         timeoutMs: 120_000,
         intervalMs: 5_000,
       });

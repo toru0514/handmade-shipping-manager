@@ -9,8 +9,7 @@ import { MinneAdapter, MinneBrowserFactory } from '../MinneAdapter';
  * 実際の minne 注文詳細ページ配送先ブロックの innerText 形式
  * （<br> が \n に変換されたもの）
  */
-const DELIVERY_BLOCK_TEXT =
-  '〒150-0001\n東京都渋谷区神宮前1-2-3\n山田 花子\nTEL：09012345678';
+const DELIVERY_BLOCK_TEXT = '〒150-0001\n東京都渋谷区神宮前1-2-3\n山田 花子\nTEL：09012345678';
 
 /**
  * セレクタごとのモック値マップ。
@@ -75,9 +74,7 @@ describe('MinneAdapter', () => {
         close,
       })),
     };
-    const getLoginUrl = vi.fn(
-      async () => 'https://minne.com/users/sign_in/magic_link/token123',
-    );
+    const getLoginUrl = vi.fn(async () => 'https://minne.com/users/sign_in/magic_link/token123');
 
     const adapter = new MinneAdapter({
       browserFactory,
@@ -104,10 +101,11 @@ describe('MinneAdapter', () => {
     expect(page.goto).toHaveBeenCalledWith('https://minne.com/users/sign_in');
     expect(page.fill).toHaveBeenCalledWith('input[type="email"]', 'minne@example.com');
     expect(page.click).toHaveBeenCalledWith('button:has-text("ログインリンクを送信")');
-    expect(getLoginUrl).toHaveBeenCalledWith('minne@example.com');
-    expect(page.goto).toHaveBeenCalledWith(
-      'https://minne.com/users/sign_in/magic_link/token123',
-    );
+    expect(getLoginUrl).toHaveBeenCalledWith({
+      email: 'minne@example.com',
+      sentAfter: expect.any(Date),
+    });
+    expect(page.goto).toHaveBeenCalledWith('https://minne.com/users/sign_in/magic_link/token123');
     expect(page.goto).toHaveBeenCalledWith('https://minne.com/account/orders/MN-00001');
 
     // ブラウザが閉じられることを確認
