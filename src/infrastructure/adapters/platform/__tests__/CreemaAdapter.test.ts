@@ -18,6 +18,12 @@ describe('CreemaAdapter', () => {
     const fill = vi.fn(async () => undefined);
     const click = vi.fn(async () => undefined);
     const goto = vi.fn(async () => undefined);
+    const evaluate = vi.fn(async () => ({
+      tradenaviPath: '/tradenavi/SXD05zNsPWkmTpIBiT8jU0WUmxWZ9BwX',
+      buyerName: '山本 昌代',
+      productName: 'ハンドメイドバッグ',
+      orderedAtText: '2026年2月25日',
+    }));
     const close = vi.fn(async () => undefined);
     const textContent = createTextContentMock({
       '.buyer-name': '佐藤 愛',
@@ -38,6 +44,7 @@ describe('CreemaAdapter', () => {
           fill,
           click,
           textContent,
+          evaluate,
         })),
         close,
       })),
@@ -66,11 +73,25 @@ describe('CreemaAdapter', () => {
       productName: 'ハンドメイドバッグ',
       orderedAt: new Date('2026-02-25T10:00:00.000Z'),
     });
-    expect(goto).toHaveBeenCalledWith('https://www.creema.jp/login');
-    expect(goto).toHaveBeenCalledWith('https://www.creema.jp/member/orders/CR-10001');
-    expect(fill).toHaveBeenCalledWith('#email', 'creema@example.com');
-    expect(fill).toHaveBeenCalledWith('#password', 'secret');
-    expect(click).toHaveBeenCalledWith('button[type="submit"]');
+    expect(goto).toHaveBeenCalledWith('https://www.creema.jp/login', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30_000,
+    });
+    expect(goto).toHaveBeenCalledWith('https://www.creema.jp/my/tradenavi/list', {
+      waitUntil: 'domcontentloaded',
+      timeout: 30_000,
+    });
+    expect(goto).toHaveBeenCalledWith(
+      'https://www.creema.jp/tradenavi/SXD05zNsPWkmTpIBiT8jU0WUmxWZ9BwX',
+      {
+        waitUntil: 'domcontentloaded',
+        timeout: 30_000,
+      },
+    );
+    expect(fill).toHaveBeenCalledWith('#login-email', 'creema@example.com');
+    expect(fill).toHaveBeenCalledWith('#login-password', 'secret');
+    expect(click).toHaveBeenCalledWith('input.js-user-login-button[value="ログイン"]');
+    expect(evaluate).toHaveBeenCalledTimes(1);
     expect(close).toHaveBeenCalledTimes(1);
   });
 
@@ -91,6 +112,12 @@ describe('CreemaAdapter', () => {
           fill: vi.fn(async () => undefined),
           click: vi.fn(async () => undefined),
           textContent,
+          evaluate: vi.fn(async () => ({
+            tradenaviPath: '/tradenavi/SXD05zNsPWkmTpIBiT8jU0WUmxWZ9BwX',
+            buyerName: '山本 昌代',
+            productName: 'ハンドメイドバッグ',
+            orderedAtText: '2026年2月25日',
+          })),
         })),
         close: vi.fn(async () => undefined),
       })),

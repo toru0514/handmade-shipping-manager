@@ -35,6 +35,7 @@ export class FetchNewOrdersUseCase {
     const platform = new Platform(input.platform);
     const refs = await this.emailOrderSource.fetchUnreadOrderRefs({
       withinDays: input.withinDays,
+      platform: platform.toString(),
     });
 
     let fetched = 0;

@@ -15,7 +15,9 @@ import { ShippingLabelIssuerImpl } from '@/infrastructure/adapters/shipping/Ship
 import { YamatoCompactAdapter } from '@/infrastructure/adapters/shipping/YamatoCompactAdapter';
 import type { YamatoCompactGateway } from '@/infrastructure/adapters/shipping/YamatoCompactGateway';
 import { MinneAdapter } from '@/infrastructure/adapters/platform/MinneAdapter';
-import { MinneEmailOrderSource } from '@/infrastructure/adapters/platform/MinneEmailOrderSource';
+import { CreemaAdapter } from '@/infrastructure/adapters/platform/CreemaAdapter';
+import { PlatformEmailOrderSource } from '@/infrastructure/adapters/platform/PlatformEmailOrderSource';
+import { PlatformOrderFetcher } from '@/infrastructure/adapters/platform/PlatformOrderFetcher';
 import { ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
 import { GoogleGmailClient } from '@/infrastructure/external/google/GmailClient';
 import { ChromiumBrowserFactory } from '@/infrastructure/external/playwright/ChromiumBrowserFactory';
@@ -180,7 +182,7 @@ function createFetchNewOrdersUseCase(
   orderRepository: ReturnType<typeof createOrderRepository>,
 ): FetchNewOrdersUseCase {
   const gmailClient = createGmailClient(env);
-  const emailOrderSource = new MinneEmailOrderSource(gmailClient);
+  const emailOrderSource = new PlatformEmailOrderSource(gmailClient);
 
   const minneEmail = env.MINNE_EMAIL?.trim();
   if (!minneEmail) {
@@ -193,7 +195,7 @@ function createFetchNewOrdersUseCase(
     ignoreHTTPSErrors: resolvePlaywrightIgnoreHTTPSErrors(env),
   });
 
-  const orderFetcher = new MinneAdapter({
+  const minneFetcher = new MinneAdapter({
     browserFactory,
     email: minneEmail,
     getLoginUrl: async ({ sentAfter }) => {
@@ -202,6 +204,30 @@ function createFetchNewOrdersUseCase(
         intervalMs: 5_000,
       });
     },
+  });
+
+  const creemaFetcher = {
+    fetch: async (...args: Parameters<CreemaAdapter['fetch']>) => {
+      const creemaEmail = env.CREEMA_EMAIL?.trim();
+      const creemaPassword = env.CREEMA_PASSWORD?.trim();
+      if (!creemaEmail || !creemaPassword) {
+        throw new Error('CREEMA_EMAIL / CREEMA_PASSWORD が設定されていません');
+      }
+
+      const adapter = new CreemaAdapter({
+        browserFactory,
+        credentials: {
+          email: creemaEmail,
+          password: creemaPassword,
+        },
+      });
+      return adapter.fetch(...args);
+    },
+  };
+
+  const orderFetcher = new PlatformOrderFetcher({
+    minneFetcher,
+    creemaFetcher,
   });
 
   return new FetchNewOrdersUseCase(emailOrderSource, orderFetcher, orderRepository);

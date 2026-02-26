@@ -1,5 +1,5 @@
 interface FetchOrdersButtonProps {
-  platform: 'minne';
+  platform: 'minne' | 'creema';
   isLoading: boolean;
   onClick: () => void;
 }

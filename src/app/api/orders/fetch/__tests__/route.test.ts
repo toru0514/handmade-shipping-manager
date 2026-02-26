@@ -54,16 +54,36 @@ describe('POST /api/orders/fetch', () => {
     });
   });
 
-  it('minne 以外の platform は 400 を返す', async () => {
+  it('creema も正常に受け付ける', async () => {
+    executeMock.mockResolvedValueOnce({
+      fetched: 1,
+      skipped: 0,
+      errors: [],
+    });
+
     const response = await POST(
       new Request('http://localhost/api/orders/fetch?platform=creema', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      fetched: 1,
+      skipped: 0,
+      errors: [],
+    });
+    expect(executeMock).toHaveBeenCalledWith({ platform: 'creema' });
+  });
+
+  it('minne/creema 以外の platform は 400 を返す', async () => {
+    const response = await POST(
+      new Request('http://localhost/api/orders/fetch?platform=foo', { method: 'POST' }),
     );
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toEqual({
       error: {
         code: 'VALIDATION_ERROR',
-        message: 'platform は minne のみ対応です',
+        message: 'platform は minne / creema のみ対応です',
       },
     });
   });

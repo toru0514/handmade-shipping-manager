@@ -294,6 +294,43 @@ describe('GoogleGmailClient', () => {
     });
   });
 
+  describe('fetchUnreadCreemaOrderEmails', () => {
+    it('is:unread from:creema.jp クエリで未読注文メールを取得できる', async () => {
+      const fetcher = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+      fetcher
+        .mockResolvedValueOnce(listResponse(['m1']))
+        .mockResolvedValueOnce(
+          messageResponse(
+            'm1',
+            '[Creema] 購入のご連絡\n注文ID　　　： 202602232210-SXD0\n購入者： まあ',
+          ),
+        );
+
+      const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
+      const results = await client.fetchUnreadCreemaOrderEmails();
+
+      expect(results).toEqual([{ messageId: 'm1', orderId: '202602232210-SXD0' }]);
+
+      const firstCallUrl = String(fetcher.mock.calls[0][0]);
+      expect(firstCallUrl).toContain('is%3Aunread%20from%3Acreema.jp');
+      expect(firstCallUrl).toContain('after%3A');
+    });
+
+    it('注文IDがないメールはスキップする', async () => {
+      const fetcher = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+      fetcher
+        .mockResolvedValueOnce(listResponse(['m1']))
+        .mockResolvedValueOnce(
+          messageResponse('m1', '取引ナビ https://www.creema.jp/tradenavi/SXD05zNsPWkm'),
+        );
+
+      const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
+      const results = await client.fetchUnreadCreemaOrderEmails();
+
+      expect(results).toEqual([]);
+    });
+  });
+
   describe('fetchMinneMagicLink', () => {
     /** getMessageDetail レスポンス（internalDate 指定可能版） */
     function detailResponse(id: string, internalDateMs: number, bodyText: string) {
