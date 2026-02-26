@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
+import { AuthenticationError, ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
 
 const { executeMock } = vi.hoisted(() => ({
   executeMock: vi.fn(),
@@ -80,6 +80,22 @@ describe('POST /api/orders/fetch', () => {
       error: {
         code: 'EXTERNAL_SERVICE_ERROR',
         message: '一時的に利用できません',
+      },
+    });
+  });
+
+  it('認証エラー時は 401 と統一フォーマットを返す', async () => {
+    executeMock.mockRejectedValueOnce(new AuthenticationError('認証に失敗しました'));
+
+    const response = await POST(
+      new Request('http://localhost/api/orders/fetch?platform=minne', { method: 'POST' }),
+    );
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: {
+        code: 'AUTHENTICATION_ERROR',
+        message: '認証に失敗しました',
       },
     });
   });

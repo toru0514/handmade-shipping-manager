@@ -5,8 +5,6 @@ interface FetchOrdersButtonProps {
 }
 
 export function FetchOrdersButton({ platform, isLoading, onClick }: FetchOrdersButtonProps) {
-  const platformLabel = platform === 'minne' ? 'minne' : platform;
-
   return (
     <button
       type="button"
@@ -14,7 +12,7 @@ export function FetchOrdersButton({ platform, isLoading, onClick }: FetchOrdersB
       disabled={isLoading}
       onClick={onClick}
     >
-      {isLoading ? `${platformLabel} 取得中...` : `${platformLabel} 未読を取得 ▶`}
+      {isLoading ? `${platform} 取得中...` : `${platform} 未読を取得 ▶`}
     </button>
   );
 }

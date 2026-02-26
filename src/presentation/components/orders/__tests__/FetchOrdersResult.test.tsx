@@ -25,7 +25,7 @@ describe('FetchOrdersResult', () => {
     expect(screen.getByRole('region', { name: '取得結果' })).toBeInTheDocument();
     expect(screen.getByText('✓ 3件取得')).toBeInTheDocument();
     expect(screen.getByText('- 1件スキップ（重複）')).toBeInTheDocument();
-    expect(screen.getByText('✗ 0件エラー')).toBeInTheDocument();
+    expect(screen.queryByText('✗ 0件エラー')).not.toBeInTheDocument();
   });
 
   it('エラー詳細を表示する', () => {
