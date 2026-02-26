@@ -244,6 +244,7 @@ export class GmailClient {
 // ---------------------------------------------------------------------------
 
 const GMAIL_API_BASE = 'https://gmail.googleapis.com/gmail/v1/users/me';
+const DEFAULT_WITHIN_DAYS = 30;
 
 export interface GoogleGmailClientConfig {
   readonly accessToken?: string;
@@ -265,6 +266,14 @@ export interface UnreadOrderEmail {
   readonly messageId: string;
   /** minne の注文 ID */
   readonly orderId: string;
+}
+
+export interface FetchUnreadMinneOrderEmailsOptions {
+  /**
+   * この日数以内に受信したメールのみを対象にする。
+   * デフォルト: 30 日。古い未読メールの混入を防ぐ。
+   */
+  readonly withinDays?: number;
 }
 
 interface GoogleGmailListResponse {
@@ -321,9 +330,17 @@ export class GoogleGmailClient {
 
   /**
    * Gmail の未読 minne 購入通知メール（from: order@minne.com）から注文IDを一括取得する。
+   * デフォルトで直近 30 日以内のメールのみを対象とし、古い未読メールの混入を防ぐ。
    */
-  async fetchUnreadMinneOrderEmails(): Promise<UnreadOrderEmail[]> {
-    const query = 'is:unread from:order@minne.com';
+  async fetchUnreadMinneOrderEmails(
+    options: FetchUnreadMinneOrderEmailsOptions = {},
+  ): Promise<UnreadOrderEmail[]> {
+    const withinDays = options.withinDays ?? DEFAULT_WITHIN_DAYS;
+    if (withinDays <= 0) {
+      throw new Error('withinDays は 1 以上の値を指定してください');
+    }
+    const afterUnix = Math.floor((Date.now() - withinDays * 24 * 60 * 60 * 1000) / 1000);
+    const query = `is:unread from:order@minne.com after:${afterUnix}`;
     const url = `${this.getBaseUrl()}/messages?q=${encodeURIComponent(query)}&maxResults=50`;
     const data = await this.googleGet<GoogleGmailListResponse>(url);
     if (!data.messages || data.messages.length === 0) return [];
@@ -424,9 +441,7 @@ export class GoogleGmailClient {
       if (response.status === 401 || response.status === 403) {
         throw new AuthenticationError(`Gmail API 認証エラー: ${response.status}`);
       }
-      throw new ExternalServiceError(
-        `Gmail API エラー: ${response.status} ${response.statusText}`,
-      );
+      throw new ExternalServiceError(`Gmail API エラー: ${response.status} ${response.statusText}`);
     }
     return response.json() as Promise<T>;
   }
@@ -457,7 +472,11 @@ export class GoogleGmailClient {
       await this.refreshAccessToken();
       const retryHeaders: Record<string, string> = await this.createAuthHeaders();
       if (options.contentType) retryHeaders['Content-Type'] = options.contentType;
-      return this.fetcher(url, { method: options.method, headers: retryHeaders, body: options.body });
+      return this.fetcher(url, {
+        method: options.method,
+        headers: retryHeaders,
+        body: options.body,
+      });
     }
 
     return res;
@@ -524,9 +543,7 @@ export class GoogleGmailClient {
 
     this.accessToken = payload.access_token;
     this.accessTokenExpiresAt =
-      typeof payload.expires_in === 'number'
-        ? Date.now() + payload.expires_in * 1000
-        : undefined;
+      typeof payload.expires_in === 'number' ? Date.now() + payload.expires_in * 1000 : undefined;
   }
 
   private getBaseUrl(): string {
