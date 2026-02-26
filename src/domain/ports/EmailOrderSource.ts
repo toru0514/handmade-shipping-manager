@@ -10,8 +10,6 @@ export interface UnreadOrderRef {
 export interface EmailOrderSourceOptions {
   /** この日数以内に受信したメールのみを対象にする（デフォルト: 30） */
   readonly withinDays?: number;
-  /** 取得対象プラットフォーム（minne / creema） */
-  readonly platform?: string;
 }
 
 export interface EmailOrderSource {

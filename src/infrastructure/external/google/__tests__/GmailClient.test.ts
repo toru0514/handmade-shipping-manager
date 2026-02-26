@@ -321,7 +321,10 @@ describe('GoogleGmailClient', () => {
       fetcher
         .mockResolvedValueOnce(listResponse(['m1']))
         .mockResolvedValueOnce(
-          messageResponse('m1', '取引ナビ https://www.creema.jp/tradenavi/SXD05zNsPWkm'),
+          messageResponse(
+            'm1',
+            '注文ID: ABC-1234\n取引ナビ https://www.creema.jp/tradenavi/SXD05zNsPWkm',
+          ),
         );
 
       const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);

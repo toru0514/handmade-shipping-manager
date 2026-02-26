@@ -1,15 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthenticationError, ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
 
-const { executeMock } = vi.hoisted(() => ({
+const { executeMock, getFetchNewOrdersUseCaseMock } = vi.hoisted(() => ({
   executeMock: vi.fn(),
+  getFetchNewOrdersUseCaseMock: vi.fn(() => ({
+    execute: executeMock,
+  })),
 }));
 
 vi.mock('@/infrastructure/di/container', () => ({
   createContainer: vi.fn(() => ({
-    getFetchNewOrdersUseCase: () => ({
-      execute: executeMock,
-    }),
+    getFetchNewOrdersUseCase: getFetchNewOrdersUseCaseMock,
   })),
 }));
 
@@ -18,6 +19,7 @@ import { POST } from '../route';
 describe('POST /api/orders/fetch', () => {
   beforeEach(() => {
     executeMock.mockReset();
+    getFetchNewOrdersUseCaseMock.mockClear();
   });
 
   it('正常時は fetched/skipped/errors を返す', async () => {
@@ -38,6 +40,7 @@ describe('POST /api/orders/fetch', () => {
       errors: [],
     });
     expect(executeMock).toHaveBeenCalledWith({ platform: 'minne' });
+    expect(getFetchNewOrdersUseCaseMock).toHaveBeenCalledWith('minne');
   });
 
   it('platform 未指定時は 400 を返す', async () => {
@@ -72,6 +75,7 @@ describe('POST /api/orders/fetch', () => {
       errors: [],
     });
     expect(executeMock).toHaveBeenCalledWith({ platform: 'creema' });
+    expect(getFetchNewOrdersUseCaseMock).toHaveBeenCalledWith('creema');
   });
 
   it('minne/creema 以外の platform は 400 を返す', async () => {

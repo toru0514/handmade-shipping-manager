@@ -22,7 +22,7 @@ export async function POST(request: Request) {
 
   try {
     const container = createContainer();
-    const useCase = container.getFetchNewOrdersUseCase();
+    const useCase = container.getFetchNewOrdersUseCase(platform as 'minne' | 'creema');
     const result = await useCase.execute({ platform });
     return NextResponse.json(result);
   } catch (err) {

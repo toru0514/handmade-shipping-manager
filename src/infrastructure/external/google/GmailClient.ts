@@ -384,12 +384,9 @@ export class GoogleGmailClient {
 
   private extractCreemaOrderId(body: string): string | null {
     // 例: 注文ID: 202602232210-SXD0
-    const exactMatch = body.match(/注文ID\s*[：:]\s*([0-9]{8,}-[A-Za-z0-9]+)/);
+    const exactMatch = body.match(/注文ID\s*[：:]\s*((?:19|20)\d{10}-[A-Za-z0-9]{4,8})/);
     if (exactMatch?.[1]) return exactMatch[1];
-
-    // フォールバック: 形式不明でも注文ID ラベルの右側を拾う
-    const looseMatch = body.match(/注文ID\s*[：:]\s*([A-Za-z0-9-]{6,})/);
-    return looseMatch?.[1] ?? null;
+    return null;
   }
 
   private async fetchUnreadOrderEmailsByQuery(

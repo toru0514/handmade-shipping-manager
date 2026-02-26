@@ -16,8 +16,8 @@ import { YamatoCompactAdapter } from '@/infrastructure/adapters/shipping/YamatoC
 import type { YamatoCompactGateway } from '@/infrastructure/adapters/shipping/YamatoCompactGateway';
 import { MinneAdapter } from '@/infrastructure/adapters/platform/MinneAdapter';
 import { CreemaAdapter } from '@/infrastructure/adapters/platform/CreemaAdapter';
-import { PlatformEmailOrderSource } from '@/infrastructure/adapters/platform/PlatformEmailOrderSource';
-import { PlatformOrderFetcher } from '@/infrastructure/adapters/platform/PlatformOrderFetcher';
+import { MinneEmailOrderSource } from '@/infrastructure/adapters/platform/MinneEmailOrderSource';
+import { CreemaEmailOrderSource } from '@/infrastructure/adapters/platform/CreemaEmailOrderSource';
 import { ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
 import { GoogleGmailClient } from '@/infrastructure/external/google/GmailClient';
 import { ChromiumBrowserFactory } from '@/infrastructure/external/playwright/ChromiumBrowserFactory';
@@ -180,14 +180,9 @@ function createGmailClient(env: Env): GoogleGmailClient {
 function createFetchNewOrdersUseCase(
   env: Env,
   orderRepository: ReturnType<typeof createOrderRepository>,
+  platform: 'minne' | 'creema',
 ): FetchNewOrdersUseCase {
   const gmailClient = createGmailClient(env);
-  const emailOrderSource = new PlatformEmailOrderSource(gmailClient);
-
-  const minneEmail = env.MINNE_EMAIL?.trim();
-  if (!minneEmail) {
-    throw new Error('MINNE_EMAIL が設定されていません');
-  }
 
   const browserFactory = new ChromiumBrowserFactory({
     headless: resolvePlaywrightHeadless(env),
@@ -195,7 +190,29 @@ function createFetchNewOrdersUseCase(
     ignoreHTTPSErrors: resolvePlaywrightIgnoreHTTPSErrors(env),
   });
 
-  const minneFetcher = new MinneAdapter({
+  if (platform === 'creema') {
+    const creemaEmail = env.CREEMA_EMAIL?.trim();
+    const creemaPassword = env.CREEMA_PASSWORD?.trim();
+    if (!creemaEmail || !creemaPassword) {
+      throw new Error('CREEMA_EMAIL / CREEMA_PASSWORD が設定されていません');
+    }
+    const emailOrderSource = new CreemaEmailOrderSource(gmailClient);
+    const orderFetcher = new CreemaAdapter({
+      browserFactory,
+      credentials: {
+        email: creemaEmail,
+        password: creemaPassword,
+      },
+    });
+    return new FetchNewOrdersUseCase(emailOrderSource, orderFetcher, orderRepository);
+  }
+
+  const minneEmail = env.MINNE_EMAIL?.trim();
+  if (!minneEmail) {
+    throw new Error('MINNE_EMAIL が設定されていません');
+  }
+  const emailOrderSource = new MinneEmailOrderSource(gmailClient);
+  const orderFetcher = new MinneAdapter({
     browserFactory,
     email: minneEmail,
     getLoginUrl: async ({ sentAfter }) => {
@@ -204,30 +221,6 @@ function createFetchNewOrdersUseCase(
         intervalMs: 5_000,
       });
     },
-  });
-
-  const creemaFetcher = {
-    fetch: async (...args: Parameters<CreemaAdapter['fetch']>) => {
-      const creemaEmail = env.CREEMA_EMAIL?.trim();
-      const creemaPassword = env.CREEMA_PASSWORD?.trim();
-      if (!creemaEmail || !creemaPassword) {
-        throw new Error('CREEMA_EMAIL / CREEMA_PASSWORD が設定されていません');
-      }
-
-      const adapter = new CreemaAdapter({
-        browserFactory,
-        credentials: {
-          email: creemaEmail,
-          password: creemaPassword,
-        },
-      });
-      return adapter.fetch(...args);
-    },
-  };
-
-  const orderFetcher = new PlatformOrderFetcher({
-    minneFetcher,
-    creemaFetcher,
   });
 
   return new FetchNewOrdersUseCase(emailOrderSource, orderFetcher, orderRepository);
@@ -334,7 +327,7 @@ export interface Container {
   getGeneratePurchaseThanksUseCase(): GeneratePurchaseThanksUseCase;
   getGenerateShippingNoticeUseCase(): GenerateShippingNoticeUseCase;
   getIssueShippingLabelUseCase(): IssueShippingLabelUseCase;
-  getFetchNewOrdersUseCase(): FetchNewOrdersUseCase;
+  getFetchNewOrdersUseCase(platform: 'minne' | 'creema'): FetchNewOrdersUseCase;
 }
 
 export function createContainer(env: Env = process.env): Container {
@@ -351,6 +344,7 @@ export function createContainer(env: Env = process.env): Container {
     getGenerateShippingNoticeUseCase: () =>
       new GenerateShippingNoticeUseCase(orderRepository, templateRepository),
     getIssueShippingLabelUseCase: () => createIssueShippingLabelUseCase(env),
-    getFetchNewOrdersUseCase: () => createFetchNewOrdersUseCase(env, orderRepository),
+    getFetchNewOrdersUseCase: (platform: 'minne' | 'creema') =>
+      createFetchNewOrdersUseCase(env, orderRepository, platform),
   };
 }

@@ -252,9 +252,6 @@ describe('FetchNewOrdersUseCase', () => {
     const useCase = new FetchNewOrdersUseCase(emailSource, fetcher, repository);
     await useCase.execute({ platform: 'minne', withinDays: 7 });
 
-    expect(emailSource.fetchUnreadOrderRefs).toHaveBeenCalledWith({
-      withinDays: 7,
-      platform: 'minne',
-    });
+    expect(emailSource.fetchUnreadOrderRefs).toHaveBeenCalledWith({ withinDays: 7 });
   });
 });
