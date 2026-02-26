@@ -42,9 +42,9 @@ export class FetchNewOrdersUseCase {
     const errors: FetchNewOrdersErrorInfo[] = [];
 
     for (const ref of refs) {
-      const orderId = new OrderId(ref.orderId);
-
       try {
+        const orderId = new OrderId(ref.orderId);
+
         // 重複チェック（DR-ORD-001）
         if (await this.orderRepository.exists(orderId)) {
           skipped++;

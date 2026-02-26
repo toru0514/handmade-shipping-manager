@@ -202,24 +202,46 @@ describe('FetchNewOrdersUseCase', () => {
 
   it('markAsRead 失敗時は警告ログを出すが全体の結果には影響しない', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const refs = [makeRef('MN-001')];
-    const emailSource: EmailOrderSource = {
-      fetchUnreadOrderRefs: vi.fn(async () => refs),
-      markAsRead: vi.fn(async () => {
-        throw new Error('network error');
-      }),
+    try {
+      const refs = [makeRef('MN-001')];
+      const emailSource: EmailOrderSource = {
+        fetchUnreadOrderRefs: vi.fn(async () => refs),
+        markAsRead: vi.fn(async () => {
+          throw new Error('network error');
+        }),
+      };
+      const fetcher = makeFetcher(makePlatformData('MN-001'));
+      const repository = new InMemoryOrderRepository();
+
+      const useCase = new FetchNewOrdersUseCase(emailSource, fetcher, repository);
+      const result = await useCase.execute({ platform: 'minne' });
+
+      expect(result).toEqual({ fetched: 1, skipped: 0, errors: [] });
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('[FetchNewOrdersUseCase] markAsRead 失敗'),
+        expect.any(Error),
+      );
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it('orderId が空文字のメールはエラーに記録し他の処理を継続する', async () => {
+    const refs = [makeRef('', 'msg-bad'), makeRef('MN-002')];
+    const emailSource = makeEmailSource(refs);
+    const fetcher: OrderFetcher = {
+      fetch: vi.fn().mockResolvedValueOnce(makePlatformData('MN-002')),
     };
-    const fetcher = makeFetcher(makePlatformData('MN-001'));
     const repository = new InMemoryOrderRepository();
 
     const useCase = new FetchNewOrdersUseCase(emailSource, fetcher, repository);
     const result = await useCase.execute({ platform: 'minne' });
 
-    expect(result).toEqual({ fetched: 1, skipped: 0, errors: [] });
-    expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('[FetchNewOrdersUseCase] markAsRead 失敗'),
-      expect.any(Error),
-    );
+    expect(result.fetched).toBe(1);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].orderId).toBe('');
+    // 不正な orderId のメールは既読化しない
+    expect(emailSource.markAsRead).not.toHaveBeenCalledWith('msg-bad');
   });
 
   it('withinDays オプションを EmailOrderSource に渡す', async () => {
