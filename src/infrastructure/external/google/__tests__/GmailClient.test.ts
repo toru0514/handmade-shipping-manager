@@ -186,6 +186,7 @@ describe('GoogleGmailClient', () => {
       // クエリ文字列の確認（encodeURIComponent はスペースを %20 に変換する）
       const firstCallUrl = String(fetcher.mock.calls[0][0]);
       expect(firstCallUrl).toContain('is%3Aunread%20from%3Aorder%40minne.com');
+      expect(firstCallUrl).toContain('after%3A');
     });
 
     it('URL パターンから orderId を抽出できる', async () => {
@@ -239,37 +240,57 @@ describe('GoogleGmailClient', () => {
     });
 
     it('デフォルトで after: フィルタが 30 日前の Unix タイムスタンプで付与される', async () => {
-      const fetcher = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
-      fetcher.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      try {
+        const fetcher =
+          vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+        fetcher.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
 
-      const before = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
-      const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
-      await client.fetchUnreadMinneOrderEmails();
-      const after = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+        const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
+        await client.fetchUnreadMinneOrderEmails();
 
-      const url = String(fetcher.mock.calls[0][0]);
-      const match = url.match(/after%3A(\d+)/);
-      expect(match).not.toBeNull();
-      const timestamp = parseInt(match![1], 10);
-      expect(timestamp).toBeGreaterThanOrEqual(before - 1);
-      expect(timestamp).toBeLessThanOrEqual(after + 1);
+        const expectedUnix = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+        const url = String(fetcher.mock.calls[0][0]);
+        const match = url.match(/after%3A(\d+)/);
+        expect(match).not.toBeNull();
+        expect(parseInt(match![1], 10)).toBe(expectedUnix);
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('withinDays オプションで対象期間を変更できる', async () => {
+      vi.useFakeTimers();
+      vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+      try {
+        const fetcher =
+          vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+        fetcher.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+
+        const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
+        await client.fetchUnreadMinneOrderEmails({ withinDays: 7 });
+
+        const expectedUnix = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+        const url = String(fetcher.mock.calls[0][0]);
+        const match = url.match(/after%3A(\d+)/);
+        expect(match).not.toBeNull();
+        expect(parseInt(match![1], 10)).toBe(expectedUnix);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('withinDays に 0 以下の値を渡すとエラーになる', async () => {
       const fetcher = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
-      fetcher.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
-
-      const before = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
       const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
-      await client.fetchUnreadMinneOrderEmails({ withinDays: 7 });
-      const after = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
 
-      const url = String(fetcher.mock.calls[0][0]);
-      const match = url.match(/after%3A(\d+)/);
-      expect(match).not.toBeNull();
-      const timestamp = parseInt(match![1], 10);
-      expect(timestamp).toBeGreaterThanOrEqual(before - 1);
-      expect(timestamp).toBeLessThanOrEqual(after + 1);
+      await expect(client.fetchUnreadMinneOrderEmails({ withinDays: 0 })).rejects.toThrow(
+        'withinDays は 1 以上の値を指定してください',
+      );
+      await expect(client.fetchUnreadMinneOrderEmails({ withinDays: -1 })).rejects.toThrow(
+        'withinDays は 1 以上の値を指定してください',
+      );
     });
   });
 

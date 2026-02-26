@@ -336,6 +336,9 @@ export class GoogleGmailClient {
     options: FetchUnreadMinneOrderEmailsOptions = {},
   ): Promise<UnreadOrderEmail[]> {
     const withinDays = options.withinDays ?? DEFAULT_WITHIN_DAYS;
+    if (withinDays <= 0) {
+      throw new Error('withinDays は 1 以上の値を指定してください');
+    }
     const afterUnix = Math.floor((Date.now() - withinDays * 24 * 60 * 60 * 1000) / 1000);
     const query = `is:unread from:order@minne.com after:${afterUnix}`;
     const url = `${this.getBaseUrl()}/messages?q=${encodeURIComponent(query)}&maxResults=50`;
