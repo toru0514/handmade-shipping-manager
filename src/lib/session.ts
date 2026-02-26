@@ -42,6 +42,7 @@ export async function createSessionToken(secret: string): Promise<string> {
 }
 
 export async function verifySessionToken(token: string, secret: string): Promise<boolean> {
+  if (!secret) return false;
   try {
     const dot = token.lastIndexOf('.');
     if (dot < 1) return false;

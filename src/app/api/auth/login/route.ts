@@ -19,7 +19,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'パスワードが正しくありません' }, { status: 401 });
   }
 
-  const secret = process.env.APP_SESSION_SECRET ?? '';
+  const secret = process.env.APP_SESSION_SECRET;
+  if (!secret) {
+    return NextResponse.json({ error: 'APP_SESSION_SECRET が設定されていません' }, { status: 500 });
+  }
   const token = await createSessionToken(secret);
 
   const res = NextResponse.json({ ok: true });
