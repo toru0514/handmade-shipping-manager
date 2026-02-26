@@ -52,7 +52,7 @@ export interface CreemaPageLike {
   fill(selector: string, value: string): Promise<void>;
   click(selector: string, options?: { timeout?: number }): Promise<void>;
   textContent(selector: string, options?: { timeout?: number }): Promise<string | null>;
-  evaluate<R, Arg>(pageFunction: (arg: Arg) => R, arg: Arg): Promise<R>;
+  evaluate?<R, Arg>(pageFunction: (arg: Arg) => R, arg: Arg): Promise<R>;
 }
 
 export interface CreemaScrapedOrderData {
@@ -117,6 +117,10 @@ export class CreemaPage {
     this.debug(`openOrder start orderId=${orderId.toString()}`);
     await this.safeGoto(CREEMA_TRADE_LIST_URL);
     this.debug('tradelist opened');
+
+    if (!this.page.evaluate) {
+      throw new Error('creema ページ評価機能(evaluate)が利用できません');
+    }
 
     this.debug('tradelist evaluate start');
     const orderInfo = await this.page.evaluate((targetOrderId) => {
@@ -280,6 +284,10 @@ export class CreemaPage {
     buyerAddress2?: string;
     buyerPhone?: string;
   }> {
+    if (!this.page.evaluate) {
+      throw new Error('creema ページ評価機能(evaluate)が利用できません');
+    }
+
     this.debug('extractAddressSectionInfo evaluate start');
     const extracted = await this.page.evaluate(() => {
       const section = document.querySelector<HTMLElement>('section#address');
@@ -436,7 +444,7 @@ export class CreemaPage {
     return false;
   }
 
-  private async optionalText(selectors: string[]): Promise<string | null> {
+  private async optionalText(selectors: string[]): Promise<string | undefined> {
     for (const selector of selectors) {
       try {
         // セレクタ未存在時の長時間待機を避ける（フォールバックへ速やかに進む）
@@ -449,7 +457,7 @@ export class CreemaPage {
         // try next selector
       }
     }
-    return null;
+    return undefined;
   }
 
   private async safeGoto(url: string): Promise<void> {
