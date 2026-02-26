@@ -1,12 +1,15 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { FetchNewOrdersResult } from '@/application/usecases/FetchNewOrdersUseCase';
 import type { IssueShippingLabelResultDto } from '@/application/usecases/IssueShippingLabelUseCase';
 import type { MarkOrderAsShippedResultDto } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
 import { PendingOrderList } from '@/presentation/components/orders/PendingOrderList';
 import { LabelResultView } from '@/presentation/components/labels/LabelResultView';
 import { MessagePreviewDialog } from '@/presentation/components/messages/MessagePreviewDialog';
+import { FetchOrdersButton } from '@/presentation/components/orders/FetchOrdersButton';
+import { FetchOrdersResult } from '@/presentation/components/orders/FetchOrdersResult';
 import {
   ShipmentCompleteData,
   ShipmentCompleteMessage,
@@ -35,6 +38,9 @@ export default function OrdersPage() {
   const [issuingLabelOrderId, setIssuingLabelOrderId] = useState<string | null>(null);
   const [completeData, setCompleteData] = useState<ShipmentCompleteData | null>(null);
   const [isCompleteMessageOpen, setIsCompleteMessageOpen] = useState(false);
+  const [isFetchingMinneOrders, setIsFetchingMinneOrders] = useState(false);
+  const [fetchOrdersResult, setFetchOrdersResult] = useState<FetchNewOrdersResult | null>(null);
+  const [fetchOrdersError, setFetchOrdersError] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async () => {
     const response = await fetch('/api/orders/pending');
@@ -168,9 +174,50 @@ export default function OrdersPage() {
     [],
   );
 
+  const handleFetchMinneOrders = useCallback(async (): Promise<void> => {
+    setIsFetchingMinneOrders(true);
+    setFetchOrdersError(null);
+    setFetchOrdersResult(null);
+
+    try {
+      const response = await fetch('/api/orders/fetch?platform=minne', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: { message?: string } | string;
+        };
+        const message =
+          typeof body.error === 'string'
+            ? body.error
+            : (body.error?.message ?? '新規注文の取得に失敗しました');
+        throw new Error(message);
+      }
+
+      const payload = (await response.json()) as FetchNewOrdersResult;
+      setFetchOrdersResult(payload);
+      await fetchOrders();
+    } catch (error) {
+      setFetchOrdersError(error instanceof Error ? error.message : '新規注文の取得に失敗しました');
+    } finally {
+      setIsFetchingMinneOrders(false);
+    }
+  }, [fetchOrders]);
+
   return (
     <main className="mx-auto max-w-6xl p-6">
       <h1 className="mb-6 text-2xl font-bold">発送前注文一覧</h1>
+      <section className="mb-6">
+        <FetchOrdersButton
+          platform="minne"
+          isLoading={isFetchingMinneOrders}
+          onClick={() => {
+            void handleFetchMinneOrders();
+          }}
+        />
+        <FetchOrdersResult result={fetchOrdersResult} requestError={fetchOrdersError} />
+      </section>
 
       {loading && (
         <div className="py-12 text-center text-gray-500" data-testid="loading">

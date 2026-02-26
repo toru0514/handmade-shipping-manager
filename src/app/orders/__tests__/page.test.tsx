@@ -13,6 +13,45 @@ describe('OrdersPage (UC-006)', () => {
     vi.unstubAllGlobals();
   });
 
+  it('minne未読取得ボタンから手動取得を実行し結果を表示できる', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url === '/api/orders/pending') {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+
+      if (url === '/api/orders/fetch?platform=minne' && init?.method === 'POST') {
+        return new Response(
+          JSON.stringify({
+            fetched: 3,
+            skipped: 1,
+            errors: [{ orderId: 'MN-099', reason: 'timeout' }],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<OrdersPage />);
+
+    const button = await screen.findByRole('button', { name: 'minne 未読を取得 ▶' });
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/orders/fetch?platform=minne', {
+        method: 'POST',
+      });
+      expect(screen.getByText('✓ 3件取得')).toBeInTheDocument();
+      expect(screen.getByText('- 1件スキップ（重複）')).toBeInTheDocument();
+      expect(screen.getByText('✗ 1件エラー')).toBeInTheDocument();
+      expect(screen.getByText('MN-099: timeout')).toBeInTheDocument();
+    });
+  });
+
   it('発送完了フローで一覧から注文が消え、追跡番号を送信する', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
