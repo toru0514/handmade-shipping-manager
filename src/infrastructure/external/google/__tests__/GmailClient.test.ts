@@ -237,6 +237,40 @@ describe('GoogleGmailClient', () => {
 
       expect(results).toEqual([]);
     });
+
+    it('デフォルトで after: フィルタが 30 日前の Unix タイムスタンプで付与される', async () => {
+      const fetcher = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+      fetcher.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+
+      const before = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+      const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
+      await client.fetchUnreadMinneOrderEmails();
+      const after = Math.floor((Date.now() - 30 * 24 * 60 * 60 * 1000) / 1000);
+
+      const url = String(fetcher.mock.calls[0][0]);
+      const match = url.match(/after%3A(\d+)/);
+      expect(match).not.toBeNull();
+      const timestamp = parseInt(match![1], 10);
+      expect(timestamp).toBeGreaterThanOrEqual(before - 1);
+      expect(timestamp).toBeLessThanOrEqual(after + 1);
+    });
+
+    it('withinDays オプションで対象期間を変更できる', async () => {
+      const fetcher = vi.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+      fetcher.mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
+
+      const before = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+      const client = new GoogleGmailClient({ accessToken: 'test-token' }, fetcher);
+      await client.fetchUnreadMinneOrderEmails({ withinDays: 7 });
+      const after = Math.floor((Date.now() - 7 * 24 * 60 * 60 * 1000) / 1000);
+
+      const url = String(fetcher.mock.calls[0][0]);
+      const match = url.match(/after%3A(\d+)/);
+      expect(match).not.toBeNull();
+      const timestamp = parseInt(match![1], 10);
+      expect(timestamp).toBeGreaterThanOrEqual(before - 1);
+      expect(timestamp).toBeLessThanOrEqual(after + 1);
+    });
   });
 
   describe('markAsRead', () => {
