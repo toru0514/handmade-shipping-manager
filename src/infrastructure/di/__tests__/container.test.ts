@@ -98,4 +98,38 @@ describe('createContainer', () => {
     });
     expect(() => createContainer(env)).toThrow('client_email と private_key が含まれていません');
   });
+
+  it('fetch(minne) ユースケースを取得できる', () => {
+    const env = baseEnv({
+      GOOGLE_SHEETS_ACCESS_TOKEN: 'test-token',
+      GMAIL_ACCESS_TOKEN: 'gmail-token',
+      MINNE_EMAIL: 'minne@example.com',
+    });
+    const container = createContainer(env);
+    const useCase = container.getFetchNewOrdersUseCase('minne');
+    expect(useCase.execute).toBeDefined();
+  });
+
+  it('fetch(creema) ユースケースを取得できる', () => {
+    const env = baseEnv({
+      GOOGLE_SHEETS_ACCESS_TOKEN: 'test-token',
+      GMAIL_ACCESS_TOKEN: 'gmail-token',
+      CREEMA_EMAIL: 'creema@example.com',
+      CREEMA_PASSWORD: 'secret',
+    });
+    const container = createContainer(env);
+    const useCase = container.getFetchNewOrdersUseCase('creema');
+    expect(useCase.execute).toBeDefined();
+  });
+
+  it('fetch(creema) で CREEMA_EMAIL/PASSWORD 未設定時はエラー', () => {
+    const env = baseEnv({
+      GOOGLE_SHEETS_ACCESS_TOKEN: 'test-token',
+      GMAIL_ACCESS_TOKEN: 'gmail-token',
+    });
+    const container = createContainer(env);
+    expect(() => container.getFetchNewOrdersUseCase('creema')).toThrow(
+      'CREEMA_EMAIL / CREEMA_PASSWORD が設定されていません',
+    );
+  });
 });

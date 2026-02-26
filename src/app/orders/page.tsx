@@ -38,7 +38,7 @@ export default function OrdersPage() {
   const [issuingLabelOrderId, setIssuingLabelOrderId] = useState<string | null>(null);
   const [completeData, setCompleteData] = useState<ShipmentCompleteData | null>(null);
   const [isCompleteMessageOpen, setIsCompleteMessageOpen] = useState(false);
-  const [isFetchingMinneOrders, setIsFetchingMinneOrders] = useState(false);
+  const [fetchingPlatform, setFetchingPlatform] = useState<'minne' | 'creema' | null>(null);
   const [fetchOrdersResult, setFetchOrdersResult] = useState<FetchNewOrdersResult | null>(null);
   const [fetchOrdersError, setFetchOrdersError] = useState<string | null>(null);
 
@@ -174,48 +174,62 @@ export default function OrdersPage() {
     [],
   );
 
-  const handleFetchMinneOrders = useCallback(async (): Promise<void> => {
-    setIsFetchingMinneOrders(true);
-    setFetchOrdersError(null);
-    setFetchOrdersResult(null);
+  const handleFetchOrders = useCallback(
+    async (platform: 'minne' | 'creema'): Promise<void> => {
+      setFetchingPlatform(platform);
+      setFetchOrdersError(null);
+      setFetchOrdersResult(null);
 
-    try {
-      const response = await fetch('/api/orders/fetch?platform=minne', {
-        method: 'POST',
-      });
+      try {
+        const response = await fetch(`/api/orders/fetch?platform=${platform}`, {
+          method: 'POST',
+        });
 
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as {
-          error?: { message?: string } | string;
-        };
-        const message =
-          typeof body.error === 'string'
-            ? body.error
-            : (body.error?.message ?? '新規注文の取得に失敗しました');
-        throw new Error(message);
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as {
+            error?: { message?: string } | string;
+          };
+          const message =
+            typeof body.error === 'string'
+              ? body.error
+              : (body.error?.message ?? '新規注文の取得に失敗しました');
+          throw new Error(message);
+        }
+
+        const payload = (await response.json()) as FetchNewOrdersResult;
+        setFetchOrdersResult(payload);
+        await fetchOrders();
+      } catch (error) {
+        setFetchOrdersError(
+          error instanceof Error ? error.message : '新規注文の取得に失敗しました',
+        );
+      } finally {
+        setFetchingPlatform(null);
       }
-
-      const payload = (await response.json()) as FetchNewOrdersResult;
-      setFetchOrdersResult(payload);
-      await fetchOrders();
-    } catch (error) {
-      setFetchOrdersError(error instanceof Error ? error.message : '新規注文の取得に失敗しました');
-    } finally {
-      setIsFetchingMinneOrders(false);
-    }
-  }, [fetchOrders]);
+    },
+    [fetchOrders],
+  );
 
   return (
     <main className="mx-auto max-w-6xl p-6">
       <h1 className="mb-6 text-2xl font-bold">発送前注文一覧</h1>
       <section className="mb-6">
-        <FetchOrdersButton
-          platform="minne"
-          isLoading={isFetchingMinneOrders}
-          onClick={() => {
-            void handleFetchMinneOrders();
-          }}
-        />
+        <div className="flex gap-2">
+          <FetchOrdersButton
+            platform="minne"
+            isLoading={fetchingPlatform === 'minne'}
+            onClick={() => {
+              void handleFetchOrders('minne');
+            }}
+          />
+          <FetchOrdersButton
+            platform="creema"
+            isLoading={fetchingPlatform === 'creema'}
+            onClick={() => {
+              void handleFetchOrders('creema');
+            }}
+          />
+        </div>
         <FetchOrdersResult result={fetchOrdersResult} requestError={fetchOrdersError} />
       </section>
 

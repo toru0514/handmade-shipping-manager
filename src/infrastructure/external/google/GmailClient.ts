@@ -276,6 +276,14 @@ export interface FetchUnreadMinneOrderEmailsOptions {
   readonly withinDays?: number;
 }
 
+export interface FetchUnreadCreemaOrderEmailsOptions {
+  /**
+   * この日数以内に受信したメールのみを対象にする。
+   * デフォルト: 30 日。古い未読メールの混入を防ぐ。
+   */
+  readonly withinDays?: number;
+}
+
 interface GoogleGmailListResponse {
   messages?: Array<{ id: string }>;
 }
@@ -336,24 +344,24 @@ export class GoogleGmailClient {
     options: FetchUnreadMinneOrderEmailsOptions = {},
   ): Promise<UnreadOrderEmail[]> {
     const withinDays = options.withinDays ?? DEFAULT_WITHIN_DAYS;
-    if (withinDays <= 0) {
-      throw new Error('withinDays は 1 以上の値を指定してください');
-    }
-    const afterUnix = Math.floor((Date.now() - withinDays * 24 * 60 * 60 * 1000) / 1000);
-    const query = `is:unread from:order@minne.com after:${afterUnix}`;
-    const url = `${this.getBaseUrl()}/messages?q=${encodeURIComponent(query)}&maxResults=50`;
-    const data = await this.googleGet<GoogleGmailListResponse>(url);
-    if (!data.messages || data.messages.length === 0) return [];
+    return this.fetchUnreadOrderEmailsByQuery(
+      withinDays,
+      'is:unread from:order@minne.com',
+      (body) => this.extractMinneOrderId(body),
+    );
+  }
 
-    const results: UnreadOrderEmail[] = [];
-    for (const msg of data.messages) {
-      const body = await this.getMessagePlainText(msg.id);
-      const orderId = this.extractMinneOrderId(body);
-      if (orderId) {
-        results.push({ messageId: msg.id, orderId });
-      }
-    }
-    return results;
+  /**
+   * Gmail の未読 creema 購入通知メール（from: creema.jp）から注文IDを一括取得する。
+   * デフォルトで直近 30 日以内のメールのみを対象とする。
+   */
+  async fetchUnreadCreemaOrderEmails(
+    options: FetchUnreadCreemaOrderEmailsOptions = {},
+  ): Promise<UnreadOrderEmail[]> {
+    const withinDays = options.withinDays ?? DEFAULT_WITHIN_DAYS;
+    return this.fetchUnreadOrderEmailsByQuery(withinDays, 'is:unread from:creema.jp', (body) =>
+      this.extractCreemaOrderId(body),
+    );
   }
 
   /**
@@ -372,6 +380,38 @@ export class GoogleGmailClient {
     // フォールバック: 本文の「注文ID： 53509952」形式
     const textMatch = body.match(/注文ID\s*[：:]\s*(\d+)/);
     return textMatch?.[1] ?? null;
+  }
+
+  private extractCreemaOrderId(body: string): string | null {
+    // 例: 注文ID: 202602232210-SXD0
+    const exactMatch = body.match(/注文ID\s*[：:]\s*((?:19|20)\d{10}-[A-Za-z0-9]{4,8})/);
+    if (exactMatch?.[1]) return exactMatch[1];
+    return null;
+  }
+
+  private async fetchUnreadOrderEmailsByQuery(
+    withinDays: number,
+    queryPrefix: string,
+    extractOrderId: (body: string) => string | null,
+  ): Promise<UnreadOrderEmail[]> {
+    if (withinDays <= 0) {
+      throw new Error('withinDays は 1 以上の値を指定してください');
+    }
+    const afterUnix = Math.floor((Date.now() - withinDays * 24 * 60 * 60 * 1000) / 1000);
+    const query = `${queryPrefix} after:${afterUnix}`;
+    const url = `${this.getBaseUrl()}/messages?q=${encodeURIComponent(query)}&maxResults=50`;
+    const data = await this.googleGet<GoogleGmailListResponse>(url);
+    if (!data.messages || data.messages.length === 0) return [];
+
+    const results: UnreadOrderEmail[] = [];
+    for (const msg of data.messages) {
+      const body = await this.getMessagePlainText(msg.id);
+      const orderId = extractOrderId(body);
+      if (orderId) {
+        results.push({ messageId: msg.id, orderId });
+      }
+    }
+    return results;
   }
 
   private async tryFetchMagicLink(sentAfter: Date): Promise<string | null> {
@@ -533,7 +573,11 @@ export class GoogleGmailClient {
     });
 
     if (!response.ok) {
-      throw new AuthenticationError('Google OAuth2 アクセストークン更新に失敗しました');
+      const detail = await response.text().catch(() => '');
+      const suffix = detail ? ` detail=${detail.slice(0, 300)}` : '';
+      throw new AuthenticationError(
+        `Google OAuth2 アクセストークン更新に失敗しました (status=${response.status})${suffix}`,
+      );
     }
 
     const payload = (await response.json()) as { access_token?: string; expires_in?: number };

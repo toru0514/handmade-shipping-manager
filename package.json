@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:minne": "npx tsx scripts/test-minne-fetch.ts",
-    "test:minne:batch": "npx tsx scripts/test-minne-batch-fetch.ts"
+    "test:minne:batch": "npx tsx scripts/test-minne-batch-fetch.ts",
+    "test:creema:batch": "npx tsx scripts/test-creema-batch-fetch.ts"
   },
   "dependencies": {
     "next": "^16.1.6",

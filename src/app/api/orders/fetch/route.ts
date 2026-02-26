@@ -15,14 +15,14 @@ export async function POST(request: Request) {
     return NextResponse.json(toApiErrorResponse(error), { status: error.statusCode });
   }
 
-  if (platform !== 'minne') {
-    const error = new ValidationError('platform は minne のみ対応です');
+  if (platform !== 'minne' && platform !== 'creema') {
+    const error = new ValidationError('platform は minne / creema のみ対応です');
     return NextResponse.json(toApiErrorResponse(error), { status: error.statusCode });
   }
 
   try {
     const container = createContainer();
-    const useCase = container.getFetchNewOrdersUseCase();
+    const useCase = container.getFetchNewOrdersUseCase(platform as 'minne' | 'creema');
     const result = await useCase.execute({ platform });
     return NextResponse.json(result);
   } catch (err) {

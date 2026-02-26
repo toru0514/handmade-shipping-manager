@@ -26,4 +26,10 @@ describe('FetchOrdersButton', () => {
     const button = screen.getByRole('button', { name: 'minne 取得中...' });
     expect(button).toBeDisabled();
   });
+
+  it('creema ラベルでも表示できる', () => {
+    const onClick = vi.fn();
+    render(<FetchOrdersButton platform="creema" isLoading={false} onClick={onClick} />);
+    expect(screen.getByRole('button', { name: 'creema 未読を取得 ▶' })).toBeInTheDocument();
+  });
 });

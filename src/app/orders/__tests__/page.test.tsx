@@ -52,6 +52,42 @@ describe('OrdersPage (UC-006)', () => {
     });
   });
 
+  it('creema未読取得ボタンから手動取得を実行できる', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url === '/api/orders/pending') {
+        return new Response(JSON.stringify([]), { status: 200 });
+      }
+
+      if (url === '/api/orders/fetch?platform=creema' && init?.method === 'POST') {
+        return new Response(
+          JSON.stringify({
+            fetched: 1,
+            skipped: 0,
+            errors: [],
+          }),
+          { status: 200 },
+        );
+      }
+
+      return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<OrdersPage />);
+
+    const button = await screen.findByRole('button', { name: 'creema 未読を取得 ▶' });
+    fireEvent.click(button);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/orders/fetch?platform=creema', {
+        method: 'POST',
+      });
+      expect(screen.getByText('✓ 1件取得')).toBeInTheDocument();
+    });
+  });
+
   it('発送完了フローで一覧から注文が消え、追跡番号を送信する', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
