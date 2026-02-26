@@ -1,3 +1,4 @@
+import { FetchNewOrdersUseCase } from '@/application/usecases/FetchNewOrdersUseCase';
 import { GeneratePurchaseThanksUseCase } from '@/application/usecases/GeneratePurchaseThanksUseCase';
 import { GenerateShippingNoticeUseCase } from '@/application/usecases/GenerateShippingNoticeUseCase';
 import { IssueShippingLabelUseCase } from '@/application/usecases/IssueShippingLabelUseCase';
@@ -13,7 +14,10 @@ import type { ClickPostGateway } from '@/infrastructure/adapters/shipping/ClickP
 import { ShippingLabelIssuerImpl } from '@/infrastructure/adapters/shipping/ShippingLabelIssuerImpl';
 import { YamatoCompactAdapter } from '@/infrastructure/adapters/shipping/YamatoCompactAdapter';
 import type { YamatoCompactGateway } from '@/infrastructure/adapters/shipping/YamatoCompactGateway';
+import { MinneAdapter } from '@/infrastructure/adapters/platform/MinneAdapter';
+import { MinneEmailOrderSource } from '@/infrastructure/adapters/platform/MinneEmailOrderSource';
 import { ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
+import { GoogleGmailClient } from '@/infrastructure/external/google/GmailClient';
 import { ChromiumBrowserFactory } from '@/infrastructure/external/playwright/ChromiumBrowserFactory';
 import {
   GoogleSheetsClient,
@@ -151,6 +155,58 @@ function resolveManualLoginTimeoutMs(env: Env): number | undefined {
   return parsed;
 }
 
+function createGmailClient(env: Env): GoogleGmailClient {
+  const accessToken = env.GMAIL_ACCESS_TOKEN?.trim();
+  const refreshToken = env.GMAIL_REFRESH_TOKEN?.trim();
+  const clientId = env.GOOGLE_CLIENT_ID?.trim();
+  const clientSecret = env.GOOGLE_CLIENT_SECRET?.trim();
+
+  if (!accessToken && !refreshToken) {
+    throw new Error(
+      'Gmail 認証情報が不足しています: GMAIL_ACCESS_TOKEN または GMAIL_REFRESH_TOKEN を設定してください',
+    );
+  }
+  if (refreshToken && (!clientId || !clientSecret)) {
+    throw new Error(
+      'GMAIL_REFRESH_TOKEN が設定されている場合は GOOGLE_CLIENT_ID と GOOGLE_CLIENT_SECRET も必須です',
+    );
+  }
+
+  return new GoogleGmailClient({ accessToken, refreshToken, clientId, clientSecret });
+}
+
+function createFetchNewOrdersUseCase(
+  env: Env,
+  orderRepository: ReturnType<typeof createOrderRepository>,
+): FetchNewOrdersUseCase {
+  const gmailClient = createGmailClient(env);
+  const emailOrderSource = new MinneEmailOrderSource(gmailClient);
+
+  const minneEmail = env.MINNE_EMAIL?.trim();
+  if (!minneEmail) {
+    throw new Error('MINNE_EMAIL が設定されていません');
+  }
+
+  const browserFactory = new ChromiumBrowserFactory({
+    headless: resolvePlaywrightHeadless(env),
+    timeoutMs: resolvePlaywrightTimeoutMs(env),
+    ignoreHTTPSErrors: resolvePlaywrightIgnoreHTTPSErrors(env),
+  });
+
+  const orderFetcher = new MinneAdapter({
+    browserFactory,
+    email: minneEmail,
+    getLoginUrl: async () => {
+      return gmailClient.fetchMinneMagicLink(new Date(), {
+        timeoutMs: 120_000,
+        intervalMs: 5_000,
+      });
+    },
+  });
+
+  return new FetchNewOrdersUseCase(emailOrderSource, orderFetcher, orderRepository);
+}
+
 function createIssueShippingLabelUseCase(env: Env): IssueShippingLabelUseCase {
   let auth: ReturnType<typeof createAuth>;
   let spreadsheetId: string;
@@ -252,6 +308,7 @@ export interface Container {
   getGeneratePurchaseThanksUseCase(): GeneratePurchaseThanksUseCase;
   getGenerateShippingNoticeUseCase(): GenerateShippingNoticeUseCase;
   getIssueShippingLabelUseCase(): IssueShippingLabelUseCase;
+  getFetchNewOrdersUseCase(): FetchNewOrdersUseCase;
 }
 
 export function createContainer(env: Env = process.env): Container {
@@ -268,5 +325,6 @@ export function createContainer(env: Env = process.env): Container {
     getGenerateShippingNoticeUseCase: () =>
       new GenerateShippingNoticeUseCase(orderRepository, templateRepository),
     getIssueShippingLabelUseCase: () => createIssueShippingLabelUseCase(env),
+    getFetchNewOrdersUseCase: () => createFetchNewOrdersUseCase(env, orderRepository),
   };
 }
