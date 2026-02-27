@@ -211,7 +211,7 @@ function createFetchNewOrdersUseCase(
       emailOrderSource,
       orderFetcher,
       orderRepository,
-      undefined,
+      /* orderFactory= */ undefined, // use default OrderFactory
       slackAdapter,
     );
   }
