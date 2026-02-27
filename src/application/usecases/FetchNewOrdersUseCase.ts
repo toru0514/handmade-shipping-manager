@@ -1,9 +1,11 @@
 import { Order } from '@/domain/entities/Order';
 import { OrderFactory } from '@/domain/factories/OrderFactory';
 import { EmailOrderSource } from '@/domain/ports/EmailOrderSource';
+import { NotificationSender } from '@/domain/ports/NotificationSender';
 import { OrderFetcher } from '@/domain/ports/OrderFetcher';
 import { OrderRepository } from '@/domain/ports/OrderRepository';
 import { OrderId } from '@/domain/valueObjects/OrderId';
+import { Message } from '@/domain/valueObjects/Message';
 import { Platform } from '@/domain/valueObjects/Platform';
 
 export interface FetchNewOrdersInput {
@@ -29,6 +31,7 @@ export class FetchNewOrdersUseCase {
     private readonly orderFetcher: OrderFetcher,
     private readonly orderRepository: OrderRepository<Order>,
     private readonly orderFactory: OrderFactory = new OrderFactory(),
+    private readonly notificationSender?: NotificationSender,
   ) {}
 
   async execute(input: FetchNewOrdersInput): Promise<FetchNewOrdersResult> {
@@ -76,7 +79,33 @@ export class FetchNewOrdersUseCase {
       }
     }
 
+    await this.sendSummaryNotification(platform.value, fetched, skipped, errors);
+
     return { fetched, skipped, errors };
+  }
+
+  private async sendSummaryNotification(
+    platform: string,
+    fetched: number,
+    skipped: number,
+    errors: FetchNewOrdersErrorInfo[],
+  ): Promise<void> {
+    if (!this.notificationSender) return;
+    if (fetched === 0 && errors.length === 0) return;
+
+    const lines: string[] = [`[${platform}] 注文取得が完了しました`];
+    if (fetched > 0) lines.push(`✅ 新規登録: ${fetched}件`);
+    if (skipped > 0) lines.push(`⏭ スキップ: ${skipped}件`);
+    if (errors.length > 0) {
+      lines.push(`⚠️ エラー: ${errors.length}件`);
+      for (const e of errors) {
+        lines.push(`  • ${e.orderId}: ${e.reason}`);
+      }
+    }
+
+    await this.notificationSender.notify(new Message(lines.join('\n'))).catch((e) => {
+      console.warn('[FetchNewOrdersUseCase] Slack 通知失敗:', e);
+    });
   }
 
   private async markAsReadSilently(messageId: string): Promise<void> {
