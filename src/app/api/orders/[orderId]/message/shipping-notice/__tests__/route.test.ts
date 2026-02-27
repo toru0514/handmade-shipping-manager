@@ -17,9 +17,17 @@ vi.mock('@/infrastructure/di/container', () => ({
   })),
 }));
 
-import { GET } from '../route';
+import { POST } from '../route';
 
-describe('GET /api/orders/[orderId]/message/shipping-notice', () => {
+function makeRequest(body: Record<string, unknown> = {}): Request {
+  return new Request('http://localhost', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+describe('POST /api/orders/[orderId]/message/shipping-notice', () => {
   beforeEach(() => {
     executeMock.mockReset();
   });
@@ -30,7 +38,7 @@ describe('GET /api/orders/[orderId]/message/shipping-notice', () => {
       message: '山田 太郎 様\n発送しました。',
     });
 
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(makeRequest(), {
       params: Promise.resolve({ orderId: 'ORD-001' }),
     });
 
@@ -41,8 +49,21 @@ describe('GET /api/orders/[orderId]/message/shipping-notice', () => {
     });
   });
 
+  it('templateContent を渡すと useCase に伝わる', async () => {
+    executeMock.mockResolvedValueOnce({ orderId: 'ORD-001', message: 'カスタムメッセージ' });
+
+    await POST(makeRequest({ templateContent: 'カスタムテンプレート' }), {
+      params: Promise.resolve({ orderId: 'ORD-001' }),
+    });
+
+    expect(executeMock).toHaveBeenCalledWith({
+      orderId: 'ORD-001',
+      templateContent: 'カスタムテンプレート',
+    });
+  });
+
   it('orderId が空文字なら 400 を返す', async () => {
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(makeRequest(), {
       params: Promise.resolve({ orderId: '   ' }),
     });
 
@@ -58,7 +79,7 @@ describe('GET /api/orders/[orderId]/message/shipping-notice', () => {
   it('注文未存在エラーは 404 を返す', async () => {
     executeMock.mockRejectedValueOnce(new ShippingNoticeOrderNotFoundError('ORD-404'));
 
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(makeRequest(), {
       params: Promise.resolve({ orderId: 'ORD-404' }),
     });
 
@@ -74,7 +95,7 @@ describe('GET /api/orders/[orderId]/message/shipping-notice', () => {
   it('テンプレート未存在エラーは 404 を返す', async () => {
     executeMock.mockRejectedValueOnce(new ShippingNoticeTemplateNotFoundError());
 
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(makeRequest(), {
       params: Promise.resolve({ orderId: 'ORD-001' }),
     });
 
@@ -90,7 +111,7 @@ describe('GET /api/orders/[orderId]/message/shipping-notice', () => {
   it('未発送注文エラーは 400 を返す', async () => {
     executeMock.mockRejectedValueOnce(new ShippingNoticeOrderNotShippedError('ORD-002'));
 
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(makeRequest(), {
       params: Promise.resolve({ orderId: 'ORD-002' }),
     });
 

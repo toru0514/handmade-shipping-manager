@@ -12,7 +12,7 @@ import {
   toApiErrorResponse,
 } from '@/infrastructure/errors/HttpErrors';
 
-export async function GET(_request: Request, context: { params: Promise<{ orderId: string }> }) {
+export async function POST(request: Request, context: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await context.params;
 
   if (orderId.trim().length === 0) {
@@ -20,10 +20,15 @@ export async function GET(_request: Request, context: { params: Promise<{ orderI
     return NextResponse.json(toApiErrorResponse(error), { status: error.statusCode });
   }
 
+  const body = (await request.json().catch(() => ({}))) as { templateContent?: string };
+
   try {
     const container = createContainer();
     const useCase = container.getGenerateShippingNoticeUseCase();
-    const result = await useCase.execute({ orderId: orderId.trim() });
+    const result = await useCase.execute({
+      orderId: orderId.trim(),
+      templateContent: body.templateContent,
+    });
     return NextResponse.json(result);
   } catch (err) {
     if (err instanceof ShippingNoticeOrderNotFoundError) {

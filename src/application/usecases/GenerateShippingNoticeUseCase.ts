@@ -7,7 +7,21 @@ import { OrderStatus } from '@/domain/valueObjects/OrderStatus';
 
 export interface GenerateShippingNoticeInput {
   readonly orderId: string;
+  /** クライアントから渡されたテンプレート本文。指定時はリポジトリのデフォルトより優先する。 */
+  readonly templateContent?: string;
 }
+
+const ALL_MESSAGE_VARIABLES: { readonly name: string }[] = [
+  { name: 'buyer_name' },
+  { name: 'product_name' },
+  { name: 'price' },
+  { name: 'order_id' },
+  { name: 'platform' },
+  { name: 'shipping_method' },
+  { name: 'tracking_number' },
+  { name: 'tracking_url' },
+  { name: 'shipped_at' },
+];
 
 export interface GenerateShippingNoticeResultDto {
   readonly orderId: string;
@@ -51,7 +65,17 @@ export class GenerateShippingNoticeUseCase {
       throw new ShippingNoticeOrderNotShippedError(input.orderId);
     }
 
-    const template = await this.templateRepository.findByType(MessageTemplateType.ShippingNotice);
+    let template: MessageTemplate | null;
+    if (input.templateContent !== undefined) {
+      template = {
+        id: 'client-provided',
+        type: MessageTemplateType.ShippingNotice,
+        content: input.templateContent,
+        variables: ALL_MESSAGE_VARIABLES,
+      };
+    } else {
+      template = await this.templateRepository.findByType(MessageTemplateType.ShippingNotice);
+    }
     if (template === null) {
       throw new ShippingNoticeTemplateNotFoundError();
     }

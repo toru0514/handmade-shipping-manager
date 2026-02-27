@@ -16,9 +16,17 @@ vi.mock('@/infrastructure/di/container', () => ({
   })),
 }));
 
-import { GET } from '../route';
+import { POST } from '../route';
 
-describe('GET /api/orders/[orderId]/message/purchase-thanks', () => {
+function makeRequest(body: Record<string, unknown> = {}): Request {
+  return new Request('http://localhost', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+describe('POST /api/orders/[orderId]/message/purchase-thanks', () => {
   beforeEach(() => {
     executeMock.mockReset();
   });
@@ -29,7 +37,7 @@ describe('GET /api/orders/[orderId]/message/purchase-thanks', () => {
       message: '山田 太郎 様\nありがとうございます。',
     });
 
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(makeRequest(), {
       params: Promise.resolve({ orderId: 'ORD-001' }),
     });
 
@@ -40,8 +48,21 @@ describe('GET /api/orders/[orderId]/message/purchase-thanks', () => {
     });
   });
 
+  it('templateContent を渡すと useCase に伝わる', async () => {
+    executeMock.mockResolvedValueOnce({ orderId: 'ORD-001', message: 'カスタムメッセージ' });
+
+    await POST(makeRequest({ templateContent: 'カスタムテンプレート' }), {
+      params: Promise.resolve({ orderId: 'ORD-001' }),
+    });
+
+    expect(executeMock).toHaveBeenCalledWith({
+      orderId: 'ORD-001',
+      templateContent: 'カスタムテンプレート',
+    });
+  });
+
   it('orderId が空文字なら 400 を返す', async () => {
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(makeRequest(), {
       params: Promise.resolve({ orderId: '   ' }),
     });
 
@@ -57,7 +78,7 @@ describe('GET /api/orders/[orderId]/message/purchase-thanks', () => {
   it('注文未存在エラーは 404 を返す', async () => {
     executeMock.mockRejectedValueOnce(new PurchaseThanksOrderNotFoundError('ORD-404'));
 
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(makeRequest(), {
       params: Promise.resolve({ orderId: 'ORD-404' }),
     });
 
@@ -73,7 +94,7 @@ describe('GET /api/orders/[orderId]/message/purchase-thanks', () => {
   it('テンプレート未存在エラーは 404 を返す', async () => {
     executeMock.mockRejectedValueOnce(new PurchaseThanksTemplateNotFoundError());
 
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(makeRequest(), {
       params: Promise.resolve({ orderId: 'ORD-001' }),
     });
 

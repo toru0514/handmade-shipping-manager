@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { MessagePreviewDialog } from '@/presentation/components/messages/MessagePreviewDialog';
+import { LocalStorageMessageTemplateRepository } from '@/infrastructure/adapters/persistence/LocalStorageMessageTemplateRepository';
+import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
 
 export interface ShipmentCompleteData {
   readonly orderId: string;
@@ -47,7 +49,14 @@ export function ShipmentCompleteMessage({ open, data, onClose }: ShipmentComplet
     setIsGenerating(true);
 
     try {
-      const response = await fetch(`/api/orders/${currentData.orderId}/message/shipping-notice`);
+      const templateRepo = new LocalStorageMessageTemplateRepository();
+      const savedTemplate = await templateRepo.findByType(MessageTemplateType.ShippingNotice);
+
+      const response = await fetch(`/api/orders/${currentData.orderId}/message/shipping-notice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateContent: savedTemplate?.content }),
+      });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as {
           error?: { message?: string } | string;
