@@ -47,7 +47,9 @@ export function ShipmentCompleteMessage({ open, data, onClose }: ShipmentComplet
     setIsGenerating(true);
 
     try {
-      const response = await fetch(`/api/orders/${currentData.orderId}/message/shipping-notice`);
+      const response = await fetch(`/api/orders/${currentData.orderId}/message/shipping-notice`, {
+        method: 'POST',
+      });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as {
           error?: { message?: string } | string;

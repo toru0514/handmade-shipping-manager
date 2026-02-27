@@ -16,9 +16,9 @@ vi.mock('@/infrastructure/di/container', () => ({
   })),
 }));
 
-import { GET } from '../route';
+import { POST } from '../route';
 
-describe('GET /api/orders/[orderId]/message/purchase-thanks', () => {
+describe('POST /api/orders/[orderId]/message/purchase-thanks', () => {
   beforeEach(() => {
     executeMock.mockReset();
   });
@@ -29,7 +29,7 @@ describe('GET /api/orders/[orderId]/message/purchase-thanks', () => {
       message: '山田 太郎 様\nありがとうございます。',
     });
 
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(new Request('http://localhost'), {
       params: Promise.resolve({ orderId: 'ORD-001' }),
     });
 
@@ -41,7 +41,7 @@ describe('GET /api/orders/[orderId]/message/purchase-thanks', () => {
   });
 
   it('orderId が空文字なら 400 を返す', async () => {
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(new Request('http://localhost'), {
       params: Promise.resolve({ orderId: '   ' }),
     });
 
@@ -57,7 +57,7 @@ describe('GET /api/orders/[orderId]/message/purchase-thanks', () => {
   it('注文未存在エラーは 404 を返す', async () => {
     executeMock.mockRejectedValueOnce(new PurchaseThanksOrderNotFoundError('ORD-404'));
 
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(new Request('http://localhost'), {
       params: Promise.resolve({ orderId: 'ORD-404' }),
     });
 
@@ -73,7 +73,7 @@ describe('GET /api/orders/[orderId]/message/purchase-thanks', () => {
   it('テンプレート未存在エラーは 404 を返す', async () => {
     executeMock.mockRejectedValueOnce(new PurchaseThanksTemplateNotFoundError());
 
-    const response = await GET(new Request('http://localhost'), {
+    const response = await POST(new Request('http://localhost'), {
       params: Promise.resolve({ orderId: 'ORD-001' }),
     });
 

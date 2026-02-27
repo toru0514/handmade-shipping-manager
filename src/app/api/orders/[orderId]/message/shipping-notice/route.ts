@@ -12,7 +12,7 @@ import {
   toApiErrorResponse,
 } from '@/infrastructure/errors/HttpErrors';
 
-export async function GET(_request: Request, context: { params: Promise<{ orderId: string }> }) {
+export async function POST(_request: Request, context: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await context.params;
 
   if (orderId.trim().length === 0) {

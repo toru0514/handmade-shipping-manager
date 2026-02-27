@@ -110,7 +110,9 @@ export default function OrdersPage() {
     setGeneratingPurchaseThanksOrderId(order.orderId);
 
     try {
-      const response = await fetch(`/api/orders/${order.orderId}/message/purchase-thanks`);
+      const response = await fetch(`/api/orders/${order.orderId}/message/purchase-thanks`, {
+        method: 'POST',
+      });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as {
           error?: { message?: string } | string;
