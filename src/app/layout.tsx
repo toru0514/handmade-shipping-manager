@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import './globals.css';
 import { COOKIE_NAME, verifySessionToken } from '@/lib/session';
-import { LogoutButton } from '@/presentation/components/auth/LogoutButton';
+import { GlobalNav } from '@/presentation/components/layout/GlobalNav';
 
 export const metadata: Metadata = {
   title: 'ハンドメイド発送管理',
@@ -22,12 +22,8 @@ export default async function RootLayout({
 
   return (
     <html lang="ja">
-      <body>
-        {isLoggedIn && (
-          <div className="flex justify-end bg-gray-100 px-4 py-2">
-            <LogoutButton />
-          </div>
-        )}
+      <body className="bg-gray-50 min-h-screen">
+        {isLoggedIn && <GlobalNav />}
         {children}
       </body>
     </html>

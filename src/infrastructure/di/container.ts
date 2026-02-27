@@ -18,6 +18,7 @@ import { MinneAdapter } from '@/infrastructure/adapters/platform/MinneAdapter';
 import { CreemaAdapter } from '@/infrastructure/adapters/platform/CreemaAdapter';
 import { MinneEmailOrderSource } from '@/infrastructure/adapters/platform/MinneEmailOrderSource';
 import { CreemaEmailOrderSource } from '@/infrastructure/adapters/platform/CreemaEmailOrderSource';
+import { SlackAdapter } from '@/infrastructure/adapters/notification/SlackAdapter';
 import { ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
 import { GoogleGmailClient } from '@/infrastructure/external/google/GmailClient';
 import { ChromiumBrowserFactory } from '@/infrastructure/external/playwright/ChromiumBrowserFactory';
@@ -183,6 +184,8 @@ function createFetchNewOrdersUseCase(
   platform: 'minne' | 'creema',
 ): FetchNewOrdersUseCase {
   const gmailClient = createGmailClient(env);
+  const slackWebhookUrl = env.SLACK_WEBHOOK_URL?.trim();
+  const slackAdapter = slackWebhookUrl ? new SlackAdapter(slackWebhookUrl) : undefined;
 
   const browserFactory = new ChromiumBrowserFactory({
     headless: resolvePlaywrightHeadless(env),
@@ -204,7 +207,13 @@ function createFetchNewOrdersUseCase(
         password: creemaPassword,
       },
     });
-    return new FetchNewOrdersUseCase(emailOrderSource, orderFetcher, orderRepository);
+    return new FetchNewOrdersUseCase(
+      emailOrderSource,
+      orderFetcher,
+      orderRepository,
+      /* orderFactory= */ undefined, // use default OrderFactory
+      slackAdapter,
+    );
   }
 
   const minneEmail = env.MINNE_EMAIL?.trim();
@@ -223,7 +232,13 @@ function createFetchNewOrdersUseCase(
     },
   });
 
-  return new FetchNewOrdersUseCase(emailOrderSource, orderFetcher, orderRepository);
+  return new FetchNewOrdersUseCase(
+    emailOrderSource,
+    orderFetcher,
+    orderRepository,
+    undefined,
+    slackAdapter,
+  );
 }
 
 function createIssueShippingLabelUseCase(env: Env): IssueShippingLabelUseCase {

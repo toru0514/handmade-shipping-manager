@@ -244,6 +244,62 @@ describe('FetchNewOrdersUseCase', () => {
     expect(emailSource.markAsRead).not.toHaveBeenCalledWith('msg-bad');
   });
 
+  describe('サマリー通知', () => {
+    it('新規登録があれば notificationSender.notify を呼ぶ', async () => {
+      const notifySpy = vi.fn().mockResolvedValue(undefined);
+      const useCase = new FetchNewOrdersUseCase(
+        makeEmailSource([makeRef('MN-001')]),
+        makeFetcher(makePlatformData('MN-001')),
+        new InMemoryOrderRepository(),
+        new OrderFactory(),
+        { notify: notifySpy },
+      );
+
+      await useCase.execute({ platform: 'minne' });
+
+      expect(notifySpy).toHaveBeenCalledOnce();
+      expect(notifySpy.mock.calls[0][0].content).toContain('新規登録: 1件');
+    });
+
+    it('fetched=0 かつ errors=[] の場合は通知しない（スキップのみ）', async () => {
+      const notifySpy = vi.fn();
+      const repo = new InMemoryOrderRepository();
+      await repo.save(new OrderFactory().createFromPlatformData(makePlatformData('MN-001')));
+
+      const useCase = new FetchNewOrdersUseCase(
+        makeEmailSource([makeRef('MN-001')]),
+        makeFetcher(makePlatformData('MN-001')),
+        repo,
+        new OrderFactory(),
+        { notify: notifySpy },
+      );
+
+      await useCase.execute({ platform: 'minne' });
+
+      expect(notifySpy).not.toHaveBeenCalled();
+    });
+
+    it('通知失敗でも useCase の result には影響しない', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+      try {
+        const useCase = new FetchNewOrdersUseCase(
+          makeEmailSource([makeRef('MN-001')]),
+          makeFetcher(makePlatformData('MN-001')),
+          new InMemoryOrderRepository(),
+          new OrderFactory(),
+          { notify: vi.fn().mockRejectedValue(new Error('Slack down')) },
+        );
+
+        const result = await useCase.execute({ platform: 'minne' });
+
+        expect(result.fetched).toBe(1);
+        expect(result.errors).toHaveLength(0);
+      } finally {
+        warnSpy.mockRestore();
+      }
+    });
+  });
+
   it('withinDays オプションを EmailOrderSource に渡す', async () => {
     const emailSource = makeEmailSource([]);
     const fetcher: OrderFetcher = { fetch: vi.fn() };
