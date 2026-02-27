@@ -5,8 +5,6 @@ import type { FetchNewOrdersResult } from '@/application/usecases/FetchNewOrders
 import type { IssueShippingLabelResultDto } from '@/application/usecases/IssueShippingLabelUseCase';
 import type { MarkOrderAsShippedResultDto } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
-import { LocalStorageMessageTemplateRepository } from '@/infrastructure/adapters/persistence/LocalStorageMessageTemplateRepository';
-import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
 import { PendingOrderList } from '@/presentation/components/orders/PendingOrderList';
 import { LabelResultView } from '@/presentation/components/labels/LabelResultView';
 import { MessagePreviewDialog } from '@/presentation/components/messages/MessagePreviewDialog';
@@ -112,13 +110,8 @@ export default function OrdersPage() {
     setGeneratingPurchaseThanksOrderId(order.orderId);
 
     try {
-      const templateRepo = new LocalStorageMessageTemplateRepository();
-      const savedTemplate = await templateRepo.findByType(MessageTemplateType.PurchaseThanks);
-
       const response = await fetch(`/api/orders/${order.orderId}/message/purchase-thanks`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateContent: savedTemplate?.content }),
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as {

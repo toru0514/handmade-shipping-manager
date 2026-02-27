@@ -5,8 +5,9 @@ import { IssueShippingLabelUseCase } from '@/application/usecases/IssueShippingL
 import { ListPendingOrdersUseCase } from '@/application/usecases/ListPendingOrdersUseCase';
 import { MarkOrderAsShippedUseCase } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import { SearchBuyersUseCase } from '@/application/usecases/SearchBuyersUseCase';
+import { UpdateMessageTemplateUseCase } from '@/application/usecases/UpdateMessageTemplateUseCase';
 import { OverdueOrderSpecification } from '@/domain/specifications/OverdueOrderSpecification';
-import { DefaultMessageTemplateRepository } from '@/infrastructure/adapters/persistence/DefaultMessageTemplateRepository';
+import { SpreadsheetMessageTemplateRepository } from '@/infrastructure/adapters/persistence/SpreadsheetMessageTemplateRepository';
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
 import { SpreadsheetShippingLabelRepository } from '@/infrastructure/adapters/persistence/SpreadsheetShippingLabelRepository';
 import { ClickPostAdapter } from '@/infrastructure/adapters/shipping/ClickPostAdapter';
@@ -68,6 +69,17 @@ function createOrderRepository(env: Env): SpreadsheetOrderRepository {
   });
 
   return new SpreadsheetOrderRepository(sheetsClient);
+}
+
+function createTemplateRepository(env: Env): SpreadsheetMessageTemplateRepository {
+  const auth = createAuth(env);
+  const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+  const sheetsClient = new GoogleSheetsClient({
+    spreadsheetId,
+    sheetName: env.GOOGLE_SHEETS_TEMPLATE_SHEET_NAME?.trim() || 'Templates',
+    ...auth,
+  });
+  return new SpreadsheetMessageTemplateRepository(sheetsClient);
 }
 
 function createAuth(env: Env) {
@@ -343,12 +355,13 @@ export interface Container {
   getGenerateShippingNoticeUseCase(): GenerateShippingNoticeUseCase;
   getIssueShippingLabelUseCase(): IssueShippingLabelUseCase;
   getFetchNewOrdersUseCase(platform: 'minne' | 'creema'): FetchNewOrdersUseCase;
+  getUpdateMessageTemplateUseCase(): UpdateMessageTemplateUseCase;
 }
 
 export function createContainer(env: Env = process.env): Container {
   const orderRepository = createOrderRepository(env);
   const overdueSpec = new OverdueOrderSpecification();
-  const templateRepository = new DefaultMessageTemplateRepository();
+  const templateRepository = createTemplateRepository(env);
 
   return {
     getListPendingOrdersUseCase: () => new ListPendingOrdersUseCase(orderRepository, overdueSpec),
@@ -361,5 +374,6 @@ export function createContainer(env: Env = process.env): Container {
     getIssueShippingLabelUseCase: () => createIssueShippingLabelUseCase(env),
     getFetchNewOrdersUseCase: (platform: 'minne' | 'creema') =>
       createFetchNewOrdersUseCase(env, orderRepository, platform),
+    getUpdateMessageTemplateUseCase: () => new UpdateMessageTemplateUseCase(templateRepository),
   };
 }

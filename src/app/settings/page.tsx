@@ -1,12 +1,33 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { AVAILABLE_TEMPLATE_VARIABLES } from '@/application/usecases/UpdateMessageTemplateUseCase';
-import { createUpdateMessageTemplateUseCase } from '@/infrastructure/di/settingsFactory';
+import { useEffect, useState } from 'react';
+import {
+  AVAILABLE_TEMPLATE_VARIABLES,
+  MessageTemplateDto,
+} from '@/application/usecases/UpdateMessageTemplateUseCase';
 import { TemplateEditor } from '@/presentation/components/settings/TemplateEditor';
 import { TemplatePreview } from '@/presentation/components/settings/TemplatePreview';
 import { VariableList } from '@/presentation/components/settings/VariableList';
 import { MessageTemplateTypeValue } from '@/domain/valueObjects/MessageTemplateType';
+
+const SAMPLE_VALUES: Record<string, string> = {
+  buyer_name: '山田 太郎',
+  product_name: 'ハンドメイドアクセサリー',
+  price: '¥2,500',
+  order_id: 'ORD-2026-0001',
+  platform: 'minne',
+  shipping_method: 'クリックポスト',
+  tracking_number: '1234-5678-9012',
+  tracking_url:
+    'https://trackings.post.japanpost.jp/services/srv/search/input?requestNo1=123456789012',
+  shipped_at: '2026/02/18 10:30',
+};
+
+function previewTemplate(content: string): string {
+  return content.replace(/\{\{\s*([a-z_]+)\s*\}\}/g, (_match, variableName: string) => {
+    return SAMPLE_VALUES[variableName] ?? '';
+  });
+}
 
 function insertVariable(content: string, variableName: string): string {
   const suffix = content.length > 0 && !content.endsWith('\n') ? '\n' : '';
@@ -22,17 +43,20 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const useCase = useMemo(() => {
-    return createUpdateMessageTemplateUseCase();
-  }, []);
-
   useEffect(() => {
     async function loadTemplate(type: MessageTemplateTypeValue) {
       setIsInitializing(true);
       setError(null);
       setNotice(null);
       try {
-        const template = await useCase.getTemplate(type);
+        const response = await fetch(`/api/settings/templates/${type}`);
+        if (!response.ok) {
+          const body = (await response.json().catch(() => ({}))) as {
+            error?: { message?: string };
+          };
+          throw new Error(body.error?.message ?? 'テンプレートの読み込みに失敗しました');
+        }
+        const template = (await response.json()) as MessageTemplateDto;
         setTemplateContent(template.content);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'テンプレートの読み込みに失敗しました');
@@ -42,17 +66,25 @@ export default function SettingsPage() {
     }
 
     void loadTemplate(activeType);
-  }, [activeType, useCase]);
+  }, [activeType]);
 
   async function handleSave() {
     setIsSaving(true);
     setError(null);
     setNotice(null);
     try {
-      const saved = await useCase.updateTemplate({
-        type: activeType,
-        content: templateContent,
+      const response = await fetch(`/api/settings/templates/${activeType}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: templateContent }),
       });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        throw new Error(body.error?.message ?? 'テンプレートの保存に失敗しました');
+      }
+      const saved = (await response.json()) as MessageTemplateDto;
       setTemplateContent(saved.content);
       setNotice('テンプレートを保存しました');
     } catch (err) {
@@ -67,7 +99,16 @@ export default function SettingsPage() {
     setError(null);
     setNotice(null);
     try {
-      const reset = await useCase.resetToDefault(activeType);
+      const response = await fetch(`/api/settings/templates/${activeType}/reset`, {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        throw new Error(body.error?.message ?? 'テンプレートの初期化に失敗しました');
+      }
+      const reset = (await response.json()) as MessageTemplateDto;
       setTemplateContent(reset.content);
       setNotice('テンプレートをデフォルトに戻しました');
     } catch (err) {
@@ -78,12 +119,7 @@ export default function SettingsPage() {
   }
 
   function handlePreview() {
-    setPreviewContent(
-      useCase.preview({
-        type: activeType,
-        content: templateContent,
-      }),
-    );
+    setPreviewContent(previewTemplate(templateContent));
   }
 
   return (

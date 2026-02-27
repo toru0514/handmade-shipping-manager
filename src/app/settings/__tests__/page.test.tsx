@@ -1,44 +1,65 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import SettingsPage from '../page';
 
-function createMemoryStorage(): Storage {
-  const store = new Map<string, string>();
+const DEFAULT_TEMPLATE = {
+  id: 'default-purchase-thanks',
+  type: 'purchase_thanks',
+  content:
+    '{{buyer_name}} 様\n\nこの度は「{{product_name}}」をご購入いただき、誠にありがとうございます。',
+  variables: ['buyer_name', 'product_name'],
+};
 
-  return {
-    get length() {
-      return store.size;
-    },
-    clear() {
-      store.clear();
-    },
-    getItem(key: string) {
-      return store.get(key) ?? null;
-    },
-    key(index: number) {
-      return [...store.keys()][index] ?? null;
-    },
-    removeItem(key: string) {
-      store.delete(key);
-    },
-    setItem(key: string, value: string) {
-      store.set(key, value);
-    },
-  };
+function makeFetchMock(overrides: Record<string, unknown> = {}) {
+  return vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const method = (init?.method ?? 'GET').toUpperCase();
+
+    // GET テンプレート取得
+    if (url.includes('/api/settings/templates/') && !url.includes('/reset') && method === 'GET') {
+      return new Response(JSON.stringify(DEFAULT_TEMPLATE), { status: 200 });
+    }
+
+    // PUT テンプレート保存
+    if (url.includes('/api/settings/templates/') && !url.includes('/reset') && method === 'PUT') {
+      if ('putError' in overrides) {
+        return new Response(JSON.stringify({ error: { message: overrides.putError as string } }), {
+          status: 400,
+        });
+      }
+      const body = JSON.parse(String(init?.body ?? '{}')) as { content?: string };
+      return new Response(
+        JSON.stringify({ ...DEFAULT_TEMPLATE, content: body.content ?? DEFAULT_TEMPLATE.content }),
+        { status: 200 },
+      );
+    }
+
+    // POST リセット
+    if (url.includes('/reset') && method === 'POST') {
+      return new Response(JSON.stringify(DEFAULT_TEMPLATE), { status: 200 });
+    }
+
+    return new Response(JSON.stringify({ error: { message: 'not found' } }), { status: 404 });
+  });
 }
 
 describe('SettingsPage (UC-010)', () => {
   beforeEach(() => {
-    Object.defineProperty(globalThis, 'localStorage', {
-      value: createMemoryStorage(),
-      configurable: true,
-      writable: true,
-    });
+    vi.stubGlobal('fetch', makeFetchMock());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it('テンプレート編集・保存が動作し、DR-MSG-002 を満たさないと保存エラーになる', async () => {
+    vi.stubGlobal(
+      'fetch',
+      makeFetchMock({ putError: 'テンプレートには最低1つの変数を含めてください' }),
+    );
+
     render(<SettingsPage />);
 
     const textarea = await screen.findByLabelText('テンプレート本文');
@@ -53,6 +74,8 @@ describe('SettingsPage (UC-010)', () => {
       );
     });
 
+    // 正常な保存 — fetch モックを正常版に差し替え
+    vi.stubGlobal('fetch', makeFetchMock());
     fireEvent.change(textarea, {
       target: { value: '{{buyer_name}} 様\nご購入ありがとうございます。' },
     });
