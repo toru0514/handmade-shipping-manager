@@ -57,24 +57,30 @@ function createClient(): GoogleSheetsClient {
   const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET?.trim();
 
-  const config: ConstructorParameters<typeof GoogleSheetsClient>[0] = {
-    spreadsheetId,
-    sheetName,
-  };
+  const baseConfig = { spreadsheetId, sheetName };
 
   if (serviceAccountBase64) {
-    config.serviceAccountKey = parseServiceAccountKey(serviceAccountBase64);
-  } else if (accessToken) {
-    config.accessToken = accessToken;
-  } else if (refreshToken && clientId && clientSecret) {
-    config.refreshToken = refreshToken;
-    config.clientId = clientId;
-    config.clientSecret = clientSecret;
+    return new GoogleSheetsClient({
+      ...baseConfig,
+      serviceAccountKey: parseServiceAccountKey(serviceAccountBase64),
+    });
+  }
+  if (accessToken) {
+    return new GoogleSheetsClient({
+      ...baseConfig,
+      accessToken,
+    });
+  }
+  if (refreshToken && clientId && clientSecret) {
+    return new GoogleSheetsClient({
+      ...baseConfig,
+      refreshToken,
+      clientId,
+      clientSecret,
+    });
   } else {
     throw new Error('Google Sheets認証情報が不足しています');
   }
-
-  return new GoogleSheetsClient(config);
 }
 
 async function main(): Promise<void> {
