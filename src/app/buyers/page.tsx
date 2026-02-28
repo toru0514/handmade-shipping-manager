@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import type { OrderSummaryDto } from '@/application/usecases/ListAllOrdersUseCase';
 import type { BuyerDetailDto } from '@/application/usecases/SearchBuyersUseCase';
 import { BuyerDetail } from '@/presentation/components/buyers/BuyerDetail';
 import { BuyerSearchForm } from '@/presentation/components/buyers/BuyerSearchForm';
+import { OrderListTable } from '@/presentation/components/buyers/OrderListTable';
 
 export default function BuyersPage() {
   const [buyers, setBuyers] = useState<BuyerDetailDto[]>([]);
@@ -11,6 +13,30 @@ export default function BuyersPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searched, setSearched] = useState(false);
+
+  // 全注文一覧
+  const [allOrders, setAllOrders] = useState<OrderSummaryDto[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
+  const [ordersError, setOrdersError] = useState<string | null>(null);
+
+  // 初回マウント時に全注文を取得
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch('/api/orders/all');
+        if (!response.ok) {
+          throw new Error('注文一覧の取得に失敗しました');
+        }
+        const data = (await response.json()) as OrderSummaryDto[];
+        setAllOrders(data);
+      } catch (err) {
+        setOrdersError(err instanceof Error ? err.message : '注文一覧の取得に失敗しました');
+      } finally {
+        setIsLoadingOrders(false);
+      }
+    };
+    fetchOrders();
+  }, []);
 
   const selectedBuyer = buyers.find((buyer) => buyer.buyerId === selectedBuyerId) ?? null;
 
@@ -88,6 +114,17 @@ export default function BuyersPage() {
         </div>
 
         <BuyerDetail buyer={selectedBuyer} />
+      </section>
+
+      {/* 過去の購入者一覧 */}
+      <section className="mt-8">
+        <h2 className="mb-4 text-xl font-semibold">過去の購入者一覧</h2>
+        {ordersError && (
+          <div className="mb-4 rounded bg-red-100 px-4 py-3 text-red-700" role="alert">
+            {ordersError}
+          </div>
+        )}
+        <OrderListTable orders={allOrders} isLoading={isLoadingOrders} />
       </section>
     </main>
   );

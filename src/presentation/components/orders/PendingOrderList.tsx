@@ -30,7 +30,7 @@ export function PendingOrderList({
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="pending-order-list">
       {orders.map((order) => (
         <PendingOrderCard
-          key={order.orderId}
+          key={`${order.platform}-${order.orderId}-${order.orderedAt}`}
           order={order}
           onRequestShipmentComplete={onRequestShipmentComplete}
           onRequestPurchaseThanks={onRequestPurchaseThanks}

@@ -42,3 +42,4 @@ playwright-report/
 playwright/.cache/
 test-results/
 ms-playwright/
+.vercel

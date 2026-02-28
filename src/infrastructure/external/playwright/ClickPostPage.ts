@@ -78,7 +78,7 @@ export class ClickPostPage {
   ) {}
 
   async issueLabel(order: Order, credentials: ClickPostCredentials): Promise<ClickPostIssueResult> {
-    await this.page.goto(CLICK_POST_URL);
+    await this.page.goto(CLICK_POST_URL, { timeout: PAGE_GOTO_TIMEOUT_MS });
     await this.login(credentials);
     await this.openSingleApplyForm();
     await this.fillOrder(order);
@@ -759,7 +759,7 @@ export class ClickPostPage {
         'textarea[name="contents"]',
         'input[name*="item"]',
       ],
-      order.product.name,
+      order.clickPostItemName,
       '内容品',
     );
 

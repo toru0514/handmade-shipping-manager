@@ -64,6 +64,7 @@ describe('SpreadsheetOrderRepository', () => {
     const found = await repository.findById(new OrderId('ORD-001'));
     expect(found).not.toBeNull();
     expect(found?.orderId.toString()).toBe('ORD-001');
+    expect(found?.clickPostItemName).toBe('アクセサリー');
     expect(await repository.exists(new OrderId('ORD-001'))).toBe(true);
     expect(await repository.exists(new OrderId('ORD-999'))).toBe(false);
   });
@@ -270,5 +271,35 @@ describe('SpreadsheetOrderRepository', () => {
 
     const broken = await repository.findById(new OrderId('ORD-999'));
     expect(broken).toBeNull();
+  });
+
+  it('clickPostItemName 列がある場合はその値を優先して読み込む', async () => {
+    const client = new InMemorySheetsClient();
+    const repository = new SpreadsheetOrderRepository(client);
+    await client.writeRows([
+      [
+        'ORD-777',
+        'minne',
+        '山田 太郎',
+        '1500001',
+        '東京都',
+        '渋谷区',
+        '神宮前1-1-1',
+        '',
+        '09012345678',
+        'ハンドメイドアクセサリー',
+        '2500',
+        'pending',
+        '2026-02-14T00:00:00.000Z',
+        '',
+        '',
+        '',
+        '書籍',
+      ],
+    ]);
+
+    const found = await repository.findById(new OrderId('ORD-777'));
+    expect(found).not.toBeNull();
+    expect(found?.clickPostItemName).toBe('書籍');
   });
 });

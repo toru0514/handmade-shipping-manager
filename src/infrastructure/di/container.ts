@@ -1,14 +1,18 @@
 import { FetchNewOrdersUseCase } from '@/application/usecases/FetchNewOrdersUseCase';
 import { GeneratePurchaseThanksUseCase } from '@/application/usecases/GeneratePurchaseThanksUseCase';
+import { ListAllOrdersUseCase } from '@/application/usecases/ListAllOrdersUseCase';
 import { GenerateShippingNoticeUseCase } from '@/application/usecases/GenerateShippingNoticeUseCase';
 import { IssueShippingLabelUseCase } from '@/application/usecases/IssueShippingLabelUseCase';
 import { ListPendingOrdersUseCase } from '@/application/usecases/ListPendingOrdersUseCase';
 import { MarkOrderAsShippedUseCase } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import { SearchBuyersUseCase } from '@/application/usecases/SearchBuyersUseCase';
 import { UpdateMessageTemplateUseCase } from '@/application/usecases/UpdateMessageTemplateUseCase';
+import { MessageGenerator } from '@/domain/services/MessageGenerator';
 import { OverdueOrderSpecification } from '@/domain/specifications/OverdueOrderSpecification';
 import { SpreadsheetMessageTemplateRepository } from '@/infrastructure/adapters/persistence/SpreadsheetMessageTemplateRepository';
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
+import { SpreadsheetPurchaseThanksProductNameResolver } from '@/infrastructure/adapters/persistence/SpreadsheetPurchaseThanksProductNameResolver';
+import { SpreadsheetShippingMethodLabelResolver } from '@/infrastructure/adapters/persistence/SpreadsheetShippingMethodLabelResolver';
 import { SpreadsheetShippingLabelRepository } from '@/infrastructure/adapters/persistence/SpreadsheetShippingLabelRepository';
 import { ClickPostAdapter } from '@/infrastructure/adapters/shipping/ClickPostAdapter';
 import type { ClickPostGateway } from '@/infrastructure/adapters/shipping/ClickPostGateway';
@@ -80,6 +84,32 @@ function createTemplateRepository(env: Env): SpreadsheetMessageTemplateRepositor
     ...auth,
   });
   return new SpreadsheetMessageTemplateRepository(sheetsClient);
+}
+
+function createPurchaseThanksProductNameResolver(
+  env: Env,
+): SpreadsheetPurchaseThanksProductNameResolver {
+  const auth = createAuth(env);
+  const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+  const sheetsClient = new GoogleSheetsClient({
+    spreadsheetId,
+    sheetName:
+      env.GOOGLE_SHEETS_PRODUCT_NAME_MAP_SHEET_NAME?.trim() || 'PurchaseThanksProductNameMap',
+    ...auth,
+  });
+  return new SpreadsheetPurchaseThanksProductNameResolver(sheetsClient);
+}
+
+function createShippingMethodLabelResolver(env: Env): SpreadsheetShippingMethodLabelResolver {
+  const auth = createAuth(env);
+  const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+  const sheetsClient = new GoogleSheetsClient({
+    spreadsheetId,
+    sheetName:
+      env.GOOGLE_SHEETS_SHIPPING_METHOD_LABEL_SHEET_NAME?.trim() || 'ShippingMethodLabelMap',
+    ...auth,
+  });
+  return new SpreadsheetShippingMethodLabelResolver(sheetsClient);
 }
 
 function createAuth(env: Env) {
@@ -349,6 +379,7 @@ function createIssueShippingLabelUseCase(env: Env): IssueShippingLabelUseCase {
 
 export interface Container {
   getListPendingOrdersUseCase(): ListPendingOrdersUseCase;
+  getListAllOrdersUseCase(): ListAllOrdersUseCase;
   getMarkOrderAsShippedUseCase(): MarkOrderAsShippedUseCase;
   getSearchBuyersUseCase(): SearchBuyersUseCase;
   getGeneratePurchaseThanksUseCase(): GeneratePurchaseThanksUseCase;
@@ -362,15 +393,28 @@ export function createContainer(env: Env = process.env): Container {
   const orderRepository = createOrderRepository(env);
   const overdueSpec = new OverdueOrderSpecification();
   const templateRepository = createTemplateRepository(env);
+  const purchaseThanksProductNameResolver = createPurchaseThanksProductNameResolver(env);
+  const shippingMethodLabelResolver = createShippingMethodLabelResolver(env);
 
   return {
     getListPendingOrdersUseCase: () => new ListPendingOrdersUseCase(orderRepository, overdueSpec),
+    getListAllOrdersUseCase: () => new ListAllOrdersUseCase(orderRepository),
     getMarkOrderAsShippedUseCase: () => new MarkOrderAsShippedUseCase(orderRepository),
     getSearchBuyersUseCase: () => new SearchBuyersUseCase(orderRepository),
     getGeneratePurchaseThanksUseCase: () =>
-      new GeneratePurchaseThanksUseCase(orderRepository, templateRepository),
+      new GeneratePurchaseThanksUseCase(
+        orderRepository,
+        templateRepository,
+        new MessageGenerator(),
+        purchaseThanksProductNameResolver,
+      ),
     getGenerateShippingNoticeUseCase: () =>
-      new GenerateShippingNoticeUseCase(orderRepository, templateRepository),
+      new GenerateShippingNoticeUseCase(
+        orderRepository,
+        templateRepository,
+        new MessageGenerator(),
+        shippingMethodLabelResolver,
+      ),
     getIssueShippingLabelUseCase: () => createIssueShippingLabelUseCase(env),
     getFetchNewOrdersUseCase: (platform: 'minne' | 'creema') =>
       createFetchNewOrdersUseCase(env, orderRepository, platform),

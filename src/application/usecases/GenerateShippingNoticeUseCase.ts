@@ -1,5 +1,6 @@
 import { MessageTemplateRepository } from '@/domain/ports/MessageTemplateRepository';
 import { OrderRepository } from '@/domain/ports/OrderRepository';
+import { ShippingMethodLabelResolver } from '@/domain/ports/ShippingMethodLabelResolver';
 import { MessageGenerator, MessageTemplate } from '@/domain/services/MessageGenerator';
 import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
 import { OrderId } from '@/domain/valueObjects/OrderId';
@@ -35,11 +36,24 @@ export class ShippingNoticeOrderNotShippedError extends Error {
   }
 }
 
+class DefaultShippingMethodLabelResolver implements ShippingMethodLabelResolver {
+  async resolve(methodCode: string): Promise<string> {
+    if (methodCode === 'click_post') {
+      return 'クリックポスト(日本郵便)';
+    }
+    if (methodCode === 'yamato_compact') {
+      return '宅急便コンパクト(ヤマト運輸)';
+    }
+    return methodCode;
+  }
+}
+
 export class GenerateShippingNoticeUseCase {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly templateRepository: MessageTemplateRepository<MessageTemplate>,
     private readonly messageGenerator: MessageGenerator = new MessageGenerator(),
+    private readonly shippingMethodLabelResolver: ShippingMethodLabelResolver = new DefaultShippingMethodLabelResolver(),
   ) {}
 
   async execute(input: GenerateShippingNoticeInput): Promise<GenerateShippingNoticeResultDto> {
@@ -56,7 +70,12 @@ export class GenerateShippingNoticeUseCase {
       throw new ShippingNoticeTemplateNotFoundError();
     }
 
-    const message = this.messageGenerator.generate(order, template);
+    const shippingMethodLabel = await this.shippingMethodLabelResolver.resolve(
+      order.shippingMethod?.toString() ?? '',
+    );
+    const message = this.messageGenerator.generate(order, template, {
+      shipping_method: shippingMethodLabel,
+    });
 
     return {
       orderId: order.orderId.toString(),

@@ -1,4 +1,5 @@
 import { OrderRepository } from '@/domain/ports/OrderRepository';
+import { PurchaseThanksProductNameResolver } from '@/domain/ports/PurchaseThanksProductNameResolver';
 import { MessageTemplateRepository } from '@/domain/ports/MessageTemplateRepository';
 import { MessageGenerator, MessageTemplate } from '@/domain/services/MessageGenerator';
 import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
@@ -27,11 +28,18 @@ export class PurchaseThanksTemplateNotFoundError extends Error {
   }
 }
 
+class IdentityPurchaseThanksProductNameResolver implements PurchaseThanksProductNameResolver {
+  async resolve(originalProductName: string): Promise<string> {
+    return originalProductName;
+  }
+}
+
 export class GeneratePurchaseThanksUseCase {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly templateRepository: MessageTemplateRepository<MessageTemplate>,
     private readonly messageGenerator: MessageGenerator = new MessageGenerator(),
+    private readonly productNameResolver: PurchaseThanksProductNameResolver = new IdentityPurchaseThanksProductNameResolver(),
   ) {}
 
   async execute(input: GeneratePurchaseThanksInput): Promise<GeneratePurchaseThanksResultDto> {
@@ -45,7 +53,10 @@ export class GeneratePurchaseThanksUseCase {
       throw new PurchaseThanksTemplateNotFoundError();
     }
 
-    const message = this.messageGenerator.generate(order, template);
+    const mappedProductName = await this.productNameResolver.resolve(order.product.name);
+    const message = this.messageGenerator.generate(order, template, {
+      product_name: mappedProductName,
+    });
 
     return {
       orderId: order.orderId.toString(),

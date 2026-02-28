@@ -21,6 +21,7 @@ export interface OrderShipped {
 }
 
 export type OrderDomainEvent = OrderRegistered | OrderShipped;
+export const DEFAULT_CLICK_POST_ITEM_NAME = 'アクセサリー';
 
 interface NewOrderParams {
   orderId: OrderId;
@@ -28,6 +29,7 @@ interface NewOrderParams {
   buyer: Buyer;
   product: Product;
   orderedAt?: Date;
+  clickPostItemName?: string;
 }
 
 interface ReconstitutedOrderParams {
@@ -37,6 +39,7 @@ interface ReconstitutedOrderParams {
   product: Product;
   status: OrderStatus;
   orderedAt: Date;
+  clickPostItemName?: string;
   shippedAt?: Date;
   shippingMethod?: ShippingMethod;
   trackingNumber?: TrackingNumber;
@@ -50,6 +53,7 @@ export class Order {
   readonly platform: Platform;
   readonly buyer: Buyer;
   readonly product: Product;
+  readonly clickPostItemName: string;
   status: OrderStatus;
   readonly orderedAt: Date;
   shippedAt?: Date;
@@ -63,6 +67,7 @@ export class Order {
     this.platform = params.platform;
     this.buyer = params.buyer;
     this.product = params.product;
+    this.clickPostItemName = this.normalizeClickPostItemName(params.clickPostItemName);
     this.status = params.status;
     this.orderedAt = params.orderedAt;
     this.shippedAt = params.shippedAt;
@@ -129,5 +134,10 @@ export class Order {
     const events = [...this.domainEvents];
     this.domainEvents = [];
     return events;
+  }
+
+  private normalizeClickPostItemName(value?: string): string {
+    const normalized = value?.trim();
+    return normalized && normalized.length > 0 ? normalized : DEFAULT_CLICK_POST_ITEM_NAME;
   }
 }

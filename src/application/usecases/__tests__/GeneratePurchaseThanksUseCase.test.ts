@@ -8,6 +8,7 @@ import { Order } from '@/domain/entities/Order';
 import { OrderFactory } from '@/domain/factories/OrderFactory';
 import { MessageTemplateRepository } from '@/domain/ports/MessageTemplateRepository';
 import { OrderRepository } from '@/domain/ports/OrderRepository';
+import { PurchaseThanksProductNameResolver } from '@/domain/ports/PurchaseThanksProductNameResolver';
 import { MessageTemplate } from '@/domain/services/MessageGenerator';
 import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
 import { OrderId } from '@/domain/valueObjects/OrderId';
@@ -64,6 +65,14 @@ class InMemoryMessageTemplateRepository implements MessageTemplateRepository<Mes
 
   async resetToDefault(_type: MessageTemplateType): Promise<MessageTemplate> {
     throw new Error('not implemented for this test');
+  }
+}
+
+class StubPurchaseThanksProductNameResolver implements PurchaseThanksProductNameResolver {
+  constructor(private readonly mappedValue?: string) {}
+
+  async resolve(originalProductName: string): Promise<string> {
+    return this.mappedValue ?? originalProductName;
   }
 }
 
@@ -137,5 +146,24 @@ describe('GeneratePurchaseThanksUseCase', () => {
     await expect(useCase.execute({ orderId: 'ORD-404' })).rejects.toBeInstanceOf(
       PurchaseThanksOrderNotFoundError,
     );
+  });
+
+  it('購入お礼商品名マッピングが存在する場合は変換後の商品名を使う', async () => {
+    const orderRepository = new InMemoryOrderRepository([createOrder('ORD-003')]);
+    const templateRepository = new InMemoryMessageTemplateRepository();
+    await templateRepository.save(purchaseThanksTemplate());
+    const resolver = new StubPurchaseThanksProductNameResolver(
+      'ウッドイヤーカフ_エボニー(三角M_金箔)',
+    );
+    const useCase = new GeneratePurchaseThanksUseCase(
+      orderRepository,
+      templateRepository,
+      undefined,
+      resolver,
+    );
+
+    const result = await useCase.execute({ orderId: 'ORD-003' });
+    expect(result.message).toContain('ウッドイヤーカフ_エボニー(三角M_金箔)');
+    expect(result.message).not.toContain('ハンドメイドアクセサリー');
   });
 });

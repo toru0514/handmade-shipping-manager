@@ -9,6 +9,7 @@ import { Order } from '@/domain/entities/Order';
 import { OrderFactory } from '@/domain/factories/OrderFactory';
 import { MessageTemplateRepository } from '@/domain/ports/MessageTemplateRepository';
 import { OrderRepository } from '@/domain/ports/OrderRepository';
+import { ShippingMethodLabelResolver } from '@/domain/ports/ShippingMethodLabelResolver';
 import { MessageTemplate } from '@/domain/services/MessageGenerator';
 import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
 import { OrderId } from '@/domain/valueObjects/OrderId';
@@ -70,6 +71,15 @@ class InMemoryMessageTemplateRepository implements MessageTemplateRepository<Mes
   }
 }
 
+class StubShippingMethodLabelResolver implements ShippingMethodLabelResolver {
+  async resolve(methodCode: string): Promise<string> {
+    if (methodCode === 'click_post') {
+      return 'クリックポスト(日本郵便)';
+    }
+    return methodCode;
+  }
+}
+
 const orderFactory = new OrderFactory();
 
 function createShippedOrder(orderId: string): Order {
@@ -128,14 +138,19 @@ describe('GenerateShippingNoticeUseCase', () => {
     const orderRepository = new InMemoryOrderRepository([createShippedOrder('ORD-001')]);
     const templateRepository = new InMemoryMessageTemplateRepository();
     await templateRepository.save(shippingNoticeTemplate());
-    const useCase = new GenerateShippingNoticeUseCase(orderRepository, templateRepository);
+    const useCase = new GenerateShippingNoticeUseCase(
+      orderRepository,
+      templateRepository,
+      undefined,
+      new StubShippingMethodLabelResolver(),
+    );
 
     const result = await useCase.execute({ orderId: 'ORD-001' });
 
     expect(result.orderId).toBe('ORD-001');
     expect(result.message).toContain('山田 太郎');
     expect(result.message).toContain('ハンドメイドアクセサリー');
-    expect(result.message).toContain('click_post');
+    expect(result.message).toContain('クリックポスト(日本郵便)');
     expect(result.message).toContain('CP123456789JP');
     expect(result.message).toContain(
       'https://trackings.post.japanpost.jp/services/srv/search/input',

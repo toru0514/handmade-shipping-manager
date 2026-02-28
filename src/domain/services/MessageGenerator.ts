@@ -51,9 +51,16 @@ function buildVariables(order: Order): Record<string, string> {
 }
 
 export class MessageGenerator {
-  generate(order: Order, template: MessageTemplate): Message {
+  generate(
+    order: Order,
+    template: MessageTemplate,
+    overrides: Partial<Record<string, string>> = {},
+  ): Message {
     let content = template.content;
-    const values = buildVariables(order);
+    const values = {
+      ...buildVariables(order),
+      ...overrides,
+    };
 
     for (const variable of template.variables) {
       const value = values[variable.name] ?? '';
