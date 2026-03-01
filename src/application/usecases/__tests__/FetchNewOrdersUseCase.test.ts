@@ -259,6 +259,9 @@ describe('FetchNewOrdersUseCase', () => {
 
       expect(notifySpy).toHaveBeenCalledOnce();
       expect(notifySpy.mock.calls[0][0].content).toContain('新規登録: 1件');
+      expect(notifySpy.mock.calls[0][0].content).toContain(
+        'https://handmade-shipping-manager.vercel.app/orders',
+      );
     });
 
     it('fetched=0 かつ errors=[] の場合は通知しない（スキップのみ）', async () => {

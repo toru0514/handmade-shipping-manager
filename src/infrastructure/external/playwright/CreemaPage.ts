@@ -31,6 +31,13 @@ const SELECTORS = {
     '#product-name',
     '#trade .p-tradenavi-price-table__name',
   ] as const,
+  productOption: [
+    '.product-option',
+    '[data-testid="product-option"]',
+    '#product-option',
+    '#trade .p-tradenavi-price-table__name + span',
+    '#trade .p-tradenavi-price-table__name ~ span',
+  ] as const,
   orderedAt: [
     '.ordered-at',
     '[data-testid="ordered-at"]',
@@ -75,6 +82,7 @@ export class CreemaPage {
   private tradeListSummary?: {
     readonly buyerName?: string;
     readonly productName?: string;
+    readonly productOption?: string;
     readonly orderedAtText?: string;
   };
 
@@ -143,6 +151,9 @@ export class CreemaPage {
         const titleAnchor = firstDataTr?.querySelector<HTMLAnchorElement>(
           'a.u-text-deco--none.u-block.u-text-bold',
         );
+        const optionSpan = firstDataTr?.querySelector<HTMLElement>(
+          '.c-table-cell.u-padding-l-sm.u-text-left span',
+        );
         const rowSpanTds = firstDataTr
           ? Array.from(firstDataTr.querySelectorAll('td[rowspan]'))
           : [];
@@ -160,6 +171,7 @@ export class CreemaPage {
           tradenaviPath: href,
           buyerName: partnerFullname || null,
           productName: (titleAnchor?.textContent ?? '').replace(/\s+/g, ' ').trim() || null,
+          productOption: (optionSpan?.textContent ?? '').replace(/\s+/g, ' ').trim() || null,
           orderedAtText: tradeDate || null,
         };
       }
@@ -176,6 +188,7 @@ export class CreemaPage {
     this.tradeListSummary = {
       buyerName: orderInfo.buyerName ?? undefined,
       productName: orderInfo.productName ?? undefined,
+      productOption: orderInfo.productOption ?? undefined,
       orderedAtText: orderInfo.orderedAtText ?? undefined,
     };
 
@@ -241,11 +254,15 @@ export class CreemaPage {
     let buyerPhone = await this.optionalText([...SELECTORS.phone]);
     if (!buyerPhone) buyerPhone = (await getAddressFallback()).buyerPhone;
 
-    const productName =
+    const productNameRaw =
       (await this.optionalText([...SELECTORS.productName])) ?? this.tradeListSummary?.productName;
-    if (!productName) {
+    if (!productNameRaw) {
       throw new Error('creema 注文詳細の商品名を取得できませんでした');
     }
+    const productOptionRaw =
+      (await this.optionalText([...SELECTORS.productOption])) ??
+      this.tradeListSummary?.productOption;
+    const productName = this.buildProductName(productNameRaw, productOptionRaw);
 
     const orderedAtText =
       (await this.optionalText([...SELECTORS.orderedAt])) ?? this.tradeListSummary?.orderedAtText;
@@ -418,6 +435,19 @@ export class CreemaPage {
     const minute = Number(m[5] ?? '0');
     const second = Number(m[6] ?? '0');
     return new Date(year, month, day, hour, minute, second);
+  }
+
+  private buildProductName(baseName: string, optionText?: string): string {
+    const base = baseName.replace(/\s+/g, ' ').trim();
+    if (!base) return '';
+
+    const option = optionText?.replace(/\s+/g, ' ').trim();
+    if (!option) return base;
+
+    if (option.startsWith('(') || option.startsWith('（')) {
+      return `${base}${option}`;
+    }
+    return `${base}(${option})`;
   }
 
   private async fillFirst(selectors: string[], value: string): Promise<boolean> {

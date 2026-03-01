@@ -26,6 +26,8 @@ export interface FetchNewOrdersResult {
 }
 
 export class FetchNewOrdersUseCase {
+  private static readonly ORDERS_PAGE_URL = 'https://handmade-shipping-manager.vercel.app/orders';
+
   constructor(
     private readonly emailOrderSource: EmailOrderSource,
     private readonly orderFetcher: OrderFetcher,
@@ -102,6 +104,7 @@ export class FetchNewOrdersUseCase {
         lines.push(`  • ${e.orderId}: ${e.reason}`);
       }
     }
+    lines.push(`📋 注文一覧: ${FetchNewOrdersUseCase.ORDERS_PAGE_URL}`);
 
     await this.notificationSender.notify(new Message(lines.join('\n'))).catch((e) => {
       console.warn('[FetchNewOrdersUseCase] Slack 通知失敗:', e);

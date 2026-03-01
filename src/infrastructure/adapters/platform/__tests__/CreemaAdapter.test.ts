@@ -22,6 +22,7 @@ describe('CreemaAdapter', () => {
       tradenaviPath: '/tradenavi/SXD05zNsPWkmTpIBiT8jU0WUmxWZ9BwX',
       buyerName: '山本 昌代',
       productName: 'ハンドメイドバッグ',
+      productOption: '9号',
       orderedAtText: '2026年2月25日',
     }));
     const close = vi.fn(async () => undefined);
@@ -34,6 +35,7 @@ describe('CreemaAdapter', () => {
       '.shipping-address-line2': 'サンプルマンション202',
       '.shipping-phone': '080-9876-5432',
       '.product-name': 'ハンドメイドバッグ',
+      '.product-option': '9号',
       '.ordered-at': '2026-02-25T10:00:00.000Z',
     });
 
@@ -70,7 +72,7 @@ describe('CreemaAdapter', () => {
       buyerAddress1: '梅田1-1-1',
       buyerAddress2: 'サンプルマンション202',
       buyerPhone: '08098765432',
-      productName: 'ハンドメイドバッグ',
+      productName: 'ハンドメイドバッグ(9号)',
       orderedAt: new Date('2026-02-25T10:00:00.000Z'),
     });
     expect(goto).toHaveBeenCalledWith('https://www.creema.jp/login', {
@@ -103,6 +105,7 @@ describe('CreemaAdapter', () => {
       '.shipping-city': '大阪市北区',
       '.shipping-address-line1': '梅田1-1-1',
       '.product-name': 'ハンドメイドバッグ',
+      '.product-option': '9号',
       '.ordered-at': '2026-02-25T10:00:00.000Z',
     });
     const browserFactory: CreemaBrowserFactory = {
@@ -116,6 +119,7 @@ describe('CreemaAdapter', () => {
             tradenaviPath: '/tradenavi/SXD05zNsPWkmTpIBiT8jU0WUmxWZ9BwX',
             buyerName: '山本 昌代',
             productName: 'ハンドメイドバッグ',
+            productOption: '9号',
             orderedAtText: '2026年2月25日',
           })),
         })),
@@ -133,7 +137,7 @@ describe('CreemaAdapter', () => {
     expect(order.orderId.toString()).toBe('CR-10002');
     expect(order.platform.toString()).toBe('creema');
     expect(order.buyer.name.toString()).toBe('佐藤 愛');
-    expect(order.product.name).toBe('ハンドメイドバッグ');
+    expect(order.product.name).toBe('ハンドメイドバッグ(9号)');
   });
 
   it('creema 以外の platform 指定はエラー', async () => {
