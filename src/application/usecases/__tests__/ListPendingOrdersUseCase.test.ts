@@ -99,6 +99,37 @@ describe('ListPendingOrdersUseCase', () => {
     expect(result[0]?.isOverdue).toBe(false);
   });
 
+  it('minne の注文に正しい取引ページURLが設定される', async () => {
+    const order = createPendingOrder('ORD-001', '山田 太郎', new Date());
+    const repo = new InMemoryOrderRepository([order]);
+    const useCase = new ListPendingOrdersUseCase(repo, overdueSpec);
+
+    const result = await useCase.execute();
+
+    expect(result[0]?.transactionUrl).toBe('https://minne.com/account/orders/ORD-001');
+  });
+
+  it('creema の注文に正しい取引ページURLが設定される', async () => {
+    const order = factory.createFromPlatformData({
+      orderId: 'CRM-001',
+      platform: Platform.Creema,
+      buyerName: '田中 花子',
+      buyerPostalCode: '1500001',
+      buyerPrefecture: '東京都',
+      buyerCity: '渋谷区',
+      buyerAddress1: '神宮前1-1-1',
+      productName: 'ハンドメイドアクセサリー',
+      price: 2500,
+      orderedAt: new Date(),
+    });
+    const repo = new InMemoryOrderRepository([order]);
+    const useCase = new ListPendingOrdersUseCase(repo, overdueSpec);
+
+    const result = await useCase.execute();
+
+    expect(result[0]?.transactionUrl).toBe('https://www.creema.jp/my/tradenavi/list');
+  });
+
   it('3日以上経過した注文は isOverdue が true になる', async () => {
     const fourDaysAgo = new Date(Date.now() - 4 * 24 * 60 * 60 * 1000);
     const order = createPendingOrder('ORD-001', '山田 太郎', fourDaysAgo);

@@ -14,6 +14,7 @@ function createOrder(): PendingOrderDto {
     orderedAt: '2026-02-15T00:00:00.000Z',
     daysSinceOrder: 2,
     isOverdue: false,
+    transactionUrl: 'https://minne.com/account/orders/ORD-001',
   };
 }
 
