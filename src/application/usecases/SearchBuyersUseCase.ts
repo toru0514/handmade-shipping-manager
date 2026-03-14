@@ -85,7 +85,7 @@ export class SearchBuyersUseCase {
       throw new Error('購入者情報の変換に失敗しました');
     }
 
-    const totalAmount = sorted.reduce((sum, order) => sum + order.product.price, 0);
+    const totalAmount = sorted.reduce((sum, order) => sum + order.totalPrice, 0);
 
     return {
       buyerId: this.toBuyerId(identityKey),
@@ -103,8 +103,8 @@ export class SearchBuyersUseCase {
       orderHistory: sorted.map((order) => ({
         orderId: order.orderId.toString(),
         platform: order.platform.toString(),
-        productName: order.product.name,
-        price: order.product.price,
+        productName: order.products.map((p) => p.name).join('、'),
+        price: order.totalPrice,
         status: order.status.toString(),
         orderedAt: order.orderedAt.toISOString(),
       })),

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import './globals.css';
-import { COOKIE_NAME, verifySessionToken } from '@/lib/session';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { GlobalNav } from '@/presentation/components/layout/GlobalNav';
 
 export const metadata: Metadata = {
@@ -14,11 +13,11 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const token = cookieStore.get(COOKIE_NAME)?.value;
-  const isLoggedIn = token
-    ? await verifySessionToken(token, process.env.APP_SESSION_SECRET ?? '')
-    : false;
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isLoggedIn = !!user;
 
   return (
     <html lang="ja">

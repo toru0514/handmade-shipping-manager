@@ -53,7 +53,10 @@ export class GeneratePurchaseThanksUseCase {
       throw new PurchaseThanksTemplateNotFoundError();
     }
 
-    const mappedProductName = await this.productNameResolver.resolve(order.product.name);
+    const mappedNames = await Promise.all(
+      order.products.map((p) => this.productNameResolver.resolve(p.name)),
+    );
+    const mappedProductName = mappedNames.join('、');
     const message = this.messageGenerator.generate(order, template, {
       product_name: mappedProductName,
     });

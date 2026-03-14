@@ -1,6 +1,12 @@
 import { OrderId } from '@/domain/valueObjects/OrderId';
 import { Platform } from '@/domain/valueObjects/Platform';
 
+export interface PlatformProductData {
+  readonly name: string;
+  readonly price: number;
+  readonly quantity: number;
+}
+
 export interface PlatformOrderData {
   readonly orderId: string;
   readonly platform: Platform;
@@ -13,6 +19,7 @@ export interface PlatformOrderData {
   readonly buyerPhone?: string;
   readonly productName: string;
   readonly price?: number;
+  readonly products?: readonly PlatformProductData[];
   readonly orderedAt: Date;
 }
 

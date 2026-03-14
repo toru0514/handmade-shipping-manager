@@ -27,7 +27,8 @@ interface NewOrderParams {
   orderId: OrderId;
   platform: Platform;
   buyer: Buyer;
-  product: Product;
+  product?: Product;
+  products?: Product[];
   orderedAt?: Date;
   clickPostItemName?: string;
 }
@@ -36,7 +37,8 @@ interface ReconstitutedOrderParams {
   orderId: OrderId;
   platform: Platform;
   buyer: Buyer;
-  product: Product;
+  product?: Product;
+  products?: Product[];
   status: OrderStatus;
   orderedAt: Date;
   clickPostItemName?: string;
@@ -52,7 +54,7 @@ export class Order {
   readonly orderId: OrderId;
   readonly platform: Platform;
   readonly buyer: Buyer;
-  readonly product: Product;
+  readonly products: Product[];
   readonly clickPostItemName: string;
   status: OrderStatus;
   readonly orderedAt: Date;
@@ -66,7 +68,7 @@ export class Order {
     this.orderId = params.orderId;
     this.platform = params.platform;
     this.buyer = params.buyer;
-    this.product = params.product;
+    this.products = Order.resolveProducts(params);
     this.clickPostItemName = this.normalizeClickPostItemName(params.clickPostItemName);
     this.status = params.status;
     this.orderedAt = params.orderedAt;
@@ -83,14 +85,25 @@ export class Order {
     }
   }
 
+  /** 後方互換: 先頭の商品を返す */
+  get product(): Product {
+    return this.products[0];
+  }
+
+  get totalPrice(): number {
+    return this.products.reduce((sum, p) => sum + p.subtotal, 0);
+  }
+
   static create(params: NewOrderParams): Order {
     return new Order({
       orderId: params.orderId,
       platform: params.platform,
       buyer: params.buyer,
       product: params.product,
+      products: params.products,
       status: OrderStatus.Pending,
       orderedAt: params.orderedAt ?? new Date(),
+      clickPostItemName: params.clickPostItemName,
     });
   }
 
@@ -139,5 +152,15 @@ export class Order {
   private normalizeClickPostItemName(value?: string): string {
     const normalized = value?.trim();
     return normalized && normalized.length > 0 ? normalized : DEFAULT_CLICK_POST_ITEM_NAME;
+  }
+
+  private static resolveProducts(params: { product?: Product; products?: Product[] }): Product[] {
+    if (params.products && params.products.length > 0) {
+      return [...params.products];
+    }
+    if (params.product) {
+      return [params.product];
+    }
+    throw new Error('商品が1つ以上必要です');
   }
 }

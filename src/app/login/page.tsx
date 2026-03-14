@@ -2,8 +2,10 @@
 
 import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 
 function LoginForm() {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -16,19 +18,20 @@ function LoginForm() {
     setLoading(true);
     setError('');
 
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+    const supabase = createSupabaseBrowserClient();
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
 
-    if (res.ok) {
-      router.push(from);
-      router.refresh();
-    } else {
-      setError('パスワードが正しくありません');
+    if (authError) {
+      setError('メールアドレスまたはパスワードが正しくありません');
       setLoading(false);
+      return;
     }
+
+    router.push(from);
+    router.refresh();
   }
 
   return (
@@ -36,6 +39,20 @@ function LoginForm() {
       <div className="w-full max-w-sm rounded-lg bg-white p-8 shadow">
         <h1 className="mb-6 text-xl font-bold text-gray-800">ハンドメイド発送管理</h1>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              メールアドレス
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+              autoFocus
+              required
+            />
+          </div>
           <div>
             <label htmlFor="password" className="block text-sm font-medium text-gray-700">
               パスワード
@@ -46,7 +63,6 @@ function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
-              autoFocus
               required
             />
           </div>

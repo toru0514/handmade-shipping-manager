@@ -23,16 +23,18 @@ export class OrderFactory {
       phoneNumber: data.buyerPhone ? new PhoneNumber(data.buyerPhone) : undefined,
     });
 
-    const product = new Product({
-      name: data.productName,
-      price: data.price ?? 0,
-    });
+    const products =
+      data.products && data.products.length > 0
+        ? data.products.map(
+            (p) => new Product({ name: p.name, price: p.price, quantity: p.quantity }),
+          )
+        : [new Product({ name: data.productName, price: data.price ?? 0 })];
 
     return Order.create({
       orderId: new OrderId(data.orderId),
       platform: data.platform,
       buyer,
-      product,
+      products,
       orderedAt: data.orderedAt,
     });
   }

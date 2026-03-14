@@ -6,6 +6,7 @@ import { IssueShippingLabelUseCase } from '@/application/usecases/IssueShippingL
 import { ListPendingOrdersUseCase } from '@/application/usecases/ListPendingOrdersUseCase';
 import { MarkOrderAsShippedUseCase } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import { SearchBuyersUseCase } from '@/application/usecases/SearchBuyersUseCase';
+import { SyncOrdersToDbUseCase } from '@/application/usecases/SyncOrdersToDbUseCase';
 import { UpdateMessageTemplateUseCase } from '@/application/usecases/UpdateMessageTemplateUseCase';
 import { MessageGenerator } from '@/domain/services/MessageGenerator';
 import { OverdueOrderSpecification } from '@/domain/specifications/OverdueOrderSpecification';
@@ -23,7 +24,9 @@ import { MinneAdapter } from '@/infrastructure/adapters/platform/MinneAdapter';
 import { CreemaAdapter } from '@/infrastructure/adapters/platform/CreemaAdapter';
 import { MinneEmailOrderSource } from '@/infrastructure/adapters/platform/MinneEmailOrderSource';
 import { CreemaEmailOrderSource } from '@/infrastructure/adapters/platform/CreemaEmailOrderSource';
+import { createClient } from '@supabase/supabase-js';
 import { SlackAdapter } from '@/infrastructure/adapters/notification/SlackAdapter';
+import { SupabaseOrderSyncRepository } from '@/infrastructure/adapters/persistence/SupabaseOrderSyncRepository';
 import { ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
 import { GoogleGmailClient } from '@/infrastructure/external/google/GmailClient';
 import { ChromiumBrowserFactory } from '@/infrastructure/external/playwright/ChromiumBrowserFactory';
@@ -387,6 +390,7 @@ export interface Container {
   getIssueShippingLabelUseCase(): IssueShippingLabelUseCase;
   getFetchNewOrdersUseCase(platform: 'minne' | 'creema'): FetchNewOrdersUseCase;
   getUpdateMessageTemplateUseCase(): UpdateMessageTemplateUseCase;
+  getSyncOrdersToDbUseCase(): SyncOrdersToDbUseCase;
 }
 
 export function createContainer(env: Env = process.env): Container {
@@ -419,5 +423,30 @@ export function createContainer(env: Env = process.env): Container {
     getFetchNewOrdersUseCase: (platform: 'minne' | 'creema') =>
       createFetchNewOrdersUseCase(env, orderRepository, platform),
     getUpdateMessageTemplateUseCase: () => new UpdateMessageTemplateUseCase(templateRepository),
+    getSyncOrdersToDbUseCase: () => {
+      const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+      const supabaseServiceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+      if (!supabaseUrl || !supabaseServiceRoleKey) {
+        throw new Error(
+          'Supabase 設定が不足しています: NEXT_PUBLIC_SUPABASE_URL と SUPABASE_SERVICE_ROLE_KEY を設定してください',
+        );
+      }
+
+      const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+
+      const auth = createAuth(env);
+      const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+      const labelSheetsClient = new GoogleSheetsClient({
+        spreadsheetId,
+        sheetName: env.GOOGLE_SHEETS_LABEL_SHEET_NAME?.trim() || 'ShippingLabels',
+        ...auth,
+      });
+      const labelRepository = new SpreadsheetShippingLabelRepository(labelSheetsClient);
+      const syncRepository = new SupabaseOrderSyncRepository(supabase);
+
+      return new SyncOrdersToDbUseCase(orderRepository, labelRepository, syncRepository);
+    },
   };
 }

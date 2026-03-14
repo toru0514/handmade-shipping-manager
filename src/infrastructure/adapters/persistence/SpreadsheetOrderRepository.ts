@@ -34,6 +34,7 @@ const COL = {
   shippingMethod: 14,
   trackingNumber: 15,
   clickPostItemName: 16,
+  productsJson: 17,
 } as const;
 
 export class SpreadsheetOrderRepository implements OrderRepository<Order> {
@@ -127,6 +128,13 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
   }
 
   private serialize(order: Order): string[] {
+    const productsJson =
+      order.products.length > 1
+        ? JSON.stringify(
+            order.products.map((p) => ({ name: p.name, price: p.price, quantity: p.quantity })),
+          )
+        : '';
+
     return [
       order.orderId.toString(),
       order.platform.toString(),
@@ -145,11 +153,14 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
       order.shippingMethod?.toString() ?? '',
       order.trackingNumber?.toString() ?? '',
       order.clickPostItemName,
+      productsJson,
     ];
   }
 
   private deserialize(row: string[]): Order {
     const status = new OrderStatus(row[COL.status] ?? 'pending');
+
+    const products = this.deserializeProducts(row);
 
     return Order.reconstitute({
       orderId: new OrderId(row[COL.orderId] ?? ''),
@@ -165,10 +176,7 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
         }),
         phoneNumber: row[COL.buyerPhone] ? new PhoneNumber(row[COL.buyerPhone]) : undefined,
       }),
-      product: new Product({
-        name: row[COL.productName] ?? '',
-        price: Number(row[COL.productPrice] ?? 0),
-      }),
+      products,
       status,
       orderedAt: new Date(row[COL.orderedAt] ?? ''),
       clickPostItemName: row[COL.clickPostItemName] ?? DEFAULT_CLICK_POST_ITEM_NAME,
@@ -180,5 +188,32 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
         ? new TrackingNumber(row[COL.trackingNumber])
         : undefined,
     });
+  }
+
+  private deserializeProducts(row: string[]): Product[] {
+    const productsJsonRaw = row[COL.productsJson];
+    if (productsJsonRaw && productsJsonRaw.trim().length > 0) {
+      try {
+        const parsed = JSON.parse(productsJsonRaw) as Array<{
+          name: string;
+          price: number;
+          quantity?: number;
+        }>;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(
+            (p) => new Product({ name: p.name, price: p.price, quantity: p.quantity }),
+          );
+        }
+      } catch {
+        // JSON パース失敗時は単一商品にフォールバック
+      }
+    }
+
+    return [
+      new Product({
+        name: row[COL.productName] ?? '',
+        price: Number(row[COL.productPrice] ?? 0),
+      }),
+    ];
   }
 }
