@@ -14,6 +14,7 @@ function createDto(orderId: string, isOverdue: boolean = false): PendingOrderDto
     orderedAt: '2026-02-15T00:00:00.000Z',
     daysSinceOrder: isOverdue ? 5 : 1,
     isOverdue,
+    transactionUrl: `https://minne.com/account/orders/${orderId}`,
   };
 }
 

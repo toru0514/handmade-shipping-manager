@@ -14,6 +14,7 @@ function createDto(overrides: Partial<PendingOrderDto> = {}): PendingOrderDto {
     orderedAt: '2026-02-15T00:00:00.000Z',
     daysSinceOrder: 2,
     isOverdue: false,
+    transactionUrl: 'https://minne.com/account/orders/ORD-001',
     ...overrides,
   };
 }
@@ -145,6 +146,38 @@ describe('PendingOrderCard', () => {
     );
 
     expect(screen.getByRole('button', { name: '生成中...' })).toBeDisabled();
+  });
+
+  it('注文番号が取引ページへのリンクとして表示される', () => {
+    render(
+      <PendingOrderCard
+        order={createDto()}
+        onRequestShipmentComplete={noop}
+        onRequestPurchaseThanks={noop}
+      />,
+    );
+
+    const link = screen.getByRole('link', { name: '#ORD-001' });
+    expect(link).toBeInTheDocument();
+    expect(link).toHaveAttribute('href', 'https://minne.com/account/orders/ORD-001');
+    expect(link).toHaveAttribute('target', '_blank');
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('creema の取引リンクが取引一覧ページを指す', () => {
+    render(
+      <PendingOrderCard
+        order={createDto({
+          platform: 'creema',
+          transactionUrl: 'https://www.creema.jp/my/tradenavi/list',
+        })}
+        onRequestShipmentComplete={noop}
+        onRequestPurchaseThanks={noop}
+      />,
+    );
+
+    const link = screen.getByRole('link', { name: '#ORD-001' });
+    expect(link).toHaveAttribute('href', 'https://www.creema.jp/my/tradenavi/list');
   });
 
   it('伝票発行ボタン押下時にコールバックが呼ばれる', async () => {
