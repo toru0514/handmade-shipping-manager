@@ -38,12 +38,11 @@ function buildTrackingUrl(order: Order): string {
 
 function buildVariables(order: Order): Record<string, string> {
   const productNames = order.products.map((p) => p.name).join('、');
-  const totalPrice = order.products.reduce((sum, p) => sum + p.subtotal, 0);
 
   return {
     buyer_name: order.buyer.name.toString(),
     product_name: productNames,
-    price: `¥${totalPrice.toLocaleString('ja-JP')}`,
+    price: `¥${order.totalPrice.toLocaleString('ja-JP')}`,
     order_id: order.orderId.toString(),
     platform: order.platform.toString(),
     shipping_method: order.shippingMethod?.toString() ?? '',

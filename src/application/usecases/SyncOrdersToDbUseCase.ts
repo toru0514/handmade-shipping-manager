@@ -1,7 +1,7 @@
 import { OrderRepository } from '@/domain/ports/OrderRepository';
 import { ShippingLabelRepository } from '@/domain/ports/ShippingLabelRepository';
+import { OrderSyncRepository } from '@/domain/ports/OrderSyncRepository';
 import { ShippingLabel } from '@/domain/entities/ShippingLabel';
-import { SupabaseOrderSyncRepository } from '@/infrastructure/adapters/persistence/SupabaseOrderSyncRepository';
 
 export interface SyncResult {
   readonly ordersSynced: number;
@@ -13,7 +13,7 @@ export class SyncOrdersToDbUseCase {
   constructor(
     private readonly orderRepository: OrderRepository,
     private readonly labelRepository: ShippingLabelRepository<ShippingLabel>,
-    private readonly syncRepository: SupabaseOrderSyncRepository,
+    private readonly syncRepository: OrderSyncRepository,
   ) {}
 
   async execute(): Promise<SyncResult> {

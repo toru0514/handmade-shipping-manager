@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS orders (
   buyer_phone TEXT,
   product_name TEXT NOT NULL,
   product_price INTEGER NOT NULL DEFAULT 0,
+  products_json JSONB,
   status TEXT NOT NULL DEFAULT 'pending',
   ordered_at TIMESTAMPTZ NOT NULL,
   shipped_at TIMESTAMPTZ,

@@ -69,6 +69,7 @@ describe('SupabaseOrderSyncRepository', () => {
             buyer_name: 'テスト太郎',
             product_name: 'テスト商品',
             product_price: 1000,
+            products_json: [{ name: 'テスト商品', price: 1000, quantity: 1 }],
             status: 'pending',
           }),
         ]),

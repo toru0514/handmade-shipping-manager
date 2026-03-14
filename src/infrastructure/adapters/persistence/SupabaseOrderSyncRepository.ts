@@ -3,6 +3,7 @@ import { ClickPostLabel } from '@/domain/entities/ClickPostLabel';
 import { Order } from '@/domain/entities/Order';
 import { ShippingLabel } from '@/domain/entities/ShippingLabel';
 import { YamatoCompactLabel } from '@/domain/entities/YamatoCompactLabel';
+import type { OrderSyncRepository } from '@/domain/ports/OrderSyncRepository';
 
 interface OrderRow {
   order_id: string;
@@ -16,6 +17,7 @@ interface OrderRow {
   buyer_phone: string;
   product_name: string;
   product_price: number;
+  products_json: Array<{ name: string; price: number; quantity: number }> | null;
   status: string;
   ordered_at: string;
   shipped_at: string | null;
@@ -39,7 +41,7 @@ interface ShippingLabelRow {
   synced_at: string;
 }
 
-export class SupabaseOrderSyncRepository {
+export class SupabaseOrderSyncRepository implements OrderSyncRepository {
   constructor(private readonly supabase: SupabaseClient) {}
 
   async upsertOrders(orders: Order[]): Promise<{ synced: number; errors: string[] }> {
@@ -57,8 +59,13 @@ export class SupabaseOrderSyncRepository {
       buyer_street: order.buyer.address.street,
       buyer_building: order.buyer.address.building ?? '',
       buyer_phone: order.buyer.phoneNumber?.toString() ?? '',
-      product_name: order.product.name,
-      product_price: order.product.price,
+      product_name: order.products.map((p) => p.name).join('、'),
+      product_price: order.totalPrice,
+      products_json: order.products.map((p) => ({
+        name: p.name,
+        price: p.price,
+        quantity: p.quantity,
+      })),
       status: order.status.toString(),
       ordered_at: order.orderedAt.toISOString(),
       shipped_at: order.shippedAt?.toISOString() ?? null,

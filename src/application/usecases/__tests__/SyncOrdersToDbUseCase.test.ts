@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SyncOrdersToDbUseCase } from '../SyncOrdersToDbUseCase';
-import type { SupabaseOrderSyncRepository } from '@/infrastructure/adapters/persistence/SupabaseOrderSyncRepository';
+import type { OrderSyncRepository } from '@/domain/ports/OrderSyncRepository';
 import { Order } from '@/domain/entities/Order';
 import { ClickPostLabel } from '@/domain/entities/ClickPostLabel';
 import { OrderId } from '@/domain/valueObjects/OrderId';
@@ -91,7 +91,7 @@ describe('SyncOrdersToDbUseCase', () => {
     const useCase = new SyncOrdersToDbUseCase(
       mockOrderRepository,
       mockLabelRepository,
-      mockSyncRepository as unknown as SupabaseOrderSyncRepository,
+      mockSyncRepository as unknown as OrderSyncRepository,
     );
     const result = await useCase.execute();
 
@@ -104,7 +104,7 @@ describe('SyncOrdersToDbUseCase', () => {
     const useCase = new SyncOrdersToDbUseCase(
       mockOrderRepository,
       mockLabelRepository,
-      mockSyncRepository as unknown as SupabaseOrderSyncRepository,
+      mockSyncRepository as unknown as OrderSyncRepository,
     );
     const result = await useCase.execute();
 
@@ -124,7 +124,7 @@ describe('SyncOrdersToDbUseCase', () => {
     const useCase = new SyncOrdersToDbUseCase(
       mockOrderRepository,
       mockLabelRepository,
-      mockSyncRepository as unknown as SupabaseOrderSyncRepository,
+      mockSyncRepository as unknown as OrderSyncRepository,
     );
     const result = await useCase.execute();
 
