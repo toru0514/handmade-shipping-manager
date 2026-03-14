@@ -180,6 +180,19 @@ describe('PendingOrderCard', () => {
     expect(link).toHaveAttribute('href', 'https://www.creema.jp/my/tradenavi/list');
   });
 
+  it('transactionUrl が空の場合はリンクではなくテキストで表示される', () => {
+    render(
+      <PendingOrderCard
+        order={createDto({ transactionUrl: '' })}
+        onRequestShipmentComplete={noop}
+        onRequestPurchaseThanks={noop}
+      />,
+    );
+
+    expect(screen.queryByRole('link', { name: '#ORD-001' })).not.toBeInTheDocument();
+    expect(screen.getByText('#ORD-001')).toBeInTheDocument();
+  });
+
   it('伝票発行ボタン押下時にコールバックが呼ばれる', async () => {
     const onRequestIssueLabel = vi.fn(async () => undefined);
 

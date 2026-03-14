@@ -45,14 +45,18 @@ export function PendingOrderCard({
     >
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-medium text-gray-500">{platformLabel(order.platform)}</span>
-        <a
-          href={order.transactionUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-gray-400 hover:text-blue-500 hover:underline"
-        >
-          #{order.orderId}
-        </a>
+        {order.transactionUrl ? (
+          <a
+            href={order.transactionUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-gray-400 hover:text-blue-500 hover:underline"
+          >
+            #{order.orderId}
+          </a>
+        ) : (
+          <span className="text-sm text-gray-400">#{order.orderId}</span>
+        )}
       </div>
 
       <h3 className="mb-1 text-lg font-semibold">{order.buyerName}</h3>
