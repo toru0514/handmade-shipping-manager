@@ -32,7 +32,7 @@ export class ListPendingOrdersUseCase {
       orderId,
       platform,
       buyerName: order.buyer.name.toString(),
-      productName: order.product.name,
+      productName: order.products.map((p) => p.name).join('、'),
       orderedAt: order.orderedAt.toISOString(),
       daysSinceOrder: order.getDaysSinceOrder(),
       isOverdue: this.overdueSpec.isSatisfiedBy(order),

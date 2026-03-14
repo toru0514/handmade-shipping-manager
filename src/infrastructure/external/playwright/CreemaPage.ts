@@ -62,6 +62,12 @@ export interface CreemaPageLike {
   evaluate?<R, Arg>(pageFunction: (arg: Arg) => R, arg: Arg): Promise<R>;
 }
 
+export interface CreemaScrapedProduct {
+  readonly name: string;
+  readonly price: number;
+  readonly quantity: number;
+}
+
 export interface CreemaScrapedOrderData {
   readonly buyerName: string;
   readonly buyerPostalCode: string;
@@ -71,6 +77,7 @@ export interface CreemaScrapedOrderData {
   readonly buyerAddress2?: string;
   readonly buyerPhone?: string;
   readonly productName: string;
+  readonly products?: readonly CreemaScrapedProduct[];
   readonly orderedAt: Date;
 }
 

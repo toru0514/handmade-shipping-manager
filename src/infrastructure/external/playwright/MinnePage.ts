@@ -98,6 +98,12 @@ export interface MinnePlaywrightPageLike {
   evaluate?<T = unknown>(fn: () => T): Promise<T>;
 }
 
+export interface MinneFetchProduct {
+  readonly name: string;
+  readonly price: number;
+  readonly quantity: number;
+}
+
 export interface MinneFetchResult {
   readonly orderId: string;
   readonly buyerName: string;
@@ -109,6 +115,7 @@ export interface MinneFetchResult {
   readonly buyerPhone?: string;
   readonly productName: string;
   readonly price?: number;
+  readonly products?: readonly MinneFetchProduct[];
   readonly orderedAt: Date;
 }
 

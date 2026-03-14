@@ -69,6 +69,7 @@ export class CreemaAdapter implements OrderFetcher {
       buyerAddress2: scraped.buyerAddress2,
       buyerPhone: scraped.buyerPhone,
       productName: scraped.productName,
+      products: scraped.products,
       orderedAt: scraped.orderedAt,
     };
   }

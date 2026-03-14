@@ -29,7 +29,7 @@ export class ListAllOrdersUseCase {
       platform: order.platform.toString(),
       buyerName: order.buyer.name.toString(),
       prefecture: order.buyer.address.prefecture.toString(),
-      productName: order.product.name,
+      productName: order.products.map((p) => p.name).join('、'),
       status: order.status.toString(),
       orderedAt: order.orderedAt.toISOString(),
       shippedAt: order.shippedAt?.toISOString() ?? null,

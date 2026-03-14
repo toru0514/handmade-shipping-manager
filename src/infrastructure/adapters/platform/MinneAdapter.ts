@@ -69,6 +69,7 @@ export class MinneAdapter implements OrderFetcher {
       buyerPhone: result.buyerPhone,
       productName: result.productName,
       price: result.price,
+      products: result.products,
       orderedAt: result.orderedAt,
     };
   }
