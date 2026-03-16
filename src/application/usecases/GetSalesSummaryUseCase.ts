@@ -74,7 +74,9 @@ export class GetSalesSummaryUseCase {
     // 集計
     const totalSales = filteredOrders.reduce((sum, order) => sum + order.totalPrice, 0);
     const totalOrders = filteredOrders.length;
-    const averageOrderValue = totalOrders > 0 ? Math.round(totalSales / totalOrders) : 0;
+    const pricedOrders = filteredOrders.filter((order) => order.totalPrice > 0);
+    const averageOrderValue =
+      pricedOrders.length > 0 ? Math.round(totalSales / pricedOrders.length) : 0;
 
     // プラットフォーム別集計
     const platformBreakdown = this.calculatePlatformBreakdown(filteredOrders);
