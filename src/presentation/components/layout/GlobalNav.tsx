@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 const navItems = [
   { href: '/orders', label: '注文管理' },
   { href: '/buyers', label: '購入者一覧' },
+  { href: '/sales', label: '売上集計' },
   { href: '/settings', label: '設定' },
 ];
 

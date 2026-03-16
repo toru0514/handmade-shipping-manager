@@ -1,5 +1,6 @@
 import { FetchNewOrdersUseCase } from '@/application/usecases/FetchNewOrdersUseCase';
 import { GeneratePurchaseThanksUseCase } from '@/application/usecases/GeneratePurchaseThanksUseCase';
+import { GetSalesSummaryUseCase } from '@/application/usecases/GetSalesSummaryUseCase';
 import { ListAllOrdersUseCase } from '@/application/usecases/ListAllOrdersUseCase';
 import { GenerateShippingNoticeUseCase } from '@/application/usecases/GenerateShippingNoticeUseCase';
 import { IssueShippingLabelUseCase } from '@/application/usecases/IssueShippingLabelUseCase';
@@ -391,6 +392,7 @@ export interface Container {
   getFetchNewOrdersUseCase(platform: 'minne' | 'creema'): FetchNewOrdersUseCase;
   getUpdateMessageTemplateUseCase(): UpdateMessageTemplateUseCase;
   getSyncOrdersToDbUseCase(): SyncOrdersToDbUseCase;
+  getSalesSummaryUseCase(): GetSalesSummaryUseCase;
 }
 
 export function createContainer(env: Env = process.env): Container {
@@ -448,5 +450,6 @@ export function createContainer(env: Env = process.env): Container {
 
       return new SyncOrdersToDbUseCase(orderRepository, labelRepository, syncRepository);
     },
+    getSalesSummaryUseCase: () => new GetSalesSummaryUseCase(orderRepository),
   };
 }
