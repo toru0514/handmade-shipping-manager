@@ -354,7 +354,89 @@ describe('GetSalesSummaryUseCase', () => {
     expect(result.totalSales).toBe(0);
     expect(result.totalOrders).toBe(0);
     expect(result.averageOrderValue).toBe(0);
+    expect(result.ordersWithMissingPrice).toBe(0);
     expect(result.orders).toEqual([]);
+  });
+
+  it('平均注文単価の計算で価格未取得（0円）の注文を除外する', async () => {
+    const orderA = createOrder(
+      'ORD-001',
+      Platform.Minne,
+      2500,
+      new Date('2026-01-10'),
+      true,
+      new Date('2026-01-15'),
+    );
+    const orderB = createOrder(
+      'ORD-002',
+      Platform.Creema,
+      0,
+      new Date('2026-01-20'),
+      true,
+      new Date('2026-01-25'),
+    );
+
+    const repo = new InMemoryOrderRepository([orderA, orderB]);
+    const useCase = new GetSalesSummaryUseCase(repo);
+
+    const result = await useCase.execute();
+
+    // totalOrders は全発送済み注文数（価格0含む）
+    expect(result.totalOrders).toBe(2);
+    expect(result.totalSales).toBe(2500);
+    // 平均単価は価格がある注文のみで計算: 2500 / 1 = 2500（2500 / 2 = 1250 ではない）
+    expect(result.averageOrderValue).toBe(2500);
+  });
+
+  it('全注文が価格未取得の場合は平均注文単価が0になる', async () => {
+    const order = createOrder(
+      'ORD-001',
+      Platform.Minne,
+      0,
+      new Date('2026-01-10'),
+      true,
+      new Date('2026-01-15'),
+    );
+
+    const repo = new InMemoryOrderRepository([order]);
+    const useCase = new GetSalesSummaryUseCase(repo);
+
+    const result = await useCase.execute();
+
+    expect(result.totalOrders).toBe(1);
+    expect(result.totalSales).toBe(0);
+    expect(result.averageOrderValue).toBe(0);
+  });
+
+  it('価格が0の注文にpriceMissing=trueが設定される', async () => {
+    const withPrice = createOrder(
+      'ORD-001',
+      Platform.Minne,
+      2500,
+      new Date('2026-01-10'),
+      true,
+      new Date('2026-01-15'),
+    );
+    const noPrice = createOrder(
+      'ORD-002',
+      Platform.Creema,
+      0,
+      new Date('2026-01-20'),
+      true,
+      new Date('2026-01-25'),
+    );
+
+    const repo = new InMemoryOrderRepository([withPrice, noPrice]);
+    const useCase = new GetSalesSummaryUseCase(repo);
+
+    const result = await useCase.execute();
+
+    expect(result.ordersWithMissingPrice).toBe(1);
+
+    const orderWithPrice = result.orders.find((o) => o.orderId === 'ORD-001');
+    const orderNoPrice = result.orders.find((o) => o.orderId === 'ORD-002');
+    expect(orderWithPrice?.priceMissing).toBe(false);
+    expect(orderNoPrice?.priceMissing).toBe(true);
   });
 
   it('デフォルトで今年1月1日から今日までの期間が設定される', async () => {
