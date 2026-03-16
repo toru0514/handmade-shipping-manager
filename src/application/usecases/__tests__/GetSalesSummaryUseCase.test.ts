@@ -354,7 +354,39 @@ describe('GetSalesSummaryUseCase', () => {
     expect(result.totalSales).toBe(0);
     expect(result.totalOrders).toBe(0);
     expect(result.averageOrderValue).toBe(0);
+    expect(result.ordersWithMissingPrice).toBe(0);
     expect(result.orders).toEqual([]);
+  });
+
+  it('価格が0の注文にpriceMissing=trueが設定される', async () => {
+    const withPrice = createOrder(
+      'ORD-001',
+      Platform.Minne,
+      2500,
+      new Date('2026-01-10'),
+      true,
+      new Date('2026-01-15'),
+    );
+    const noPrice = createOrder(
+      'ORD-002',
+      Platform.Creema,
+      0,
+      new Date('2026-01-20'),
+      true,
+      new Date('2026-01-25'),
+    );
+
+    const repo = new InMemoryOrderRepository([withPrice, noPrice]);
+    const useCase = new GetSalesSummaryUseCase(repo);
+
+    const result = await useCase.execute();
+
+    expect(result.ordersWithMissingPrice).toBe(1);
+
+    const orderWithPrice = result.orders.find((o) => o.orderId === 'ORD-001');
+    const orderNoPrice = result.orders.find((o) => o.orderId === 'ORD-002');
+    expect(orderWithPrice?.priceMissing).toBe(false);
+    expect(orderNoPrice?.priceMissing).toBe(true);
   });
 
   it('デフォルトで今年1月1日から今日までの期間が設定される', async () => {

@@ -31,6 +31,7 @@ export interface SalesOrderDto {
   readonly productName: string;
   readonly totalPrice: number;
   readonly shippedAt: string;
+  readonly priceMissing: boolean; // totalPrice === 0 のとき true
 }
 
 // 出力DTO
@@ -38,6 +39,7 @@ export interface SalesSummaryDto {
   readonly totalSales: number; // 総売上金額（発送済みのみ）
   readonly totalOrders: number; // 発送済み件数
   readonly averageOrderValue: number; // 平均注文単価
+  readonly ordersWithMissingPrice: number; // 価格未入力の注文数
   readonly platformBreakdown: PlatformSalesDto[]; // PF別集計
   readonly monthlyBreakdown: MonthlySalesDto[]; // 月別集計（グラフ用）
   readonly orders: SalesOrderDto[]; // 注文一覧
@@ -83,10 +85,14 @@ export class GetSalesSummaryUseCase {
     // 注文一覧
     const orders = this.toOrderDtos(filteredOrders);
 
+    // 価格未入力（totalPrice === 0）の注文数
+    const ordersWithMissingPrice = orders.filter((o) => o.priceMissing).length;
+
     return {
       totalSales,
       totalOrders,
       averageOrderValue,
+      ordersWithMissingPrice,
       platformBreakdown,
       monthlyBreakdown,
       orders,
@@ -200,6 +206,7 @@ export class GetSalesSummaryUseCase {
         productName: order.products.map((p) => p.name).join('、'),
         totalPrice: order.totalPrice,
         shippedAt: order.shippedAt!.toISOString(),
+        priceMissing: order.totalPrice === 0,
       }))
       .sort((a, b) => b.shippedAt.localeCompare(a.shippedAt));
   }
