@@ -34,7 +34,7 @@ const COL = {
   shippingMethod: 14,
   trackingNumber: 15,
   clickPostItemName: 16,
-  productsJson: 17,
+  productQuantity: 17,
 } as const;
 
 export class SpreadsheetOrderRepository implements OrderRepository<Order> {
@@ -60,18 +60,14 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
 
   async save(order: Order): Promise<void> {
     const rows = await this.getRows();
-    const serialized = this.serialize(order);
-    const index = rows.findIndex((row) => row[COL.orderId] === order.orderId.toString());
-
-    if (index >= 0) {
-      rows[index] = serialized;
-    } else {
-      rows.push(serialized);
-    }
+    const serializedRows = this.serializeRows(order);
+    // 既存の同一orderId行を全て除去してから新しい行群を追加
+    const filtered = rows.filter((row) => row[COL.orderId] !== order.orderId.toString());
+    filtered.push(...serializedRows);
 
     // NOTE: 現状は全行置換で整合性を保つ実装。高頻度/同時書き込みには非対応。
     await this.sheetsClient.clearRows();
-    await this.sheetsClient.writeRows(rows, DEFAULT_RANGE);
+    await this.sheetsClient.writeRows(filtered, DEFAULT_RANGE);
     this.invalidateCache();
   }
 
@@ -82,19 +78,29 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
 
   async findAll(): Promise<Order[]> {
     const rows = await this.getRows();
-    const orders: Order[] = [];
 
+    // orderIdでグループ化（出現順を維持）
+    const grouped = new Map<string, { rows: string[][]; firstIndex: number }>();
     rows.forEach((row, index) => {
-      if ((row[COL.orderId] ?? '').trim().length === 0) {
-        return;
-      }
+      const id = (row[COL.orderId] ?? '').trim();
+      if (id.length === 0) return;
 
-      try {
-        orders.push(this.deserialize(row));
-      } catch (error) {
-        this.warnDeserializeError(index, row, error);
+      const existing = grouped.get(id);
+      if (existing) {
+        existing.rows.push(row);
+      } else {
+        grouped.set(id, { rows: [row], firstIndex: index });
       }
     });
+
+    const orders: Order[] = [];
+    for (const [, group] of grouped) {
+      try {
+        orders.push(this.deserializeGroup(group.rows));
+      } catch (error) {
+        this.warnDeserializeError(group.firstIndex, group.rows[0]!, error);
+      }
+    }
 
     return orders;
   }
@@ -127,15 +133,8 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
     );
   }
 
-  private serialize(order: Order): string[] {
-    const productsJson =
-      order.products.length > 1
-        ? JSON.stringify(
-            order.products.map((p) => ({ name: p.name, price: p.price, quantity: p.quantity })),
-          )
-        : '';
-
-    return [
+  private serializeRows(order: Order): string[][] {
+    return order.products.map((product) => [
       order.orderId.toString(),
       order.platform.toString(),
       order.buyer.name.toString(),
@@ -145,56 +144,62 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
       order.buyer.address.street,
       order.buyer.address.building ?? '',
       order.buyer.phoneNumber?.toString() ?? '',
-      order.product.name,
-      String(order.product.price),
+      product.name,
+      String(product.price),
       order.status.toString(),
       order.orderedAt.toISOString(),
       order.shippedAt?.toISOString() ?? '',
       order.shippingMethod?.toString() ?? '',
       order.trackingNumber?.toString() ?? '',
       order.clickPostItemName,
-      productsJson,
-    ];
+      String(product.quantity),
+    ]);
   }
 
-  private deserialize(row: string[]): Order {
-    const status = new OrderStatus(row[COL.status] ?? 'pending');
+  private deserializeGroup(rows: string[][]): Order {
+    const firstRow = rows[0]!;
 
-    const products = this.deserializeProducts(row);
+    // 後方互換: 旧形式（productsJson列にJSON）の場合はJSONから復元
+    const products = this.deserializeProductsFromGroup(rows);
 
     return Order.reconstitute({
-      orderId: new OrderId(row[COL.orderId] ?? ''),
-      platform: new Platform(row[COL.platform] ?? ''),
+      orderId: new OrderId(firstRow[COL.orderId] ?? ''),
+      platform: new Platform(firstRow[COL.platform] ?? ''),
       buyer: new Buyer({
-        name: new BuyerName(row[COL.buyerName] ?? ''),
+        name: new BuyerName(firstRow[COL.buyerName] ?? ''),
         address: new Address({
-          postalCode: new PostalCode(row[COL.buyerPostalCode] ?? ''),
-          prefecture: new Prefecture(row[COL.buyerPrefecture] ?? ''),
-          city: row[COL.buyerCity] ?? '',
-          street: row[COL.buyerStreet] ?? '',
-          building: row[COL.buyerBuilding] || undefined,
+          postalCode: new PostalCode(firstRow[COL.buyerPostalCode] ?? ''),
+          prefecture: new Prefecture(firstRow[COL.buyerPrefecture] ?? ''),
+          city: firstRow[COL.buyerCity] ?? '',
+          street: firstRow[COL.buyerStreet] ?? '',
+          building: firstRow[COL.buyerBuilding] || undefined,
         }),
-        phoneNumber: row[COL.buyerPhone] ? new PhoneNumber(row[COL.buyerPhone]) : undefined,
+        phoneNumber: firstRow[COL.buyerPhone]
+          ? new PhoneNumber(firstRow[COL.buyerPhone])
+          : undefined,
       }),
       products,
-      status,
-      orderedAt: new Date(row[COL.orderedAt] ?? ''),
-      clickPostItemName: row[COL.clickPostItemName] ?? DEFAULT_CLICK_POST_ITEM_NAME,
-      shippedAt: row[COL.shippedAt] ? new Date(row[COL.shippedAt]) : undefined,
-      shippingMethod: row[COL.shippingMethod]
-        ? new ShippingMethod(row[COL.shippingMethod])
+      status: new OrderStatus(firstRow[COL.status] ?? 'pending'),
+      orderedAt: new Date(firstRow[COL.orderedAt] ?? ''),
+      clickPostItemName: firstRow[COL.clickPostItemName] ?? DEFAULT_CLICK_POST_ITEM_NAME,
+      shippedAt: firstRow[COL.shippedAt] ? new Date(firstRow[COL.shippedAt]) : undefined,
+      shippingMethod: firstRow[COL.shippingMethod]
+        ? new ShippingMethod(firstRow[COL.shippingMethod])
         : undefined,
-      trackingNumber: row[COL.trackingNumber]
-        ? new TrackingNumber(row[COL.trackingNumber])
+      trackingNumber: firstRow[COL.trackingNumber]
+        ? new TrackingNumber(firstRow[COL.trackingNumber])
         : undefined,
     });
   }
 
-  private deserializeProducts(row: string[]): Product[] {
-    const productsJsonRaw = row[COL.productsJson];
-    if (productsJsonRaw && productsJsonRaw.trim().length > 0) {
+  private deserializeProductsFromGroup(rows: string[][]): Product[] {
+    const firstRow = rows[0]!;
+
+    // 後方互換: 旧形式のproductsJson列（JSON文字列）が残っている場合
+    const maybeJson = firstRow[COL.productQuantity];
+    if (rows.length === 1 && maybeJson && maybeJson.trim().startsWith('[')) {
       try {
-        const parsed = JSON.parse(productsJsonRaw) as Array<{
+        const parsed = JSON.parse(maybeJson) as Array<{
           name: string;
           price: number;
           quantity?: number;
@@ -205,15 +210,18 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
           );
         }
       } catch {
-        // JSON パース失敗時は単一商品にフォールバック
+        // JSON パース失敗時は通常フローへ
       }
     }
 
-    return [
-      new Product({
-        name: row[COL.productName] ?? '',
-        price: Number(row[COL.productPrice] ?? 0),
-      }),
-    ];
+    // 新形式: 各行から商品を復元
+    return rows.map(
+      (row) =>
+        new Product({
+          name: row[COL.productName] ?? '',
+          price: Number(row[COL.productPrice] ?? 0),
+          quantity: row[COL.productQuantity] ? Number(row[COL.productQuantity]) : 1,
+        }),
+    );
   }
 }
