@@ -30,6 +30,7 @@ import { SlackAdapter } from '@/infrastructure/adapters/notification/SlackAdapte
 import { SupabaseOrderSyncRepository } from '@/infrastructure/adapters/persistence/SupabaseOrderSyncRepository';
 import { ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
 import { GoogleGmailClient } from '@/infrastructure/external/google/GmailClient';
+import { BrowserlessBrowserFactory } from '@/infrastructure/external/playwright/BrowserlessBrowserFactory';
 import { ChromiumBrowserFactory } from '@/infrastructure/external/playwright/ChromiumBrowserFactory';
 import {
   GoogleSheetsClient,
@@ -192,6 +193,23 @@ function resolvePlaywrightIgnoreHTTPSErrors(env: Env): boolean {
   return value === 'true' || value === '1';
 }
 
+function createBrowserFactory(
+  env: Env,
+): ChromiumBrowserFactory | BrowserlessBrowserFactory {
+  const wsEndpoint = env.BROWSERLESS_WS_ENDPOINT?.trim();
+  if (wsEndpoint) {
+    return new BrowserlessBrowserFactory({
+      wsEndpoint,
+      ignoreHTTPSErrors: resolvePlaywrightIgnoreHTTPSErrors(env),
+    });
+  }
+  return new ChromiumBrowserFactory({
+    headless: resolvePlaywrightHeadless(env),
+    timeoutMs: resolvePlaywrightTimeoutMs(env),
+    ignoreHTTPSErrors: resolvePlaywrightIgnoreHTTPSErrors(env),
+  });
+}
+
 function resolveManualLoginTimeoutMs(env: Env): number | undefined {
   const value = env.CLICKPOST_MANUAL_LOGIN_TIMEOUT_MS?.trim();
   if (!value) {
@@ -233,11 +251,7 @@ function createFetchNewOrdersUseCase(
   const slackWebhookUrl = env.SLACK_WEBHOOK_URL?.trim();
   const slackAdapter = slackWebhookUrl ? new SlackAdapter(slackWebhookUrl) : undefined;
 
-  const browserFactory = new ChromiumBrowserFactory({
-    headless: resolvePlaywrightHeadless(env),
-    timeoutMs: resolvePlaywrightTimeoutMs(env),
-    ignoreHTTPSErrors: resolvePlaywrightIgnoreHTTPSErrors(env),
-  });
+  const browserFactory = createBrowserFactory(env);
 
   if (platform === 'creema') {
     const creemaEmail = env.CREEMA_EMAIL?.trim();
@@ -290,15 +304,11 @@ function createFetchNewOrdersUseCase(
 function createIssueShippingLabelUseCase(env: Env): IssueShippingLabelUseCase {
   let auth: ReturnType<typeof createAuth>;
   let spreadsheetId: string;
-  let browserFactory: ChromiumBrowserFactory;
+  let browserFactory: ReturnType<typeof createBrowserFactory>;
   try {
     auth = createAuth(env);
     spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
-    browserFactory = new ChromiumBrowserFactory({
-      headless: resolvePlaywrightHeadless(env),
-      timeoutMs: resolvePlaywrightTimeoutMs(env),
-      ignoreHTTPSErrors: resolvePlaywrightIgnoreHTTPSErrors(env),
-    });
+    browserFactory = createBrowserFactory(env);
   } catch (error) {
     if (error instanceof ExternalServiceError) {
       throw error;
