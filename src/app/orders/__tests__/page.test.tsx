@@ -356,7 +356,7 @@ describe('OrdersPage (UC-006)', () => {
     });
   });
 
-  it('伝票発行フローで結果と重複警告を表示できる', async () => {
+  it('伝票発行フローでジョブ投入後ポーリングで完了結果を表示できる', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
 
@@ -380,15 +380,32 @@ describe('OrdersPage (UC-006)', () => {
       if (url === '/api/orders/ORD-001/labels' && init?.method === 'POST') {
         return new Response(
           JSON.stringify({
+            jobId: 'JOB-001',
+            status: 'pending',
             orderId: 'ORD-001',
-            labelId: 'LBL-001',
             shippingMethod: 'click_post',
-            labelType: 'click_post',
-            status: 'issued',
-            issuedAt: '2026-03-03T00:00:00.000Z',
-            pdfData: 'ZHVtbXk=',
-            trackingNumber: 'CP123456789JP',
-            warnings: ['同一注文に既存の伝票があります（重複発行）'],
+            createdAt: '2026-03-03T00:00:00.000Z',
+          }),
+          { status: 202 },
+        );
+      }
+
+      if (url === '/api/labels/jobs/JOB-001') {
+        // 即座に completed を返す
+        return new Response(
+          JSON.stringify({
+            id: 'JOB-001',
+            orderId: 'ORD-001',
+            shippingMethod: 'click_post',
+            status: 'completed',
+            result: {
+              labelId: 'LBL-001',
+              trackingNumber: 'CP123456789JP',
+              warnings: ['同一注文に既存の伝票があります（重複発行）'],
+            },
+            createdAt: '2026-03-03T00:00:00.000Z',
+            updatedAt: '2026-03-03T00:00:00.000Z',
+            completedAt: '2026-03-03T00:01:00.000Z',
           }),
           { status: 200 },
         );
@@ -406,14 +423,26 @@ describe('OrdersPage (UC-006)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '伝票発行' }));
 
+    // ジョブ投入確認
     await waitFor(() => {
-      expect(screen.getByRole('region', { name: '伝票発行結果' })).toBeInTheDocument();
-      expect(screen.getByRole('alert')).toHaveTextContent('同一注文に既存の伝票があります');
-      expect(screen.getByRole('link', { name: 'PDFをダウンロード' })).toBeInTheDocument();
+      expect(fetchMock).toHaveBeenCalledWith(
+        '/api/orders/ORD-001/labels',
+        expect.objectContaining({ method: 'POST' }),
+      );
     });
+
+    // ジョブステータス表示（ポーリングで completed を待つ）
+    await waitFor(
+      () => {
+        expect(screen.getByRole('region', { name: '伝票発行ジョブ' })).toBeInTheDocument();
+        expect(screen.getByText('LBL-001')).toBeInTheDocument();
+        expect(screen.getByText('同一注文に既存の伝票があります（重複発行）')).toBeInTheDocument();
+      },
+      { timeout: 10_000 },
+    );
   });
 
-  it('宅急便コンパクト発行でQRコードと有効期限を表示できる', async () => {
+  it('宅急便コンパクト発行でジョブ投入と結果ポーリングが動作する', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
 
@@ -437,15 +466,33 @@ describe('OrdersPage (UC-006)', () => {
       if (url === '/api/orders/ORD-010/labels' && init?.method === 'POST') {
         return new Response(
           JSON.stringify({
+            jobId: 'JOB-010',
+            status: 'pending',
             orderId: 'ORD-010',
-            labelId: 'LBL-010',
             shippingMethod: 'yamato_compact',
-            labelType: 'yamato_compact',
-            status: 'issued',
-            issuedAt: '2026-03-03T00:00:00.000Z',
-            expiresAt: '2026-03-17T00:00:00.000Z',
-            qrCode: 'data:image/png;base64,ZHVtbXk=',
-            waybillNumber: 'YMT-1234-5678',
+            createdAt: '2026-03-03T00:00:00.000Z',
+          }),
+          { status: 202 },
+        );
+      }
+
+      if (url === '/api/labels/jobs/JOB-010') {
+        return new Response(
+          JSON.stringify({
+            id: 'JOB-010',
+            orderId: 'ORD-010',
+            shippingMethod: 'yamato_compact',
+            status: 'completed',
+            result: {
+              labelId: 'LBL-010',
+              qrCode: 'data:image/png;base64,ZHVtbXk=',
+              waybillNumber: 'YMT-1234-5678',
+              expiresAt: '2026-03-17T00:00:00.000Z',
+              issuedAt: '2026-03-03T00:00:00.000Z',
+            },
+            createdAt: '2026-03-03T00:00:00.000Z',
+            updatedAt: '2026-03-03T00:00:00.000Z',
+            completedAt: '2026-03-03T00:01:00.000Z',
           }),
           { status: 200 },
         );
@@ -466,11 +513,14 @@ describe('OrdersPage (UC-006)', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: '伝票発行' }));
 
-    await waitFor(() => {
-      expect(screen.getByRole('img', { name: '宅急便コンパクトQRコード' })).toBeInTheDocument();
-      expect(screen.getByText('有効期限:')).toBeInTheDocument();
-      expect(screen.getByText('YMT-1234-5678')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByRole('region', { name: '伝票発行ジョブ' })).toBeInTheDocument();
+        expect(screen.getByRole('img', { name: '宅急便コンパクトQRコード' })).toBeInTheDocument();
+        expect(screen.getByText('YMT-1234-5678')).toBeInTheDocument();
+      },
+      { timeout: 15_000 },
+    );
 
     const postCall = fetchMock.mock.calls.find(
       (call) => String(call[0]) === '/api/orders/ORD-010/labels',

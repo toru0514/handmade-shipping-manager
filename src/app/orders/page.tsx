@@ -1,12 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { FetchNewOrdersResult } from '@/application/usecases/FetchNewOrdersUseCase';
-import type { IssueShippingLabelResultDto } from '@/application/usecases/IssueShippingLabelUseCase';
 import type { MarkOrderAsShippedResultDto } from '@/application/usecases/MarkOrderAsShippedUseCase';
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
+import type { ShippingLabelJob } from '@/domain/ports/ShippingLabelJobRepository';
 import { PendingOrderList } from '@/presentation/components/orders/PendingOrderList';
-import { LabelResultView } from '@/presentation/components/labels/LabelResultView';
+import { LabelJobStatusView } from '@/presentation/components/labels/LabelJobStatusView';
 import { MessagePreviewDialog } from '@/presentation/components/messages/MessagePreviewDialog';
 import { FetchOrdersButton } from '@/presentation/components/orders/FetchOrdersButton';
 import { FetchOrdersResult } from '@/presentation/components/orders/FetchOrdersResult';
@@ -15,6 +15,8 @@ import {
   ShipmentCompleteMessage,
 } from '@/presentation/components/orders/ShipmentCompleteMessage';
 import { ShipmentConfirmDialog } from '@/presentation/components/orders/ShipmentConfirmDialog';
+
+const JOB_POLL_INTERVAL_MS = 5_000;
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<PendingOrderDto[]>([]);
@@ -32,15 +34,25 @@ export default function OrdersPage() {
     orderId: string;
     message: string;
   } | null>(null);
-  const [labelIssueResult, setLabelIssueResult] = useState<IssueShippingLabelResultDto | null>(
-    null,
-  );
+  const [labelJob, setLabelJob] = useState<ShippingLabelJob | null>(null);
   const [issuingLabelOrderId, setIssuingLabelOrderId] = useState<string | null>(null);
   const [completeData, setCompleteData] = useState<ShipmentCompleteData | null>(null);
   const [isCompleteMessageOpen, setIsCompleteMessageOpen] = useState(false);
   const [fetchingPlatform, setFetchingPlatform] = useState<'minne' | 'creema' | null>(null);
   const [fetchOrdersResult, setFetchOrdersResult] = useState<FetchNewOrdersResult | null>(null);
   const [fetchOrdersError, setFetchOrdersError] = useState<string | null>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollTimerRef.current) {
+      clearInterval(pollTimerRef.current);
+      pollTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => stopPolling();
+  }, [stopPolling]);
 
   const fetchOrders = useCallback(async () => {
     const response = await fetch('/api/orders/pending');
@@ -63,6 +75,37 @@ export default function OrdersPage() {
     }
     void loadOrders();
   }, [fetchOrders]);
+
+  const pollJobStatus = useCallback(
+    (jobId: string) => {
+      stopPolling();
+
+      const poll = async () => {
+        try {
+          const response = await fetch(`/api/labels/jobs/${jobId}`);
+          if (!response.ok) return;
+
+          const job = (await response.json()) as ShippingLabelJob;
+          setLabelJob(job);
+
+          if (job.status === 'completed' || job.status === 'failed') {
+            stopPolling();
+            setIssuingLabelOrderId(null);
+
+            if (job.status === 'failed') {
+              setLabelIssueError(job.error ?? '伝票発行に失敗しました');
+            }
+          }
+        } catch {
+          // ポーリング中のネットワークエラーは無視（次回リトライ）
+        }
+      };
+
+      void poll();
+      pollTimerRef.current = setInterval(poll, JOB_POLL_INTERVAL_MS);
+    },
+    [stopPolling],
+  );
 
   const handleConfirmShipment = useCallback(
     async (input: { shippingMethod: string; trackingNumber?: string }): Promise<void> => {
@@ -141,6 +184,7 @@ export default function OrdersPage() {
   const handleIssueLabel = useCallback(
     async (order: PendingOrderDto, shippingMethod: string): Promise<void> => {
       setLabelIssueError(null);
+      setLabelJob(null);
       setIssuingLabelOrderId(order.orderId);
 
       try {
@@ -161,19 +205,20 @@ export default function OrdersPage() {
           const message =
             typeof body.error === 'string'
               ? body.error
-              : (body.error?.message ?? '伝票発行に失敗しました');
+              : (body.error?.message ?? '伝票発行ジョブの登録に失敗しました');
           throw new Error(message);
         }
 
-        const payload = (await response.json()) as IssueShippingLabelResultDto;
-        setLabelIssueResult(payload);
+        const payload = (await response.json()) as { jobId: string };
+        pollJobStatus(payload.jobId);
       } catch (error) {
-        setLabelIssueError(error instanceof Error ? error.message : '伝票発行に失敗しました');
-      } finally {
+        setLabelIssueError(
+          error instanceof Error ? error.message : '伝票発行ジョブの登録に失敗しました',
+        );
         setIssuingLabelOrderId(null);
       }
     },
-    [],
+    [pollJobStatus],
   );
 
   const handleFetchOrders = useCallback(
@@ -273,8 +318,14 @@ export default function OrdersPage() {
         />
       )}
 
-      {labelIssueResult && (
-        <LabelResultView result={labelIssueResult} onClose={() => setLabelIssueResult(null)} />
+      {labelJob && (
+        <LabelJobStatusView
+          job={labelJob}
+          onClose={() => {
+            setLabelJob(null);
+            stopPolling();
+          }}
+        />
       )}
 
       <ShipmentConfirmDialog

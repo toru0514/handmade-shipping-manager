@@ -1,35 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { IssueShippingLabelUseCase } from '@/application/usecases/IssueShippingLabelUseCase';
+import { createClient } from '@supabase/supabase-js';
+import { SupabaseShippingLabelJobRepository } from '@/infrastructure/adapters/persistence/SupabaseShippingLabelJobRepository';
 import {
-  InvalidLabelIssueInputError,
-  InvalidLabelIssueOperationError,
-  OrderNotFoundError,
-} from '@/application/usecases/IssueShippingLabelErrors';
-import { ClickPostDryRunCompletedError } from '@/infrastructure/adapters/shipping/ClickPostAdapter';
-import { createContainer } from '@/infrastructure/di/container';
-import {
-  NotFoundError,
   ValidationError,
   normalizeHttpError,
   toApiErrorResponse,
 } from '@/infrastructure/errors/HttpErrors';
-type Env = Readonly<Record<string, string | undefined>>;
-export async function createIssueShippingLabelUseCase(
-  env: Env = process.env,
-): Promise<IssueShippingLabelUseCase> {
-  return createContainer(env).getIssueShippingLabelUseCase();
+
+function createJobRepository(): SupabaseShippingLabelJobRepository {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceRoleKey) {
+    throw new Error('Supabase 設定が不足しています');
+  }
+  const supabase = createClient(url, serviceRoleKey, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return new SupabaseShippingLabelJobRepository(supabase);
 }
 
-let issueShippingLabelUseCaseFactory = createIssueShippingLabelUseCase;
+let jobRepositoryFactory = createJobRepository;
 
-export function setIssueShippingLabelUseCaseFactoryForTest(
-  factory: typeof createIssueShippingLabelUseCase,
-): void {
-  issueShippingLabelUseCaseFactory = factory;
+export function setJobRepositoryFactoryForTest(factory: typeof createJobRepository): void {
+  jobRepositoryFactory = factory;
 }
 
-export function resetIssueShippingLabelUseCaseFactoryForTest(): void {
-  issueShippingLabelUseCaseFactory = createIssueShippingLabelUseCase;
+export function resetJobRepositoryFactoryForTest(): void {
+  jobRepositoryFactory = createJobRepository;
 }
 
 export async function POST(
@@ -59,38 +56,25 @@ export async function POST(
   }
 
   try {
-    const useCase = await issueShippingLabelUseCaseFactory();
-    const result = await useCase.execute({
+    const repository = jobRepositoryFactory();
+    const job = await repository.enqueue({
       orderId,
       shippingMethod: shippingMethod.trim(),
     });
-    return NextResponse.json(result);
+
+    return NextResponse.json(
+      {
+        jobId: job.id,
+        status: job.status,
+        orderId: job.orderId,
+        shippingMethod: job.shippingMethod,
+        createdAt: job.createdAt.toISOString(),
+      },
+      { status: 202 },
+    );
   } catch (error) {
-    // ドライラン完了は正常終了（ブラウザで手動支払いを促す）
-    if (error instanceof ClickPostDryRunCompletedError) {
-      return NextResponse.json({
-        success: true,
-        dryRun: true,
-        message:
-          'ドライラン完了: 確認画面まで到達しました。ブラウザで支払いを手動で完了してください。',
-      });
-    }
-
-    if (error instanceof OrderNotFoundError) {
-      const httpError = new NotFoundError(error.message);
-      return NextResponse.json(toApiErrorResponse(httpError), { status: httpError.statusCode });
-    }
-
-    if (
-      error instanceof InvalidLabelIssueInputError ||
-      error instanceof InvalidLabelIssueOperationError
-    ) {
-      const httpError = new ValidationError(error.message);
-      return NextResponse.json(toApiErrorResponse(httpError), { status: httpError.statusCode });
-    }
-
-    const normalizedError = normalizeHttpError(error, '伝票発行に失敗しました');
-    console.error('伝票発行エラー:', error);
+    const normalizedError = normalizeHttpError(error, 'ジョブの登録に失敗しました');
+    console.error('伝票発行ジョブ登録エラー:', error);
     return NextResponse.json(toApiErrorResponse(normalizedError), {
       status: normalizedError.statusCode,
     });

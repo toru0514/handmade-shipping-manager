@@ -1,0 +1,39 @@
+services:
+  label-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.label-worker
+    environment:
+      # Browserless Cloud (free plan)
+      BROWSERLESS_WS_ENDPOINT: ${BROWSERLESS_WS_ENDPOINT}
+      PLAYWRIGHT_HEADLESS: 'true'
+      PLAYWRIGHT_IGNORE_HTTPS_ERRORS: 'true'
+
+      # Supabase（ジョブキュー）
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+
+      # Google Sheets
+      GOOGLE_SERVICE_ACCOUNT_BASE64: ${GOOGLE_SERVICE_ACCOUNT_BASE64}
+      GOOGLE_SHEETS_SPREADSHEET_ID: ${GOOGLE_SHEETS_SPREADSHEET_ID}
+      GOOGLE_SHEETS_SHEET_NAME: ${GOOGLE_SHEETS_SHEET_NAME:-Orders}
+      GOOGLE_SHEETS_LABEL_SHEET_NAME: ${GOOGLE_SHEETS_LABEL_SHEET_NAME:-ShippingLabels}
+
+      # Google OAuth（リフレッシュトークン方式の場合）
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_SHEETS_REFRESH_TOKEN: ${GOOGLE_SHEETS_REFRESH_TOKEN:-}
+
+      # 配送サービス認証
+      CLICKPOST_EMAIL: ${CLICKPOST_EMAIL:-}
+      CLICKPOST_PASSWORD: ${CLICKPOST_PASSWORD:-}
+      CLICKPOST_DRY_RUN: ${CLICKPOST_DRY_RUN:-false}
+      YAMATO_MEMBER_ID: ${YAMATO_MEMBER_ID:-}
+      YAMATO_PASSWORD: ${YAMATO_PASSWORD:-}
+
+      # Slack 通知（任意）
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+
+      # ワーカー設定
+      LABEL_WORKER_INTERVAL_MS: ${LABEL_WORKER_INTERVAL_MS:-5000}
+    restart: unless-stopped

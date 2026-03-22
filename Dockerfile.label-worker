@@ -1,0 +1,12 @@
+FROM node:20-slim
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+
+COPY tsconfig.json ./
+COPY src/ ./src/
+COPY scripts/process-label-jobs.ts ./scripts/
+
+CMD ["npx", "tsx", "scripts/process-label-jobs.ts"]
