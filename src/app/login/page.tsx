@@ -31,7 +31,7 @@ function LoginForm() {
     }
 
     if (rememberMe) {
-      document.cookie = 'remember_me=1; path=/; max-age=2592000; SameSite=Lax';
+      document.cookie = 'remember_me=1; path=/; max-age=2592000; SameSite=Lax; Secure';
     } else {
       document.cookie = 'remember_me=; path=/; max-age=0';
     }

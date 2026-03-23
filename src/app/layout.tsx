@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import './globals.css';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { GlobalNav } from '@/presentation/components/layout/GlobalNav';
+import { GlobalNav, DRAWER_WIDTH_OPEN } from '@/presentation/components/layout/GlobalNav';
 
 export const metadata: Metadata = {
   title: 'ハンドメイド発送管理',
@@ -35,7 +35,10 @@ export default async function RootLayout({
         <div
           style={
             isLoggedIn
-              ? { marginLeft: 'var(--nav-width, 208px)', transition: 'margin-left 0.2s' }
+              ? {
+                  marginLeft: `var(--nav-width, ${DRAWER_WIDTH_OPEN}px)`,
+                  transition: 'margin-left 0.2s',
+                }
               : undefined
           }
         >

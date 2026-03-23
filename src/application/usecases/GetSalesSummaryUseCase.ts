@@ -49,6 +49,9 @@ export class GetSalesSummaryUseCase {
   async execute(input: SalesFilterInput = {}): Promise<SalesSummaryDto> {
     const { startDate, endDate, platform } = this.normalizeInput(input);
 
+    // TODO: 注文数が増えた場合、findAll() + メモリフィルタリングはスケールしない。
+    // OrderRepository に findShippedByDateRange(startDate, endDate, platform?) を追加し、
+    // DB/スプレッドシート側でフィルタリングすることを検討する。
     const allOrders = await this.orderRepository.findAll();
 
     // 発送済み注文のみフィルタリング

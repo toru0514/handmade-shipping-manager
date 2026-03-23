@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { SalesSummaryDto } from '@/application/usecases/GetSalesSummaryUseCase';
 import { SalesFilterForm } from '@/presentation/components/sales/SalesFilterForm';
 import { SalesSummaryCard } from '@/presentation/components/sales/SalesSummaryCard';
@@ -26,8 +26,8 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const defaultStartDate = getDefaultStartDate();
-  const defaultEndDate = getDefaultEndDate();
+  const defaultStartDate = useMemo(() => getDefaultStartDate(), []);
+  const defaultEndDate = useMemo(() => getDefaultEndDate(), []);
 
   const fetchSummary = useCallback(
     async (params: {
