@@ -113,6 +113,7 @@ export default function SalesPage() {
               totalSales={summary.totalSales}
               totalOrders={summary.totalOrders}
               averageOrderValue={summary.averageOrderValue}
+              ordersWithMissingPrice={summary.ordersWithMissingPrice}
             />
           </section>
 

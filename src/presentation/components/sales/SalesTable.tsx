@@ -93,7 +93,10 @@ export function SalesTable({ orders, isLoading = false }: SalesTableProps) {
         </thead>
         <tbody className="divide-y divide-gray-200 bg-white">
           {orders.map((order) => (
-            <tr key={`${order.platform}-${order.orderId}`} className="hover:bg-gray-50">
+            <tr
+              key={`${order.platform}-${order.orderId}`}
+              className={order.priceMissing ? 'bg-amber-50 hover:bg-amber-100' : 'hover:bg-gray-50'}
+            >
               <td className="whitespace-nowrap px-4 py-3">
                 <span
                   className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getPlatformBadgeClass(order.platform)}`}
@@ -108,7 +111,14 @@ export function SalesTable({ orders, isLoading = false }: SalesTableProps) {
                 {order.productName}
               </td>
               <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-medium text-gray-900">
-                {formatCurrency(order.totalPrice)}
+                {order.priceMissing ? (
+                  <span className="inline-flex items-center gap-1 text-amber-600">
+                    <span aria-hidden="true">⚠</span>
+                    未入力
+                  </span>
+                ) : (
+                  formatCurrency(order.totalPrice)
+                )}
               </td>
               <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
                 {formatDate(order.shippedAt)}
