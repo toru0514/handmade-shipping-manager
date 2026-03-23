@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 
 const navItems = [
   { href: '/orders', label: '注文管理' },
@@ -18,6 +19,17 @@ export function GlobalNav() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
   }
+
+  const handleOpenSpreadsheet = useCallback(async () => {
+    try {
+      const res = await fetch('/api/spreadsheet-url');
+      if (!res.ok) return;
+      const { url } = await res.json();
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      // silently ignore
+    }
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm">
@@ -40,6 +52,12 @@ export function GlobalNav() {
             </Link>
           ))}
         </nav>
+        <button
+          onClick={handleOpenSpreadsheet}
+          className="shrink-0 rounded px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
+        >
+          スプシを開く
+        </button>
         <button
           onClick={handleLogout}
           className="shrink-0 text-sm text-gray-400 hover:text-gray-600 transition-colors"
