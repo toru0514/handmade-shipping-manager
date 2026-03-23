@@ -43,6 +43,10 @@ class InMemoryOrderRepository implements OrderRepository {
     this.store.set(order.orderId.toString(), order);
   }
 
+  async saveAll(orders: Order[]): Promise<void> {
+    for (const o of orders) await this.save(o);
+  }
+
   async exists(orderId: OrderId): Promise<boolean> {
     return this.store.has(orderId.toString());
   }
@@ -61,6 +65,14 @@ class InMemoryMessageTemplateRepository implements MessageTemplateRepository<Mes
 
   async save(template: MessageTemplate): Promise<void> {
     this.store.set(template.type.value, template);
+  }
+
+  async saveAll(templates: MessageTemplate[]): Promise<void> {
+    for (const t of templates) await this.save(t);
+  }
+
+  async findAll(): Promise<MessageTemplate[]> {
+    return Array.from(this.store.values());
   }
 
   async resetToDefault(_type: MessageTemplateType): Promise<MessageTemplate> {

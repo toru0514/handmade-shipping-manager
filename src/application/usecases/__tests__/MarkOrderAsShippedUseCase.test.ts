@@ -36,6 +36,10 @@ class InMemoryOrderRepository implements OrderRepository {
     this.store.set(order.orderId.toString(), order);
   }
 
+  async saveAll(orders: Order[]): Promise<void> {
+    for (const o of orders) await this.save(o);
+  }
+
   async exists(orderId: OrderId): Promise<boolean> {
     return this.store.has(orderId.toString());
   }

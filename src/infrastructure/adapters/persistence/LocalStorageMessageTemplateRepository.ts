@@ -100,6 +100,25 @@ export class LocalStorageMessageTemplateRepository implements MessageTemplateRep
     this.getStorage().setItem(storageKey(template.type), JSON.stringify(serialized));
   }
 
+  async saveAll(templates: MessageTemplate[]): Promise<void> {
+    for (const template of templates) {
+      await this.save(template);
+    }
+  }
+
+  async findAll(): Promise<MessageTemplate[]> {
+    const types: MessageTemplateTypeValue[] = ['purchase_thanks', 'shipping_notice'];
+    const results: MessageTemplate[] = [];
+    for (const t of types) {
+      const type = new MessageTemplateType(t);
+      const template = await this.findByType(type);
+      if (template) {
+        results.push(template);
+      }
+    }
+    return results;
+  }
+
   async resetToDefault(type: MessageTemplateType): Promise<MessageTemplate> {
     const defaultTemplate = buildDefaultTemplate(type);
     await this.save(defaultTemplate);
