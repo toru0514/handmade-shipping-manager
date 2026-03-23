@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Drawer from '@mui/material/Drawer';
@@ -17,6 +17,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import MenuIcon from '@mui/icons-material/Menu';
 
@@ -34,6 +35,17 @@ export function GlobalNav() {
   const [open, setOpen] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
+
+  const handleOpenSpreadsheet = useCallback(async () => {
+    try {
+      const res = await fetch('/api/spreadsheet-url');
+      if (!res.ok) return;
+      const { url } = await res.json();
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      // silently ignore
+    }
+  }, []);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -127,6 +139,36 @@ export function GlobalNav() {
         </List>
         <Divider />
         <List>
+          <Tooltip title={open ? '' : 'スプシを開く'} placement="right">
+            <ListItemButton
+              onClick={handleOpenSpreadsheet}
+              sx={{
+                minHeight: 40,
+                px: open ? 2 : 1.5,
+                justifyContent: open ? 'initial' : 'center',
+                borderRadius: 1,
+                mx: 0.5,
+                mb: 0.25,
+              }}
+            >
+              <ListItemIcon
+                sx={{
+                  minWidth: 0,
+                  mr: open ? 1.5 : 0,
+                  justifyContent: 'center',
+                  color: 'text.secondary',
+                }}
+              >
+                <OpenInNewIcon fontSize="small" />
+              </ListItemIcon>
+              {open && (
+                <ListItemText
+                  primary="スプシを開く"
+                  primaryTypographyProps={{ fontSize: 14, color: 'text.secondary' }}
+                />
+              )}
+            </ListItemButton>
+          </Tooltip>
           <Tooltip title={open ? '' : 'ログアウト'} placement="right">
             <ListItemButton
               onClick={handleLogout}
