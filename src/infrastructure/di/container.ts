@@ -193,9 +193,7 @@ function resolvePlaywrightIgnoreHTTPSErrors(env: Env): boolean {
   return value === 'true' || value === '1';
 }
 
-function createBrowserFactory(
-  env: Env,
-): ChromiumBrowserFactory | BrowserlessBrowserFactory {
+function createBrowserFactory(env: Env): ChromiumBrowserFactory | BrowserlessBrowserFactory {
   const wsEndpoint = env.BROWSERLESS_WS_ENDPOINT?.trim();
   if (wsEndpoint) {
     return new BrowserlessBrowserFactory({

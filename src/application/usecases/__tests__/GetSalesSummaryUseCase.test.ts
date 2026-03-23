@@ -5,7 +5,12 @@ import { OrderId } from '@/domain/valueObjects/OrderId';
 import { OrderStatus } from '@/domain/valueObjects/OrderStatus';
 import { Platform } from '@/domain/valueObjects/Platform';
 import { ShippingMethod } from '@/domain/valueObjects/ShippingMethod';
-import { OrderFactory } from '@/domain/factories/OrderFactory';
+import { Buyer } from '@/domain/valueObjects/Buyer';
+import { BuyerName } from '@/domain/valueObjects/BuyerName';
+import { Address } from '@/domain/valueObjects/Address';
+import { PostalCode } from '@/domain/valueObjects/PostalCode';
+import { Prefecture } from '@/domain/valueObjects/Prefecture';
+import { Product } from '@/domain/valueObjects/Product';
 import { GetSalesSummaryUseCase } from '../GetSalesSummaryUseCase';
 
 class InMemoryOrderRepository implements OrderRepository {
@@ -45,7 +50,15 @@ class InMemoryOrderRepository implements OrderRepository {
   }
 }
 
-const factory = new OrderFactory();
+const defaultBuyer = new Buyer({
+  name: new BuyerName('山田 太郎'),
+  address: new Address({
+    postalCode: new PostalCode('1500001'),
+    prefecture: new Prefecture('東京都'),
+    city: '渋谷区',
+    street: '神宮前1-1-1',
+  }),
+});
 
 function createOrder(
   orderId: string,
@@ -55,29 +68,27 @@ function createOrder(
   shipped: boolean,
   shippedAt?: Date,
 ): Order {
-  const order = factory.createFromPlatformData({
-    orderId,
-    platform,
-    buyerName: '山田 太郎',
-    buyerPostalCode: '1500001',
-    buyerPrefecture: '東京都',
-    buyerCity: '渋谷区',
-    buyerAddress1: '神宮前1-1-1',
-    productName: 'ハンドメイドアクセサリー',
-    price,
-    orderedAt,
-  });
-
   if (shipped) {
-    // Set shippedAt via markAsShipped, then override the date if needed
-    order.markAsShipped(new ShippingMethod('click_post'));
-    if (shippedAt) {
-      // Use reconstitute to set exact shippedAt
-      Object.defineProperty(order, 'shippedAt', { value: shippedAt, writable: false });
-    }
+    return Order.reconstitute({
+      orderId: new OrderId(orderId),
+      platform,
+      buyer: defaultBuyer,
+      products: [new Product({ name: 'ハンドメイドアクセサリー', price })],
+      status: OrderStatus.Shipped,
+      orderedAt,
+      shippedAt: shippedAt ?? new Date(),
+      shippingMethod: new ShippingMethod('click_post'),
+    });
   }
 
-  return order;
+  return Order.reconstitute({
+    orderId: new OrderId(orderId),
+    platform,
+    buyer: defaultBuyer,
+    products: [new Product({ name: 'ハンドメイドアクセサリー', price })],
+    status: OrderStatus.Pending,
+    orderedAt,
+  });
 }
 
 describe('GetSalesSummaryUseCase', () => {

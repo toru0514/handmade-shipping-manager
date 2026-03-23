@@ -231,6 +231,16 @@ export default function OrdersPage() {
               void handleFetchOrders('creema');
             }}
           />
+          {process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID && (
+            <a
+              href={`https://docs.google.com/spreadsheets/d/${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"
+            >
+              スプレッドシートを開く
+            </a>
+          )}
         </div>
         <FetchOrdersResult result={fetchOrdersResult} requestError={fetchOrdersError} />
       </section>

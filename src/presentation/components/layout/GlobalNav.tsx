@@ -1,17 +1,37 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useCallback } from 'react';
+import Drawer from '@mui/material/Drawer';
+import List from '@mui/material/List';
+import ListItemButton from '@mui/material/ListItemButton';
+import ListItemIcon from '@mui/material/ListItemIcon';
+import ListItemText from '@mui/material/ListItemText';
+import IconButton from '@mui/material/IconButton';
+import Divider from '@mui/material/Divider';
+import Box from '@mui/material/Box';
+import Tooltip from '@mui/material/Tooltip';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import PeopleIcon from '@mui/icons-material/People';
+import BarChartIcon from '@mui/icons-material/BarChart';
+import SettingsIcon from '@mui/icons-material/Settings';
+import LogoutIcon from '@mui/icons-material/Logout';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import MenuIcon from '@mui/icons-material/Menu';
+
+const DRAWER_WIDTH_OPEN = 208;
+const DRAWER_WIDTH_CLOSED = 56;
 
 const navItems = [
-  { href: '/orders', label: '注文管理' },
-  { href: '/buyers', label: '購入者一覧' },
-  { href: '/sales', label: '売上集計' },
-  { href: '/settings', label: '設定' },
+  { href: '/orders', label: '注文管理', icon: <InventoryIcon fontSize="small" /> },
+  { href: '/buyers', label: '購入者一覧', icon: <PeopleIcon fontSize="small" /> },
+  { href: '/sales', label: '売上集計', icon: <BarChartIcon fontSize="small" /> },
+  { href: '/settings', label: '設定', icon: <SettingsIcon fontSize="small" /> },
 ];
 
 export function GlobalNav() {
+  const [open, setOpen] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -20,51 +40,131 @@ export function GlobalNav() {
     router.push('/login');
   }
 
-  const handleOpenSpreadsheet = useCallback(async () => {
-    try {
-      const res = await fetch('/api/spreadsheet-url');
-      if (!res.ok) return;
-      const { url } = await res.json();
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch {
-      // silently ignore
-    }
-  }, []);
+  const drawerWidth = open ? DRAWER_WIDTH_OPEN : DRAWER_WIDTH_CLOSED;
 
   return (
-    <header className="sticky top-0 z-40 border-b border-gray-200 bg-white shadow-sm">
-      <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-        <Link href="/orders" className="text-base font-bold text-slate-800 shrink-0">
-          ハンドメイド発送管理
-        </Link>
-        <nav className="flex flex-1 gap-1">
-          {navItems.map(({ href, label }) => (
+    <>
+      <Drawer
+        variant="permanent"
+        sx={{
+          width: drawerWidth,
+          flexShrink: 0,
+          transition: 'width 0.2s',
+          '& .MuiDrawer-paper': {
+            width: drawerWidth,
+            transition: 'width 0.2s',
+            overflowX: 'hidden',
+            boxSizing: 'border-box',
+          },
+        }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            px: open ? 2 : 0,
+            py: 1.5,
+            justifyContent: open ? 'space-between' : 'center',
+          }}
+        >
+          {open && (
             <Link
-              key={href}
-              href={href}
-              className={`rounded px-3 py-1.5 text-sm font-medium transition-colors ${
-                pathname.startsWith(href)
-                  ? 'bg-slate-100 text-slate-900'
-                  : 'text-gray-500 hover:bg-gray-100 hover:text-gray-800'
-              }`}
+              href="/orders"
+              style={{
+                fontWeight: 700,
+                fontSize: 14,
+                color: '#1e293b',
+                textDecoration: 'none',
+              }}
             >
-              {label}
+              ハンドメイド発送管理
             </Link>
-          ))}
-        </nav>
-        <button
-          onClick={handleOpenSpreadsheet}
-          className="shrink-0 rounded px-3 py-1.5 text-sm font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
-        >
-          スプシを開く
-        </button>
-        <button
-          onClick={handleLogout}
-          className="shrink-0 text-sm text-gray-400 hover:text-gray-600 transition-colors"
-        >
-          ログアウト
-        </button>
-      </div>
-    </header>
+          )}
+          <IconButton onClick={() => setOpen(!open)} size="small">
+            {open ? <ChevronLeftIcon /> : <MenuIcon />}
+          </IconButton>
+        </Box>
+        <Divider />
+        <List sx={{ flex: 1, pt: 1 }}>
+          {navItems.map(({ href, label, icon }) => {
+            const selected = pathname.startsWith(href);
+            const button = (
+              <ListItemButton
+                key={href}
+                component={Link}
+                href={href}
+                selected={selected}
+                sx={{
+                  minHeight: 40,
+                  px: open ? 2 : 1.5,
+                  justifyContent: open ? 'initial' : 'center',
+                  borderRadius: 1,
+                  mx: 0.5,
+                  mb: 0.25,
+                }}
+              >
+                <ListItemIcon
+                  sx={{
+                    minWidth: 0,
+                    mr: open ? 1.5 : 0,
+                    justifyContent: 'center',
+                    color: selected ? 'primary.main' : 'text.secondary',
+                  }}
+                >
+                  {icon}
+                </ListItemIcon>
+                {open && <ListItemText primary={label} primaryTypographyProps={{ fontSize: 14 }} />}
+              </ListItemButton>
+            );
+            return open ? (
+              button
+            ) : (
+              <Tooltip key={href} title={label} placement="right">
+                {button}
+              </Tooltip>
+            );
+          })}
+        </List>
+        <Divider />
+        <List>
+          <Tooltip title={open ? '' : 'ログアウト'} placement="right">
+            <ListItemButton
+              onClick={handleLogout}
+              sx={{
+                minHeight: 40,
+                px: open ? 2 : 1.5,
+                justifyContent: open ? 'initial' : 'center',
+                borderRadius: 1,
+                mx: 0.5,
+              }}
+            >
+              <ListItemIcon
+                sx={{
+                  minWidth: 0,
+                  mr: open ? 1.5 : 0,
+                  justifyContent: 'center',
+                  color: 'text.secondary',
+                }}
+              >
+                <LogoutIcon fontSize="small" />
+              </ListItemIcon>
+              {open && (
+                <ListItemText
+                  primary="ログアウト"
+                  primaryTypographyProps={{ fontSize: 14, color: 'text.secondary' }}
+                />
+              )}
+            </ListItemButton>
+          </Tooltip>
+        </List>
+      </Drawer>
+      <style jsx global>{`
+        :root {
+          --nav-width: ${drawerWidth}px;
+        }
+      `}</style>
+    </>
   );
 }
+
+export { DRAWER_WIDTH_OPEN, DRAWER_WIDTH_CLOSED };
