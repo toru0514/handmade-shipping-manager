@@ -19,6 +19,9 @@ export async function updateSession(request: NextRequest) {
     request,
   });
 
+  const rememberMe = request.cookies.get('remember_me')?.value === '1';
+  const THIRTY_DAYS = 30 * 24 * 60 * 60;
+
   const supabase = createServerClient(getSupabaseUrl(), getSupabaseAnonKey(), {
     cookies: {
       getAll() {
@@ -32,7 +35,8 @@ export async function updateSession(request: NextRequest) {
           request,
         });
         cookiesToSet.forEach(({ name, value, options }) => {
-          supabaseResponse.cookies.set(name, value, options);
+          const cookieOptions = rememberMe ? { ...options, maxAge: THIRTY_DAYS } : options;
+          supabaseResponse.cookies.set(name, value, cookieOptions);
         });
       },
     },

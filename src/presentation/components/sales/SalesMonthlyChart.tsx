@@ -60,7 +60,12 @@ export function SalesMonthlyChart({ breakdown }: SalesMonthlyChartProps) {
               yAxisId="left"
               orientation="left"
               tick={{ fontSize: 12 }}
-              tickFormatter={(value: number) => `¥${(value / 1000).toFixed(0)}k`}
+              tickFormatter={(value: number) => {
+                if (value >= 100_000_000) return `${(value / 100_000_000).toFixed(0)}億`;
+                if (value >= 10_000) return `${(value / 10_000).toFixed(0)}万`;
+                if (value >= 1_000) return `${(value / 1_000).toFixed(0)}千`;
+                return `${value}`;
+              }}
             />
             <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
             <Tooltip
