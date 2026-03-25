@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Drawer from '@mui/material/Drawer';
@@ -15,9 +15,8 @@ import Tooltip from '@mui/material/Tooltip';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import PeopleIcon from '@mui/icons-material/People';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import SettingsIcon from '@mui/icons-material/Settings';
+import MessageIcon from '@mui/icons-material/Message';
 import LogoutIcon from '@mui/icons-material/Logout';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import MenuIcon from '@mui/icons-material/Menu';
 import CategoryIcon from '@mui/icons-material/Category';
@@ -31,29 +30,18 @@ const DRAWER_WIDTH_CLOSED = 56;
 const navItems = [
   { href: '/orders', label: '注文管理', icon: <InventoryIcon fontSize="small" /> },
   { href: '/buyers', label: '購入者一覧', icon: <PeopleIcon fontSize="small" /> },
+  { href: '/settings', label: '定型文設定', icon: <MessageIcon fontSize="small" /> },
   { href: '/sales', label: '売上集計', icon: <BarChartIcon fontSize="small" /> },
   { href: '/dashboard', label: '商品管理', icon: <CategoryIcon fontSize="small" /> },
   { href: '/dashboard/woods', label: '木材管理', icon: <ForestIcon fontSize="small" /> },
   { href: '/dashboard/jobs', label: 'ジョブ', icon: <WorkIcon fontSize="small" /> },
   { href: '/dashboard/images/upload', label: '画像管理', icon: <ImageIcon fontSize="small" /> },
-  { href: '/settings', label: '設定', icon: <SettingsIcon fontSize="small" /> },
 ];
 
 export function GlobalNav() {
   const [open, setOpen] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
-
-  const handleOpenSpreadsheet = useCallback(async () => {
-    try {
-      const res = await fetch('/api/spreadsheet-url');
-      if (!res.ok) return;
-      const { url } = await res.json();
-      window.open(url, '_blank', 'noopener,noreferrer');
-    } catch {
-      // silently ignore
-    }
-  }, []);
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -147,36 +135,6 @@ export function GlobalNav() {
         </List>
         <Divider />
         <List>
-          <Tooltip title={open ? '' : 'スプシを開く'} placement="right">
-            <ListItemButton
-              onClick={handleOpenSpreadsheet}
-              sx={{
-                minHeight: 40,
-                px: open ? 2 : 1.5,
-                justifyContent: open ? 'initial' : 'center',
-                borderRadius: 1,
-                mx: 0.5,
-                mb: 0.25,
-              }}
-            >
-              <ListItemIcon
-                sx={{
-                  minWidth: 0,
-                  mr: open ? 1.5 : 0,
-                  justifyContent: 'center',
-                  color: 'text.secondary',
-                }}
-              >
-                <OpenInNewIcon fontSize="small" />
-              </ListItemIcon>
-              {open && (
-                <ListItemText
-                  primary="スプシを開く"
-                  primaryTypographyProps={{ fontSize: 14, color: 'text.secondary' }}
-                />
-              )}
-            </ListItemButton>
-          </Tooltip>
           <Tooltip title={open ? '' : 'ログアウト'} placement="right">
             <ListItemButton
               onClick={handleLogout}

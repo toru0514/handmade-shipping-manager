@@ -10,6 +10,14 @@ import CssBaseline from '@mui/material/CssBaseline';
 const theme = createTheme({
   palette: {
     mode: 'light',
+    primary: {
+      main: '#2563eb', // Tailwind blue-600
+      dark: '#1d4ed8', // Tailwind blue-700
+    },
+    secondary: {
+      main: '#6d28d9', // Tailwind violet-700
+      dark: '#5b21b6', // Tailwind violet-800
+    },
   },
 });
 
