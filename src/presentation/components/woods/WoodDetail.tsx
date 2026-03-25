@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { WoodFormModal } from './WoodFormModal';
 import { useWoodEdit, useWoodDelete } from './use-wood-actions';
-import type { WoodMaterial } from '@/infrastructure/adapters/persistence/GoogleSheetsWoodRepository';
+import type { WoodMaterial } from '@/domain/types/wood';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -26,9 +26,7 @@ export function WoodDetail({ wood }: Props) {
 
   const { handleEdit, pending: pendingEdit } = useWoodEdit(wood.id, () => setShowEditModal(false));
 
-  const { handleDelete: onDelete, pending: deleting } = useWoodDelete(() =>
-    router.push('/dashboard/woods'),
-  );
+  const { handleDelete: onDelete, pending: deleting } = useWoodDelete(() => router.push('/woods'));
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
@@ -42,11 +40,7 @@ export function WoodDetail({ wood }: Props) {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <IconButton
-            onClick={() => router.push('/dashboard/woods')}
-            title="一覧に戻る"
-            size="small"
-          >
+          <IconButton onClick={() => router.push('/woods')} title="一覧に戻る" size="small">
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h5" fontWeight="bold">

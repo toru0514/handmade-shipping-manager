@@ -1,4 +1,8 @@
 import { useState } from 'react';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import Box from '@mui/material/Box';
 import { ShippingMethod } from '@/domain/valueObjects/ShippingMethod';
 
 interface IssueLabelButtonProps {
@@ -15,28 +19,28 @@ export function IssueLabelButton({
   const [shippingMethod, setShippingMethod] = useState<string>(ShippingMethod.ClickPost.toString());
 
   return (
-    <div className="flex items-center gap-2">
-      <label className="sr-only" htmlFor="shipping-method">
-        配送方法
-      </label>
-      <select
-        id="shipping-method"
-        className="rounded border border-gray-300 bg-white px-2 py-1.5 text-sm"
+    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+      <TextField
+        select
+        size="small"
+        label="配送方法"
         disabled={disabled || isIssuing}
         value={shippingMethod}
         onChange={(event) => setShippingMethod(event.target.value)}
+        sx={{ minWidth: 160 }}
       >
-        <option value={ShippingMethod.ClickPost.toString()}>クリックポスト</option>
-        <option value={ShippingMethod.YamatoCompact.toString()}>宅急便コンパクト</option>
-      </select>
-      <button
-        type="button"
-        className="rounded bg-violet-600 px-3 py-1.5 text-sm text-white hover:bg-violet-700 disabled:opacity-50"
+        <MenuItem value={ShippingMethod.ClickPost.toString()}>クリックポスト</MenuItem>
+        <MenuItem value={ShippingMethod.YamatoCompact.toString()}>宅急便コンパクト</MenuItem>
+      </TextField>
+      <Button
+        variant="contained"
+        size="small"
+        color="secondary"
         disabled={disabled || isIssuing}
         onClick={() => void onIssue(shippingMethod)}
       >
         {isIssuing ? '発行中...' : '伝票発行'}
-      </button>
-    </div>
+      </Button>
+    </Box>
   );
 }

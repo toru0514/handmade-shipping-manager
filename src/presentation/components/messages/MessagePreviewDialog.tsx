@@ -1,6 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import Alert from '@mui/material/Alert';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
 import { CopyToClipboardButton } from './CopyToClipboardButton';
 
 interface MessagePreviewDialogProps {
@@ -26,54 +34,53 @@ export function MessagePreviewDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div
-        className="w-full max-w-2xl rounded-lg bg-white p-6 shadow-lg"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="message-preview-title"
-      >
-        <h2 id="message-preview-title" className="mb-2 text-xl font-bold">
-          {title}
-        </h2>
-        <p className="mb-4 text-sm text-gray-700">注文 {orderId} のメッセージプレビューです。</p>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+      <DialogTitle>{title}</DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          注文 {orderId} のメッセージプレビューです。
+        </Typography>
 
         {notice && (
-          <div className="mb-3 rounded bg-green-100 px-3 py-2 text-sm text-green-700" role="status">
+          <Alert severity="success" sx={{ mb: 1.5 }}>
             {notice}
-          </div>
+          </Alert>
         )}
         {error && (
-          <div className="mb-3 rounded bg-red-100 px-3 py-2 text-sm text-red-700" role="alert">
+          <Alert severity="error" sx={{ mb: 1.5 }}>
             {error}
-          </div>
+          </Alert>
         )}
 
-        <pre className="mb-4 max-h-96 overflow-auto whitespace-pre-wrap rounded bg-gray-100 p-4 text-sm">
+        <Box
+          component="pre"
+          sx={{
+            whiteSpace: 'pre-wrap',
+            bgcolor: 'grey.100',
+            p: 2,
+            borderRadius: 1,
+            maxHeight: 384,
+            overflow: 'auto',
+            fontSize: '0.875rem',
+          }}
+        >
           {message}
-        </pre>
-
-        <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100"
-            onClick={onClose}
-          >
-            閉じる
-          </button>
-          <CopyToClipboardButton
-            content={message}
-            onCopied={() => {
-              setError(null);
-              setNotice('コピーしました');
-            }}
-            onError={(messageText) => {
-              setNotice(null);
-              setError(messageText);
-            }}
-          />
-        </div>
-      </div>
-    </div>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>閉じる</Button>
+        <CopyToClipboardButton
+          content={message}
+          onCopied={() => {
+            setError(null);
+            setNotice('コピーしました');
+          }}
+          onError={(messageText) => {
+            setNotice(null);
+            setError(messageText);
+          }}
+        />
+      </DialogActions>
+    </Dialog>
   );
 }

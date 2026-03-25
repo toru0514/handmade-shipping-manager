@@ -1,7 +1,17 @@
 'use client';
 
 import { useState } from 'react';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Button from '@mui/material/Button';
+import Alert from '@mui/material/Alert';
+import Typography from '@mui/material/Typography';
+import Paper from '@mui/material/Paper';
+import Stack from '@mui/material/Stack';
 import { MessagePreviewDialog } from '@/presentation/components/messages/MessagePreviewDialog';
+import { formatDateTime, shippingMethodLabel } from '@/presentation/utils/format';
 
 export interface ShipmentCompleteData {
   readonly orderId: string;
@@ -14,22 +24,6 @@ interface ShipmentCompleteMessageProps {
   readonly open: boolean;
   readonly data: ShipmentCompleteData | null;
   readonly onClose: () => void;
-}
-
-function formatDateTime(isoDate: string): string {
-  return new Date(isoDate).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function shippingMethodLabel(method: string): string {
-  if (method === 'click_post') return 'クリックポスト';
-  if (method === 'yamato_compact') return '宅急便コンパクト';
-  return method;
 }
 
 export function ShipmentCompleteMessage({ open, data, onClose }: ShipmentCompleteMessageProps) {
@@ -77,52 +71,49 @@ export function ShipmentCompleteMessage({ open, data, onClose }: ShipmentComplet
 
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-        <div
-          className="w-full max-w-xl rounded-lg bg-white p-6 shadow-lg"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="shipment-complete-title"
-        >
-          <h2 id="shipment-complete-title" className="mb-4 text-xl font-bold">
-            発送完了
-          </h2>
-
-          <p className="mb-4 text-sm text-gray-700">
+      <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+        <DialogTitle>発送完了</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             注文 {currentData.orderId} を発送済みにしました。
-          </p>
+          </Typography>
 
-          <div className="mb-5 space-y-1 rounded border border-green-200 bg-green-50 p-3 text-sm">
-            <p>発送日時: {formatDateTime(currentData.shippedAt)}</p>
-            <p>配送方法: {shippingMethodLabel(currentData.shippingMethod)}</p>
-            <p>追跡番号: {currentData.trackingNumber ?? '未入力'}</p>
-          </div>
+          <Paper
+            variant="outlined"
+            sx={{ p: 2, mb: 2, bgcolor: 'success.50', borderColor: 'success.200' }}
+          >
+            <Stack spacing={0.5}>
+              <Typography variant="body2">
+                発送日時: {formatDateTime(currentData.shippedAt)}
+              </Typography>
+              <Typography variant="body2">
+                配送方法: {shippingMethodLabel(currentData.shippingMethod)}
+              </Typography>
+              <Typography variant="body2">
+                追跡番号: {currentData.trackingNumber ?? '未入力'}
+              </Typography>
+            </Stack>
+          </Paper>
 
           {generationError && (
-            <div role="alert" className="mb-4 rounded bg-red-100 px-3 py-2 text-sm text-red-700">
+            <Alert severity="error" sx={{ mb: 2 }}>
               {generationError}
-            </div>
+            </Alert>
           )}
-
-          <div className="flex justify-end gap-2">
-            <button
-              type="button"
-              className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
-              onClick={() => void handleGenerateShippingNotice()}
-              disabled={isGenerating}
-            >
-              {isGenerating ? '生成中...' : '発送連絡を作成'}
-            </button>
-            <button
-              type="button"
-              className="rounded bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700"
-              onClick={onClose}
-            >
-              閉じる
-            </button>
-          </div>
-        </div>
-      </div>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            disabled={isGenerating}
+            onClick={() => void handleGenerateShippingNotice()}
+          >
+            {isGenerating ? '生成中...' : '発送連絡を作成'}
+          </Button>
+          <Button variant="contained" color="success" onClick={onClose}>
+            閉じる
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <MessagePreviewDialog
         open={preview !== null}

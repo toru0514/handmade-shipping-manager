@@ -25,7 +25,7 @@ import {
   refreshProductsFromSheets,
   ProductRow,
   JobRow,
-} from '@/app/dashboard/actions';
+} from '@/app/(manage)/products/actions';
 import { AddProductModal, type AddProductFormData } from './AddProductModal';
 import { CopyProductDialog } from '@/presentation/components/products/CopyProductDialog';
 import { useToast } from '@/presentation/components/providers/ToastProvider';
@@ -296,7 +296,7 @@ export function DashboardContent({ products, jobs, spreadsheetUrl }: Props) {
             >
               <Box
                 sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }}
-                onClick={() => router.push(`/dashboard/products/${encodeURIComponent(product.id)}`)}
+                onClick={() => router.push(`/products/${encodeURIComponent(product.id)}`)}
               >
                 {product.imageUrl ? (
                   <ProductThumbnail url={product.imageUrl} />
@@ -331,9 +331,7 @@ export function DashboardContent({ products, jobs, spreadsheetUrl }: Props) {
                   variant="outlined"
                   size="small"
                   startIcon={<EditIcon sx={{ fontSize: 14 }} />}
-                  onClick={() =>
-                    router.push(`/dashboard/products/${encodeURIComponent(product.id)}`)
-                  }
+                  onClick={() => router.push(`/products/${encodeURIComponent(product.id)}`)}
                   sx={{ fontSize: '0.75rem' }}
                 >
                   編集
@@ -418,9 +416,7 @@ export function DashboardContent({ products, jobs, spreadsheetUrl }: Props) {
                   key={product.id}
                   hover
                   sx={{ cursor: 'pointer' }}
-                  onClick={() =>
-                    router.push(`/dashboard/products/${encodeURIComponent(product.id)}`)
-                  }
+                  onClick={() => router.push(`/products/${encodeURIComponent(product.id)}`)}
                 >
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -462,9 +458,7 @@ export function DashboardContent({ products, jobs, spreadsheetUrl }: Props) {
                     >
                       <IconButton
                         size="small"
-                        onClick={() =>
-                          router.push(`/dashboard/products/${encodeURIComponent(product.id)}`)
-                        }
+                        onClick={() => router.push(`/products/${encodeURIComponent(product.id)}`)}
                         title="編集"
                       >
                         <EditIcon fontSize="small" />
@@ -564,7 +558,7 @@ export function DashboardContent({ products, jobs, spreadsheetUrl }: Props) {
                   status: 'success',
                   message: `${copyingProduct?.title ?? copyingProductId} をコピーしました。`,
                 });
-                router.push(`/dashboard/products/${encodeURIComponent(newId)}`);
+                router.push(`/products/${encodeURIComponent(newId)}`);
               }}
             />
           );

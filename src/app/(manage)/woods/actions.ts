@@ -8,7 +8,7 @@ import {
   updateWood,
   deleteWood,
 } from '@/infrastructure/adapters/persistence/DualWriteWoodRepository';
-import type { WoodMaterial } from '@/infrastructure/adapters/persistence/GoogleSheetsWoodRepository';
+import type { WoodMaterial } from '@/domain/types/wood';
 
 export async function getWoods(): Promise<WoodMaterial[]> {
   return listWoods();
@@ -43,8 +43,8 @@ export async function addWoodAction(input: {
     features: input.features.trim(),
   });
 
-  revalidatePath('/dashboard/woods');
-  revalidatePath('/dashboard');
+  revalidatePath('/woods');
+  revalidatePath('/products');
   revalidatePath('/');
   return result;
 }
@@ -80,8 +80,8 @@ export async function updateWoodAction(input: {
     features: input.features.trim(),
   });
 
-  revalidatePath('/dashboard/woods');
-  revalidatePath('/dashboard');
+  revalidatePath('/woods');
+  revalidatePath('/products');
   revalidatePath('/');
   return result;
 }
@@ -92,7 +92,7 @@ export async function deleteWoodAction(woodId: string): Promise<void> {
   }
 
   await deleteWood(woodId);
-  revalidatePath('/dashboard/woods');
-  revalidatePath('/dashboard');
+  revalidatePath('/woods');
+  revalidatePath('/products');
   revalidatePath('/');
 }

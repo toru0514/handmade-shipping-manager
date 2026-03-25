@@ -38,14 +38,14 @@ export async function refreshProductsFromSheets(): Promise<SyncResult | null> {
     // DB 同期失敗はスプシ更新に影響させない
   }
 
-  revalidatePath('/dashboard');
+  revalidatePath('/products');
   revalidatePath('/');
   return syncResult;
 }
 
 export async function enqueueDraft(productId: string, platforms: string[]) {
   await enqueueDraftUseCase(productId, platforms);
-  revalidatePath('/dashboard');
+  revalidatePath('/products');
   revalidatePath('/');
 }
 
@@ -78,7 +78,7 @@ export async function addProduct(input: unknown) {
     inventory,
     platforms: raw.platforms as string[],
   });
-  revalidatePath('/dashboard');
+  revalidatePath('/products');
   revalidatePath('/');
 }
 
@@ -103,7 +103,7 @@ export async function updateProduct(input: {
   }
 
   await updateProductUseCase(input.productId, input.fields);
-  revalidatePath('/dashboard');
+  revalidatePath('/products');
   revalidatePath('/');
 }
 
@@ -113,7 +113,7 @@ export async function copyProduct(sourceProductId: string): Promise<string> {
   }
 
   const newId = await copyProductUseCase(sourceProductId);
-  revalidatePath('/dashboard');
+  revalidatePath('/products');
   revalidatePath('/');
   return newId;
 }

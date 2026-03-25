@@ -1,4 +1,6 @@
+import Grid from '@mui/material/Grid';
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
+import { EmptyState } from '@/presentation/components/common';
 import { PendingOrderCard } from './PendingOrderCard';
 
 interface PendingOrderListProps {
@@ -19,26 +21,26 @@ export function PendingOrderList({
   issuingLabelOrderId = null,
 }: PendingOrderListProps) {
   if (orders.length === 0) {
-    return (
-      <div className="py-12 text-center text-gray-500" data-testid="empty-orders">
-        発送待ちの注文はありません
-      </div>
-    );
+    return <EmptyState message="発送待ちの注文はありません" data-testid="empty-orders" />;
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="pending-order-list">
+    <Grid container spacing={2} data-testid="pending-order-list">
       {orders.map((order) => (
-        <PendingOrderCard
+        <Grid
           key={`${order.platform}-${order.orderId}-${order.orderedAt}`}
-          order={order}
-          onRequestShipmentComplete={onRequestShipmentComplete}
-          onRequestPurchaseThanks={onRequestPurchaseThanks}
-          onRequestIssueLabel={onRequestIssueLabel}
-          isGeneratingPurchaseThanks={generatingPurchaseThanksOrderId === order.orderId}
-          isIssuingLabel={issuingLabelOrderId === order.orderId}
-        />
+          size={{ xs: 12, sm: 6, lg: 4 }}
+        >
+          <PendingOrderCard
+            order={order}
+            onRequestShipmentComplete={onRequestShipmentComplete}
+            onRequestPurchaseThanks={onRequestPurchaseThanks}
+            onRequestIssueLabel={onRequestIssueLabel}
+            isGeneratingPurchaseThanks={generatingPurchaseThanksOrderId === order.orderId}
+            isIssuingLabel={issuingLabelOrderId === order.orderId}
+          />
+        </Grid>
       ))}
-    </div>
+    </Grid>
   );
 }
