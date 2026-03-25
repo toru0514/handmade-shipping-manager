@@ -48,6 +48,16 @@ export class DefaultMessageTemplateRepository implements MessageTemplateReposito
     return Promise.resolve();
   }
 
+  async saveAll(_templates: MessageTemplate[]): Promise<void> {
+    // no-op: このリポジトリはデフォルトテンプレート提供専用で、永続化は行わない。
+    return Promise.resolve();
+  }
+
+  async findAll(): Promise<MessageTemplate[]> {
+    const types: MessageTemplateTypeValue[] = ['purchase_thanks', 'shipping_notice'];
+    return types.map((t) => buildDefaultTemplate(new MessageTemplateType(t)));
+  }
+
   async resetToDefault(type: MessageTemplateType): Promise<MessageTemplate> {
     return buildDefaultTemplate(type);
   }

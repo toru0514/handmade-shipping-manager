@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SyncOrdersToDbUseCase } from '../SyncOrdersToDbUseCase';
 import type { OrderSyncRepository } from '@/domain/ports/OrderSyncRepository';
+import type { OrderRepository } from '@/domain/ports/OrderRepository';
+import type { ShippingLabelRepository } from '@/domain/ports/ShippingLabelRepository';
 import { Order } from '@/domain/entities/Order';
+import { ShippingLabel } from '@/domain/entities/ShippingLabel';
 import { ClickPostLabel } from '@/domain/entities/ClickPostLabel';
 import { OrderId } from '@/domain/valueObjects/OrderId';
 import { Platform } from '@/domain/valueObjects/Platform';
@@ -47,12 +50,15 @@ describe('SyncOrdersToDbUseCase', () => {
     findByStatus: ReturnType<typeof vi.fn>;
     findByBuyerName: ReturnType<typeof vi.fn>;
     save: ReturnType<typeof vi.fn>;
+    saveAll: ReturnType<typeof vi.fn>;
     exists: ReturnType<typeof vi.fn>;
   };
   let mockLabelRepository: {
     findById: ReturnType<typeof vi.fn>;
     findByOrderId: ReturnType<typeof vi.fn>;
     save: ReturnType<typeof vi.fn>;
+    saveAll: ReturnType<typeof vi.fn>;
+    findAll: ReturnType<typeof vi.fn>;
   };
   let mockSyncRepository: {
     upsertOrders: ReturnType<typeof vi.fn>;
@@ -66,12 +72,15 @@ describe('SyncOrdersToDbUseCase', () => {
       findByStatus: vi.fn(),
       findByBuyerName: vi.fn(),
       save: vi.fn(),
+      saveAll: vi.fn(),
       exists: vi.fn(),
     };
     mockLabelRepository = {
       findById: vi.fn(),
       findByOrderId: vi.fn().mockResolvedValue([]),
       save: vi.fn(),
+      saveAll: vi.fn(),
+      findAll: vi.fn().mockResolvedValue([]),
     };
     mockSyncRepository = {
       upsertOrders: vi.fn().mockResolvedValue({ synced: 0, errors: [] }),
@@ -89,8 +98,8 @@ describe('SyncOrdersToDbUseCase', () => {
     mockSyncRepository.upsertShippingLabels.mockResolvedValue({ synced: 1, errors: [] });
 
     const useCase = new SyncOrdersToDbUseCase(
-      mockOrderRepository,
-      mockLabelRepository,
+      mockOrderRepository as unknown as OrderRepository,
+      mockLabelRepository as unknown as ShippingLabelRepository<ShippingLabel>,
       mockSyncRepository as unknown as OrderSyncRepository,
     );
     const result = await useCase.execute();
@@ -102,8 +111,8 @@ describe('SyncOrdersToDbUseCase', () => {
 
   it('注文がない場合はゼロを返す', async () => {
     const useCase = new SyncOrdersToDbUseCase(
-      mockOrderRepository,
-      mockLabelRepository,
+      mockOrderRepository as unknown as OrderRepository,
+      mockLabelRepository as unknown as ShippingLabelRepository<ShippingLabel>,
       mockSyncRepository as unknown as OrderSyncRepository,
     );
     const result = await useCase.execute();
@@ -122,8 +131,8 @@ describe('SyncOrdersToDbUseCase', () => {
     });
 
     const useCase = new SyncOrdersToDbUseCase(
-      mockOrderRepository,
-      mockLabelRepository,
+      mockOrderRepository as unknown as OrderRepository,
+      mockLabelRepository as unknown as ShippingLabelRepository<ShippingLabel>,
       mockSyncRepository as unknown as OrderSyncRepository,
     );
     const result = await useCase.execute();

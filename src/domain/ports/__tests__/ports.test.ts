@@ -21,6 +21,7 @@ describe('domain ports', () => {
       findByStatus: async (_status: OrderStatus) => [],
       findByBuyerName: async (_name: string) => [],
       save: async (_order: Order) => undefined,
+      saveAll: async (_orders: Order[]) => undefined,
       exists: async (_orderId: OrderId) => false,
       findAll: async () => [],
     };
@@ -36,6 +37,8 @@ describe('domain ports', () => {
       findById: async (_labelId) => null,
       findByOrderId: async (_orderId) => [],
       save: async (_label) => undefined,
+      saveAll: async (_labels) => undefined,
+      findAll: async () => [],
     };
 
     expectTypeOf(repository.findByOrderId).toBeFunction();
@@ -47,6 +50,8 @@ describe('domain ports', () => {
     const repository: MessageTemplateRepository<MessageTemplate> = {
       findByType: async (_type: MessageTemplateType) => null,
       save: async (_template: MessageTemplate) => undefined,
+      saveAll: async (_templates: MessageTemplate[]) => undefined,
+      findAll: async () => [],
       resetToDefault: async (_type: MessageTemplateType) => ({ type: 'x', content: 'y' }),
     };
 

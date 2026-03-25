@@ -50,11 +50,19 @@ export class SpreadsheetShippingLabelRepository implements ShippingLabelReposito
     await this.sheetsClient.writeRows(rows, DEFAULT_RANGE);
   }
 
-  private async findAll(): Promise<ShippingLabel[]> {
+  async findAll(): Promise<ShippingLabel[]> {
     const rows = await this.sheetsClient.readRows();
     return rows
       .filter((row) => (row[COL.labelId] ?? '').trim().length > 0)
       .map((row) => this.deserialize(row));
+  }
+
+  async saveAll(labels: ShippingLabel[]): Promise<void> {
+    const rows = labels.map((label) => this.serialize(label));
+    await this.sheetsClient.clearRows();
+    if (rows.length > 0) {
+      await this.sheetsClient.writeRows(rows, DEFAULT_RANGE);
+    }
   }
 
   private serialize(label: ShippingLabel): string[] {

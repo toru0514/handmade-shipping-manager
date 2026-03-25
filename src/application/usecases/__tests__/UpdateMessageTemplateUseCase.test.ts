@@ -18,6 +18,14 @@ class InMemoryMessageTemplateRepository implements MessageTemplateRepository<Mes
     this.store.set(template.type.value, template);
   }
 
+  async saveAll(templates: MessageTemplate[]): Promise<void> {
+    for (const t of templates) await this.save(t);
+  }
+
+  async findAll(): Promise<MessageTemplate[]> {
+    return Array.from(this.store.values());
+  }
+
   async resetToDefault(type: MessageTemplateType): Promise<MessageTemplate> {
     const template: MessageTemplate = {
       id: `default-${type.value}`,

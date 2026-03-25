@@ -47,6 +47,10 @@ class InMemoryOrderRepository implements OrderRepository<Order> {
     this.store.set(order.orderId.toString(), order);
   }
 
+  async saveAll(orders: Order[]): Promise<void> {
+    for (const o of orders) await this.save(o);
+  }
+
   async exists(orderId: OrderId): Promise<boolean> {
     return this.store.has(orderId.toString());
   }
@@ -73,6 +77,14 @@ class InMemoryShippingLabelRepository implements ShippingLabelRepository<Shippin
 
   async save(label: ShippingLabel): Promise<void> {
     this.labels.push(label);
+  }
+
+  async saveAll(labels: ShippingLabel[]): Promise<void> {
+    for (const l of labels) await this.save(l);
+  }
+
+  async findAll(): Promise<ShippingLabel[]> {
+    return [...this.labels];
   }
 }
 

@@ -29,6 +29,10 @@ class InMemoryOrderRepository implements OrderRepository<Order> {
     this.store.set(order.orderId.toString(), order);
   }
 
+  async saveAll(orders: Order[]): Promise<void> {
+    for (const o of orders) await this.save(o);
+  }
+
   async exists(orderId: OrderId): Promise<boolean> {
     return this.store.has(orderId.toString());
   }
@@ -117,6 +121,7 @@ describe('FetchOrderUseCase', () => {
         .mockResolvedValueOnce(false)
         .mockResolvedValueOnce(true),
       findAll: vi.fn(async () => []),
+      saveAll: vi.fn(async () => {}),
     };
     const fetcher: OrderFetcher = {
       fetch: vi.fn(async () => createPlatformOrderData()),
