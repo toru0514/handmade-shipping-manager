@@ -13,7 +13,7 @@
  * .env.local から以下を自動読み込み:
  *   CREEMA_EMAIL, CREEMA_PASSWORD,
  *   GMAIL_ACCESS_TOKEN / GMAIL_REFRESH_TOKEN, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
- *   GOOGLE_SERVICE_ACCOUNT_BASE64, GOOGLE_SHEETS_SPREADSHEET_ID, GOOGLE_SHEETS_SHEET_NAME
+ *   GOOGLE_SERVICE_ACCOUNT_BASE64, SHIPPING_SPREADSHEET_ID, SHIPPING_ORDERS_SHEET_NAME
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -63,8 +63,8 @@ function parsePositiveInt(value: string | undefined): number | undefined {
 }
 
 function createOrderRepository(): SpreadsheetOrderRepository {
-  const spreadsheetId = process.env['GOOGLE_SHEETS_SPREADSHEET_ID'];
-  if (!spreadsheetId) throw new Error('GOOGLE_SHEETS_SPREADSHEET_ID が設定されていません');
+  const spreadsheetId = process.env['SHIPPING_SPREADSHEET_ID'];
+  if (!spreadsheetId) throw new Error('SHIPPING_SPREADSHEET_ID が設定されていません');
 
   const serviceAccountBase64 = process.env['GOOGLE_SERVICE_ACCOUNT_BASE64'];
   let serviceAccountKey: { client_email: string; private_key: string } | undefined;
@@ -79,7 +79,7 @@ function createOrderRepository(): SpreadsheetOrderRepository {
 
   const sheetsClient = new GoogleSheetsClient({
     spreadsheetId,
-    sheetName: process.env['GOOGLE_SHEETS_SHEET_NAME'] ?? 'Orders',
+    sheetName: process.env['SHIPPING_ORDERS_SHEET_NAME'] ?? 'Orders',
     serviceAccountKey,
     accessToken: process.env['GOOGLE_SHEETS_ACCESS_TOKEN'],
     refreshToken: process.env['GOOGLE_SHEETS_REFRESH_TOKEN'],

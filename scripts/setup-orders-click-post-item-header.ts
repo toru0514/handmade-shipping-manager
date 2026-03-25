@@ -47,8 +47,8 @@ function parseServiceAccountKey(base64: string): ServiceAccountKey {
 }
 
 function createClient(): GoogleSheetsClient {
-  const spreadsheetId = resolveRequired('GOOGLE_SHEETS_SPREADSHEET_ID');
-  const sheetName = process.env.GOOGLE_SHEETS_SHEET_NAME?.trim() || 'Orders';
+  const spreadsheetId = resolveRequired('SHIPPING_SPREADSHEET_ID');
+  const sheetName = process.env.SHIPPING_ORDERS_SHEET_NAME?.trim() || 'Orders';
   const serviceAccountBase64 = process.env.GOOGLE_SERVICE_ACCOUNT_BASE64?.trim();
   const accessToken = process.env.GOOGLE_SHEETS_ACCESS_TOKEN?.trim();
   const refreshToken = process.env.GOOGLE_SHEETS_REFRESH_TOKEN?.trim();
@@ -84,7 +84,7 @@ function createClient(): GoogleSheetsClient {
 async function main(): Promise<void> {
   loadEnvLocal();
   const client = createClient();
-  const sheetName = process.env.GOOGLE_SHEETS_SHEET_NAME?.trim() || 'Orders';
+  const sheetName = process.env.SHIPPING_ORDERS_SHEET_NAME?.trim() || 'Orders';
 
   await client.writeRows([['click_post_item_name']], `${sheetName}!Q1`);
   console.log(`✅ ${sheetName}!Q1 に click_post_item_name を設定しました`);

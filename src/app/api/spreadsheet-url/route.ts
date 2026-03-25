@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = process.env.SHIPPING_SPREADSHEET_ID;
 
   if (!spreadsheetId) {
     return NextResponse.json({ error: 'Spreadsheet ID is not configured' }, { status: 500 });

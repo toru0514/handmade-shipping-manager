@@ -48,6 +48,10 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "playwright",
+    "playwright.config.ts",
+    "playwright.smoke.config.ts",
+    "scripts"
   ]
 }

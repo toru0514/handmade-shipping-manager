@@ -20,6 +20,10 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import MenuIcon from '@mui/icons-material/Menu';
+import CategoryIcon from '@mui/icons-material/Category';
+import ForestIcon from '@mui/icons-material/Forest';
+import WorkIcon from '@mui/icons-material/Work';
+import ImageIcon from '@mui/icons-material/Image';
 
 const DRAWER_WIDTH_OPEN = 208;
 const DRAWER_WIDTH_CLOSED = 56;
@@ -28,6 +32,10 @@ const navItems = [
   { href: '/orders', label: '注文管理', icon: <InventoryIcon fontSize="small" /> },
   { href: '/buyers', label: '購入者一覧', icon: <PeopleIcon fontSize="small" /> },
   { href: '/sales', label: '売上集計', icon: <BarChartIcon fontSize="small" /> },
+  { href: '/dashboard', label: '商品管理', icon: <CategoryIcon fontSize="small" /> },
+  { href: '/dashboard/woods', label: '木材管理', icon: <ForestIcon fontSize="small" /> },
+  { href: '/dashboard/jobs', label: 'ジョブ', icon: <WorkIcon fontSize="small" /> },
+  { href: '/dashboard/images/upload', label: '画像管理', icon: <ImageIcon fontSize="small" /> },
   { href: '/settings', label: '設定', icon: <SettingsIcon fontSize="small" /> },
 ];
 

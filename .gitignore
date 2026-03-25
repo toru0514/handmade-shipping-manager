@@ -43,3 +43,4 @@ playwright/.cache/
 test-results/
 ms-playwright/
 .vercel
+.env*.local

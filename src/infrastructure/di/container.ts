@@ -50,7 +50,7 @@ import {
 import { ConsoleLogger } from '@/infrastructure/logging/Logger';
 
 type Env = Readonly<Record<string, string | undefined>>;
-type RequiredEnvKey = 'GOOGLE_SHEETS_SPREADSHEET_ID';
+type RequiredEnvKey = 'SHIPPING_SPREADSHEET_ID';
 
 function resolveRequiredEnv(name: RequiredEnvKey, env: Env): string {
   const value = env[name]?.trim();
@@ -82,10 +82,10 @@ function parseServiceAccountKey(json: string): ServiceAccountKey {
 
 function createOrderRepository(env: Env): SpreadsheetOrderRepository {
   const auth = createAuth(env);
-  const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+  const spreadsheetId = resolveRequiredEnv('SHIPPING_SPREADSHEET_ID', env);
   const sheetsClient = new GoogleSheetsClient({
     spreadsheetId,
-    sheetName: env.GOOGLE_SHEETS_SHEET_NAME?.trim() || 'Orders',
+    sheetName: env.SHIPPING_ORDERS_SHEET_NAME?.trim() || 'Orders',
     ...auth,
   });
 
@@ -94,10 +94,10 @@ function createOrderRepository(env: Env): SpreadsheetOrderRepository {
 
 function createTemplateRepository(env: Env): SpreadsheetMessageTemplateRepository {
   const auth = createAuth(env);
-  const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+  const spreadsheetId = resolveRequiredEnv('SHIPPING_SPREADSHEET_ID', env);
   const sheetsClient = new GoogleSheetsClient({
     spreadsheetId,
-    sheetName: env.GOOGLE_SHEETS_TEMPLATE_SHEET_NAME?.trim() || 'Templates',
+    sheetName: env.SHIPPING_TEMPLATES_SHEET_NAME?.trim() || 'Templates',
     ...auth,
   });
   return new SpreadsheetMessageTemplateRepository(sheetsClient);
@@ -107,11 +107,10 @@ function createPurchaseThanksProductNameResolver(
   env: Env,
 ): SpreadsheetPurchaseThanksProductNameResolver {
   const auth = createAuth(env);
-  const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+  const spreadsheetId = resolveRequiredEnv('SHIPPING_SPREADSHEET_ID', env);
   const sheetsClient = new GoogleSheetsClient({
     spreadsheetId,
-    sheetName:
-      env.GOOGLE_SHEETS_PRODUCT_NAME_MAP_SHEET_NAME?.trim() || 'PurchaseThanksProductNameMap',
+    sheetName: env.SHIPPING_PRODUCT_NAME_MAP_SHEET_NAME?.trim() || 'PurchaseThanksProductNameMap',
     ...auth,
   });
   return new SpreadsheetPurchaseThanksProductNameResolver(sheetsClient);
@@ -119,11 +118,10 @@ function createPurchaseThanksProductNameResolver(
 
 function createShippingMethodLabelResolver(env: Env): SpreadsheetShippingMethodLabelResolver {
   const auth = createAuth(env);
-  const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+  const spreadsheetId = resolveRequiredEnv('SHIPPING_SPREADSHEET_ID', env);
   const sheetsClient = new GoogleSheetsClient({
     spreadsheetId,
-    sheetName:
-      env.GOOGLE_SHEETS_SHIPPING_METHOD_LABEL_SHEET_NAME?.trim() || 'ShippingMethodLabelMap',
+    sheetName: env.SHIPPING_METHOD_LABEL_SHEET_NAME?.trim() || 'ShippingMethodLabelMap',
     ...auth,
   });
   return new SpreadsheetShippingMethodLabelResolver(sheetsClient);
@@ -424,10 +422,10 @@ export function createContainer(env: Env = process.env): Container {
     : spreadsheetOrderRepo;
 
   const auth = createAuth(env);
-  const spreadsheetId = resolveRequiredEnv('GOOGLE_SHEETS_SPREADSHEET_ID', env);
+  const spreadsheetId = resolveRequiredEnv('SHIPPING_SPREADSHEET_ID', env);
   const labelSheetsClient = new GoogleSheetsClient({
     spreadsheetId,
-    sheetName: env.GOOGLE_SHEETS_LABEL_SHEET_NAME?.trim() || 'ShippingLabels',
+    sheetName: env.SHIPPING_LABELS_SHEET_NAME?.trim() || 'ShippingLabels',
     ...auth,
   });
   const spreadsheetLabelRepo = new SpreadsheetShippingLabelRepository(labelSheetsClient);
