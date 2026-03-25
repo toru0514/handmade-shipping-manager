@@ -71,6 +71,18 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
     this.invalidateCache();
   }
 
+  async saveAll(orders: Order[]): Promise<void> {
+    const rows: string[][] = [];
+    for (const order of orders) {
+      rows.push(...this.serializeRows(order));
+    }
+    await this.sheetsClient.clearRows();
+    if (rows.length > 0) {
+      await this.sheetsClient.writeRows(rows, DEFAULT_RANGE);
+    }
+    this.invalidateCache();
+  }
+
   async exists(orderId: OrderId): Promise<boolean> {
     const order = await this.findById(orderId);
     return order !== null;

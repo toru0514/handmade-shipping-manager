@@ -28,6 +28,9 @@ class InMemoryOrderRepository implements OrderRepository<Order> {
   async save(order: Order): Promise<void> {
     this.store.set(order.orderId.toString(), order);
   }
+  async saveAll(orders: Order[]): Promise<void> {
+    for (const o of orders) await this.save(o);
+  }
   async exists(orderId: OrderId): Promise<boolean> {
     return this.store.has(orderId.toString());
   }
@@ -179,6 +182,7 @@ describe('FetchNewOrdersUseCase', () => {
         .mockResolvedValueOnce(false)
         .mockResolvedValueOnce(true),
       findAll: vi.fn(async () => []),
+      saveAll: vi.fn(async () => {}),
     };
 
     const useCase = new FetchNewOrdersUseCase(emailSource, fetcher, repository);

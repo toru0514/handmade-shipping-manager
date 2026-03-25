@@ -6,16 +6,28 @@ import { GenerateShippingNoticeUseCase } from '@/application/usecases/GenerateSh
 import { IssueShippingLabelUseCase } from '@/application/usecases/IssueShippingLabelUseCase';
 import { ListPendingOrdersUseCase } from '@/application/usecases/ListPendingOrdersUseCase';
 import { MarkOrderAsShippedUseCase } from '@/application/usecases/MarkOrderAsShippedUseCase';
+import { RestoreFromDbUseCase } from '@/application/usecases/RestoreFromDbUseCase';
 import { SearchBuyersUseCase } from '@/application/usecases/SearchBuyersUseCase';
 import { SyncOrdersToDbUseCase } from '@/application/usecases/SyncOrdersToDbUseCase';
 import { UpdateMessageTemplateUseCase } from '@/application/usecases/UpdateMessageTemplateUseCase';
+import type { Order } from '@/domain/entities/Order';
+import type { ShippingLabel } from '@/domain/entities/ShippingLabel';
+import type { OrderRepository } from '@/domain/ports/OrderRepository';
+import type { ShippingLabelRepository } from '@/domain/ports/ShippingLabelRepository';
 import { MessageGenerator } from '@/domain/services/MessageGenerator';
 import { OverdueOrderSpecification } from '@/domain/specifications/OverdueOrderSpecification';
+import { DualWriteMessageTemplateRepository } from '@/infrastructure/adapters/persistence/DualWriteMessageTemplateRepository';
+import { DualWriteOrderRepository } from '@/infrastructure/adapters/persistence/DualWriteOrderRepository';
+import { DualWriteShippingLabelRepository } from '@/infrastructure/adapters/persistence/DualWriteShippingLabelRepository';
 import { SpreadsheetMessageTemplateRepository } from '@/infrastructure/adapters/persistence/SpreadsheetMessageTemplateRepository';
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
 import { SpreadsheetPurchaseThanksProductNameResolver } from '@/infrastructure/adapters/persistence/SpreadsheetPurchaseThanksProductNameResolver';
 import { SpreadsheetShippingMethodLabelResolver } from '@/infrastructure/adapters/persistence/SpreadsheetShippingMethodLabelResolver';
 import { SpreadsheetShippingLabelRepository } from '@/infrastructure/adapters/persistence/SpreadsheetShippingLabelRepository';
+import { SupabaseMessageTemplateRepository } from '@/infrastructure/adapters/persistence/SupabaseMessageTemplateRepository';
+import { SupabaseOrderRepository } from '@/infrastructure/adapters/persistence/SupabaseOrderRepository';
+import { SupabaseOrderSyncRepository } from '@/infrastructure/adapters/persistence/SupabaseOrderSyncRepository';
+import { SupabaseShippingLabelRepository } from '@/infrastructure/adapters/persistence/SupabaseShippingLabelRepository';
 import { ClickPostAdapter } from '@/infrastructure/adapters/shipping/ClickPostAdapter';
 import type { ClickPostGateway } from '@/infrastructure/adapters/shipping/ClickPostGateway';
 import { ShippingLabelIssuerImpl } from '@/infrastructure/adapters/shipping/ShippingLabelIssuerImpl';
@@ -27,7 +39,6 @@ import { MinneEmailOrderSource } from '@/infrastructure/adapters/platform/MinneE
 import { CreemaEmailOrderSource } from '@/infrastructure/adapters/platform/CreemaEmailOrderSource';
 import { createClient } from '@supabase/supabase-js';
 import { SlackAdapter } from '@/infrastructure/adapters/notification/SlackAdapter';
-import { SupabaseOrderSyncRepository } from '@/infrastructure/adapters/persistence/SupabaseOrderSyncRepository';
 import { ExternalServiceError } from '@/infrastructure/errors/HttpErrors';
 import { GoogleGmailClient } from '@/infrastructure/external/google/GmailClient';
 import { BrowserlessBrowserFactory } from '@/infrastructure/external/playwright/BrowserlessBrowserFactory';
@@ -36,6 +47,7 @@ import {
   GoogleSheetsClient,
   type ServiceAccountKey,
 } from '@/infrastructure/external/google/SheetsClient';
+import { ConsoleLogger } from '@/infrastructure/logging/Logger';
 
 type Env = Readonly<Record<string, string | undefined>>;
 type RequiredEnvKey = 'SHIPPING_SPREADSHEET_ID';
@@ -240,7 +252,7 @@ function createGmailClient(env: Env): GoogleGmailClient {
 
 function createFetchNewOrdersUseCase(
   env: Env,
-  orderRepository: ReturnType<typeof createOrderRepository>,
+  orderRepository: OrderRepository<Order>,
   platform: 'minne' | 'creema',
 ): FetchNewOrdersUseCase {
   const gmailClient = createGmailClient(env);
@@ -297,13 +309,13 @@ function createFetchNewOrdersUseCase(
   );
 }
 
-function createIssueShippingLabelUseCase(env: Env): IssueShippingLabelUseCase {
-  let auth: ReturnType<typeof createAuth>;
-  let spreadsheetId: string;
+function createIssueShippingLabelUseCase(
+  env: Env,
+  orderRepo: OrderRepository<Order>,
+  labelRepo: ShippingLabelRepository<ShippingLabel>,
+): IssueShippingLabelUseCase {
   let browserFactory: ReturnType<typeof createBrowserFactory>;
   try {
-    auth = createAuth(env);
-    spreadsheetId = resolveRequiredEnv('SHIPPING_SPREADSHEET_ID', env);
     browserFactory = createBrowserFactory(env);
   } catch (error) {
     if (error instanceof ExternalServiceError) {
@@ -368,23 +380,8 @@ function createIssueShippingLabelUseCase(env: Env): IssueShippingLabelUseCase {
     },
   };
 
-  const orderSheetsClient = new GoogleSheetsClient({
-    spreadsheetId,
-    sheetName: env.SHIPPING_ORDERS_SHEET_NAME?.trim() || 'Orders',
-    ...auth,
-  });
-  const labelSheetsClient = new GoogleSheetsClient({
-    spreadsheetId,
-    sheetName: env.SHIPPING_LABELS_SHEET_NAME?.trim() || 'ShippingLabels',
-    ...auth,
-  });
-
   const issuer = new ShippingLabelIssuerImpl(clickPostGateway, yamatoGateway);
-  return new IssueShippingLabelUseCase(
-    new SpreadsheetOrderRepository(orderSheetsClient),
-    new SpreadsheetShippingLabelRepository(labelSheetsClient),
-    issuer,
-  );
+  return new IssueShippingLabelUseCase(orderRepo, labelRepo, issuer);
 }
 
 export interface Container {
@@ -398,13 +395,58 @@ export interface Container {
   getFetchNewOrdersUseCase(platform: 'minne' | 'creema'): FetchNewOrdersUseCase;
   getUpdateMessageTemplateUseCase(): UpdateMessageTemplateUseCase;
   getSyncOrdersToDbUseCase(): SyncOrdersToDbUseCase;
+  getRestoreFromDbUseCase(): RestoreFromDbUseCase;
   getSalesSummaryUseCase(): GetSalesSummaryUseCase;
 }
 
 export function createContainer(env: Env = process.env): Container {
-  const orderRepository = createOrderRepository(env);
+  // Supabase client (optional — only created when env vars are set)
+  const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const supabaseServiceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const supabaseClient =
+    supabaseUrl && supabaseServiceRoleKey
+      ? createClient(supabaseUrl, supabaseServiceRoleKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        })
+      : null;
+  const logger = new ConsoleLogger();
+
+  // Spreadsheet repos (primary)
+  const spreadsheetOrderRepo = createOrderRepository(env);
+  const orderRepository: OrderRepository<Order> = supabaseClient
+    ? new DualWriteOrderRepository(
+        spreadsheetOrderRepo,
+        new SupabaseOrderRepository(supabaseClient),
+        logger,
+      )
+    : spreadsheetOrderRepo;
+
+  const auth = createAuth(env);
+  const spreadsheetId = resolveRequiredEnv('SHIPPING_SPREADSHEET_ID', env);
+  const labelSheetsClient = new GoogleSheetsClient({
+    spreadsheetId,
+    sheetName: env.SHIPPING_LABELS_SHEET_NAME?.trim() || 'ShippingLabels',
+    ...auth,
+  });
+  const spreadsheetLabelRepo = new SpreadsheetShippingLabelRepository(labelSheetsClient);
+  const shippingLabelRepository: ShippingLabelRepository<ShippingLabel> = supabaseClient
+    ? new DualWriteShippingLabelRepository(
+        spreadsheetLabelRepo,
+        new SupabaseShippingLabelRepository(supabaseClient),
+        logger,
+      )
+    : spreadsheetLabelRepo;
+
+  const spreadsheetTemplateRepo = createTemplateRepository(env);
+  const templateRepository = supabaseClient
+    ? new DualWriteMessageTemplateRepository(
+        spreadsheetTemplateRepo,
+        new SupabaseMessageTemplateRepository(supabaseClient),
+        logger,
+      )
+    : spreadsheetTemplateRepo;
+
   const overdueSpec = new OverdueOrderSpecification();
-  const templateRepository = createTemplateRepository(env);
   const purchaseThanksProductNameResolver = createPurchaseThanksProductNameResolver(env);
   const shippingMethodLabelResolver = createShippingMethodLabelResolver(env);
 
@@ -427,34 +469,33 @@ export function createContainer(env: Env = process.env): Container {
         new MessageGenerator(),
         shippingMethodLabelResolver,
       ),
-    getIssueShippingLabelUseCase: () => createIssueShippingLabelUseCase(env),
+    getIssueShippingLabelUseCase: () =>
+      createIssueShippingLabelUseCase(env, orderRepository, shippingLabelRepository),
     getFetchNewOrdersUseCase: (platform: 'minne' | 'creema') =>
       createFetchNewOrdersUseCase(env, orderRepository, platform),
     getUpdateMessageTemplateUseCase: () => new UpdateMessageTemplateUseCase(templateRepository),
     getSyncOrdersToDbUseCase: () => {
-      const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL?.trim();
-      const supabaseServiceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-      if (!supabaseUrl || !supabaseServiceRoleKey) {
+      if (!supabaseClient) {
         throw new Error(
           'Supabase 設定が不足しています: NEXT_PUBLIC_SUPABASE_URL と SUPABASE_SERVICE_ROLE_KEY を設定してください',
         );
       }
 
-      const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-
-      const auth = createAuth(env);
-      const spreadsheetId = resolveRequiredEnv('SHIPPING_SPREADSHEET_ID', env);
-      const labelSheetsClient = new GoogleSheetsClient({
-        spreadsheetId,
-        sheetName: env.SHIPPING_LABELS_SHEET_NAME?.trim() || 'ShippingLabels',
-        ...auth,
-      });
-      const labelRepository = new SpreadsheetShippingLabelRepository(labelSheetsClient);
-      const syncRepository = new SupabaseOrderSyncRepository(supabase);
-
-      return new SyncOrdersToDbUseCase(orderRepository, labelRepository, syncRepository);
+      const syncRepository = new SupabaseOrderSyncRepository(supabaseClient);
+      return new SyncOrdersToDbUseCase(orderRepository, shippingLabelRepository, syncRepository);
+    },
+    getRestoreFromDbUseCase: () => {
+      if (!supabaseClient) {
+        throw new Error('Supabase 設定が不足しています: 復元にはDBが必要です');
+      }
+      return new RestoreFromDbUseCase(
+        new SupabaseOrderRepository(supabaseClient),
+        spreadsheetOrderRepo,
+        new SupabaseShippingLabelRepository(supabaseClient),
+        spreadsheetLabelRepo,
+        new SupabaseMessageTemplateRepository(supabaseClient),
+        spreadsheetTemplateRepo,
+      );
     },
     getSalesSummaryUseCase: () => new GetSalesSummaryUseCase(orderRepository),
   };

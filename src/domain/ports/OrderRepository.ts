@@ -7,6 +7,7 @@ export interface OrderRepository<TOrder = Order> {
   findByStatus(status: OrderStatus): Promise<TOrder[]>;
   findByBuyerName(name: string): Promise<TOrder[]>;
   save(order: TOrder): Promise<void>;
+  saveAll(orders: TOrder[]): Promise<void>;
   exists(orderId: OrderId): Promise<boolean>;
   findAll(): Promise<TOrder[]>;
 }

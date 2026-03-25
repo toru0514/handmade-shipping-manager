@@ -5,4 +5,6 @@ export interface ShippingLabelRepository<TShippingLabel = unknown> {
   findById(labelId: LabelId): Promise<TShippingLabel | null>;
   findByOrderId(orderId: OrderId): Promise<TShippingLabel[]>;
   save(label: TShippingLabel): Promise<void>;
+  saveAll(labels: TShippingLabel[]): Promise<void>;
+  findAll(): Promise<TShippingLabel[]>;
 }
