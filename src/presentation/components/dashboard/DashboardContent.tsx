@@ -236,12 +236,16 @@ export function DashboardContent({ products, jobs, spreadsheetUrl }: Props) {
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
           {spreadsheetUrl && (
             <Button
-              variant="outlined"
+              variant="contained"
               size="small"
               href={spreadsheetUrl}
               target="_blank"
               rel="noopener noreferrer"
               startIcon={<OpenInNew />}
+              sx={{
+                backgroundColor: '#15803d',
+                '&:hover': { backgroundColor: '#166534' },
+              }}
             >
               <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
                 スプレッドシートを開く
