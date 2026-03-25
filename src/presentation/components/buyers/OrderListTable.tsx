@@ -12,19 +12,11 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import type { OrderSummaryDto } from '@/application/usecases/ListAllOrdersUseCase';
 import { PlatformChip, StatusChip } from '@/presentation/components/common';
+import { formatDate } from '@/presentation/utils/format';
 
 interface OrderListTableProps {
   orders: OrderSummaryDto[];
   isLoading: boolean;
-}
-
-function formatDate(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
 }
 
 export function OrderListTable({ orders, isLoading }: OrderListTableProps) {

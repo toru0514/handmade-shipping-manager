@@ -5,14 +5,11 @@ import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
 import Stack from '@mui/material/Stack';
 import type { IssueShippingLabelResultDto } from '@/application/usecases/IssueShippingLabelUseCase';
+import { formatDateTime } from '@/presentation/utils/format';
 
 interface LabelResultViewProps {
   readonly result: IssueShippingLabelResultDto;
   readonly onClose: () => void;
-}
-
-function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString('ja-JP');
 }
 
 export function LabelResultView({ result, onClose }: LabelResultViewProps) {

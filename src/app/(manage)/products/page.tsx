@@ -3,7 +3,7 @@ import { DashboardContent } from '@/presentation/components/dashboard/DashboardC
 
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage() {
+export default async function ProductsPage() {
   const [{ products, jobs }, spreadsheetUrl] = await Promise.all([
     getDashboardData(),
     getSpreadsheetUrl(),

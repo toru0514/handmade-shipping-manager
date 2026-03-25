@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import { MessagePreviewDialog } from '@/presentation/components/messages/MessagePreviewDialog';
+import { formatDateTime, shippingMethodLabel } from '@/presentation/utils/format';
 
 export interface ShipmentCompleteData {
   readonly orderId: string;
@@ -23,22 +24,6 @@ interface ShipmentCompleteMessageProps {
   readonly open: boolean;
   readonly data: ShipmentCompleteData | null;
   readonly onClose: () => void;
-}
-
-function formatDateTime(isoDate: string): string {
-  return new Date(isoDate).toLocaleString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function shippingMethodLabel(method: string): string {
-  if (method === 'click_post') return 'クリックポスト';
-  if (method === 'yamato_compact') return '宅急便コンパクト';
-  return method;
 }
 
 export function ShipmentCompleteMessage({ open, data, onClose }: ShipmentCompleteMessageProps) {

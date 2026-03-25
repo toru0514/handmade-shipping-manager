@@ -15,6 +15,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import type { MonthlySalesDto } from '@/application/usecases/GetSalesSummaryUseCase';
 import { EmptyState } from '@/presentation/components/common';
+import { formatCurrency } from '@/presentation/utils/format';
 
 interface SalesMonthlyChartProps {
   readonly breakdown: MonthlySalesDto[];
@@ -23,10 +24,6 @@ interface SalesMonthlyChartProps {
 function formatMonth(yearMonth: string): string {
   const [year, month] = yearMonth.split('-');
   return `${year}/${month}`;
-}
-
-function formatCurrency(value: number): string {
-  return `¥${value.toLocaleString('ja-JP')}`;
 }
 
 export function SalesMonthlyChart({ breakdown }: SalesMonthlyChartProps) {

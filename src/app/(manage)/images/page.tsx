@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { uploadImageToMicroCms } from '../../actions';
+import { uploadImageToMicroCms } from '@/app/(manage)/products/actions';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';

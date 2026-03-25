@@ -8,6 +8,7 @@ import Link from '@mui/material/Link';
 import Divider from '@mui/material/Divider';
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
 import { IssueLabelButton } from '@/presentation/components/labels/IssueLabelButton';
+import { formatDate, platformLabel } from '@/presentation/utils/format';
 
 interface PendingOrderCardProps {
   order: PendingOrderDto;
@@ -17,22 +18,6 @@ interface PendingOrderCardProps {
   isGeneratingPurchaseThanks?: boolean;
   isIssuingLabel?: boolean;
   canIssueLabel?: boolean;
-}
-
-function formatDate(isoString: string): string {
-  return new Date(isoString).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-}
-
-function platformLabel(platform: string): string {
-  const labels: Record<string, string> = {
-    minne: 'minne',
-    creema: 'creema',
-  };
-  return labels[platform] ?? platform;
 }
 
 export function PendingOrderCard({

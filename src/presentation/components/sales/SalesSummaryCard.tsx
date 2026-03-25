@@ -5,16 +5,13 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Paper from '@mui/material/Paper';
 import Typography from '@mui/material/Typography';
+import { formatCurrency } from '@/presentation/utils/format';
 
 interface SalesSummaryCardProps {
   readonly totalSales: number;
   readonly totalOrders: number;
   readonly averageOrderValue: number;
   readonly ordersWithMissingPrice?: number;
-}
-
-function formatCurrency(value: number): string {
-  return `¥${value.toLocaleString('ja-JP')}`;
 }
 
 export function SalesSummaryCard({

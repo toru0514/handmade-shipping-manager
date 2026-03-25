@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { fetchMicroCmsImages, type MicroCmsImage } from '@/app/dashboard/actions';
+import { fetchMicroCmsImages, type MicroCmsImage } from '@/app/(manage)/products/actions';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';

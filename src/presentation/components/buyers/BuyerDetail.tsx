@@ -12,21 +12,10 @@ import TableRow from '@mui/material/TableRow';
 import Stack from '@mui/material/Stack';
 import type { BuyerDetailDto } from '@/application/usecases/SearchBuyersUseCase';
 import { StatusChip } from '@/presentation/components/common';
+import { formatDate, formatCurrency } from '@/presentation/utils/format';
 
 interface BuyerDetailProps {
   readonly buyer: BuyerDetailDto | null;
-}
-
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(value);
 }
 
 export function BuyerDetail({ buyer }: BuyerDetailProps) {

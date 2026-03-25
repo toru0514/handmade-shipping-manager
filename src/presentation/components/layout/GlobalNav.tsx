@@ -32,10 +32,10 @@ const navItems = [
   { href: '/buyers', label: '購入者一覧', icon: <PeopleIcon fontSize="small" /> },
   { href: '/settings', label: '定型文設定', icon: <MessageIcon fontSize="small" /> },
   { href: '/sales', label: '売上集計', icon: <BarChartIcon fontSize="small" /> },
-  { href: '/dashboard', label: '商品管理', icon: <CategoryIcon fontSize="small" /> },
-  { href: '/dashboard/woods', label: '木材管理', icon: <ForestIcon fontSize="small" /> },
-  { href: '/dashboard/jobs', label: 'ジョブ', icon: <WorkIcon fontSize="small" /> },
-  { href: '/dashboard/images/upload', label: '画像管理', icon: <ImageIcon fontSize="small" /> },
+  { href: '/products', label: '商品管理', icon: <CategoryIcon fontSize="small" /> },
+  { href: '/woods', label: '木材管理', icon: <ForestIcon fontSize="small" /> },
+  { href: '/jobs', label: 'ジョブ', icon: <WorkIcon fontSize="small" /> },
+  { href: '/images', label: '画像管理', icon: <ImageIcon fontSize="small" /> },
 ];
 
 export function GlobalNav() {

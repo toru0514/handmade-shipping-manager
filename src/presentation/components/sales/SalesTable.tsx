@@ -12,23 +12,11 @@ import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import type { SalesOrderDto } from '@/application/usecases/GetSalesSummaryUseCase';
 import { PlatformChip } from '@/presentation/components/common';
+import { formatDate, formatCurrency } from '@/presentation/utils/format';
 
 interface SalesTableProps {
   readonly orders: SalesOrderDto[];
   readonly isLoading?: boolean;
-}
-
-function formatDate(isoString: string): string {
-  const date = new Date(isoString);
-  return date.toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-}
-
-function formatCurrency(value: number): string {
-  return `¥${value.toLocaleString('ja-JP')}`;
 }
 
 export function SalesTable({ orders, isLoading = false }: SalesTableProps) {

@@ -1,4 +1,4 @@
-import { getDashboardData } from '../actions';
+import { getDashboardData } from '@/app/(manage)/products/actions';
 import { JobsContent } from '@/presentation/components/dashboard/DashboardContent';
 
 export const dynamic = 'force-dynamic';

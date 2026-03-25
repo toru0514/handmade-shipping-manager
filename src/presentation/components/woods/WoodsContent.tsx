@@ -4,8 +4,8 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { WoodFormModal, type WoodFormData } from './WoodFormModal';
 import { useWoodEdit, useWoodDelete } from './use-wood-actions';
-import { addWoodAction } from '@/app/dashboard/woods/actions';
-import type { WoodMaterial } from '@/infrastructure/adapters/persistence/GoogleSheetsWoodRepository';
+import { addWoodAction } from '@/app/(manage)/woods/actions';
+import type { WoodMaterial } from '@/domain/types/wood';
 import { useToast } from '@/presentation/components/providers/ToastProvider';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -102,7 +102,7 @@ export function WoodsContent({ woods }: Props) {
                 }}
               >
                 <Link
-                  href={`/dashboard/woods/${encodeURIComponent(wood.id)}`}
+                  href={`/woods/${encodeURIComponent(wood.id)}`}
                   style={{ textDecoration: 'none' }}
                 >
                   {wood.imageUrl ? (
@@ -142,7 +142,7 @@ export function WoodsContent({ woods }: Props) {
                   >
                     <Typography
                       component={Link}
-                      href={`/dashboard/woods/${encodeURIComponent(wood.id)}`}
+                      href={`/woods/${encodeURIComponent(wood.id)}`}
                       variant="subtitle1"
                       fontWeight="bold"
                       sx={{

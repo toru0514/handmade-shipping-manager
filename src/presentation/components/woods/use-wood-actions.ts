@@ -1,7 +1,7 @@
 'use client';
 
 import { useTransition } from 'react';
-import { updateWoodAction, deleteWoodAction } from '@/app/dashboard/woods/actions';
+import { updateWoodAction, deleteWoodAction } from '@/app/(manage)/woods/actions';
 import { useToast } from '@/presentation/components/providers/ToastProvider';
 import type { WoodFormData } from './WoodFormModal';
 

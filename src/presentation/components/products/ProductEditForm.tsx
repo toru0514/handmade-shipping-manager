@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { getProductDetail, updateProduct, getFieldOptions } from '@/app/dashboard/actions';
+import { getProductDetail, updateProduct, getFieldOptions } from '@/app/(manage)/products/actions';
 import { ImagePickerDialog } from './ImagePickerDialog';
 import {
   FIELD_CONFIGS,
@@ -120,7 +120,7 @@ export function ProductEditForm({ productId }: Props) {
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <IconButton onClick={() => router.push('/dashboard')} size="small">
+          <IconButton onClick={() => router.push('/products')} size="small">
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h5" fontWeight="bold">

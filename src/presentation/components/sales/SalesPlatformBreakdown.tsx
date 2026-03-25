@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import type { PlatformSalesDto } from '@/application/usecases/GetSalesSummaryUseCase';
 import { EmptyState } from '@/presentation/components/common';
+import { formatCurrency } from '@/presentation/utils/format';
 
 interface SalesPlatformBreakdownProps {
   readonly breakdown: PlatformSalesDto[];
@@ -15,10 +16,6 @@ const PLATFORM_COLORS: Record<string, string> = {
   minne: '#EC4899', // pink-500
   creema: '#F97316', // orange-500
 };
-
-function formatCurrency(value: number): string {
-  return `¥${value.toLocaleString('ja-JP')}`;
-}
 
 export function SalesPlatformBreakdown({ breakdown }: SalesPlatformBreakdownProps) {
   const hasData = breakdown.some((b) => b.totalSales > 0);

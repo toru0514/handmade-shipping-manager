@@ -13,6 +13,7 @@ import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
 import Stack from '@mui/material/Stack';
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
+import { shippingMethodLabel } from '@/presentation/utils/format';
 
 interface ShipmentConfirmDialogProps {
   readonly open: boolean;
@@ -21,12 +22,6 @@ interface ShipmentConfirmDialogProps {
   readonly error?: string | null;
   readonly onClose: () => void;
   readonly onConfirm: (input: { shippingMethod: string; trackingNumber?: string }) => Promise<void>;
-}
-
-function shippingMethodLabel(method: string): string {
-  if (method === 'click_post') return 'クリックポスト';
-  if (method === 'yamato_compact') return '宅急便コンパクト';
-  return method;
 }
 
 export function ShipmentConfirmDialog({
