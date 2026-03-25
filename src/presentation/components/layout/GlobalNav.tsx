@@ -21,7 +21,6 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import MenuIcon from '@mui/icons-material/Menu';
 import CategoryIcon from '@mui/icons-material/Category';
 import ForestIcon from '@mui/icons-material/Forest';
-import WorkIcon from '@mui/icons-material/Work';
 import ImageIcon from '@mui/icons-material/Image';
 
 const DRAWER_WIDTH_OPEN = 208;
@@ -34,7 +33,6 @@ const navItems = [
   { href: '/sales', label: '売上集計', icon: <BarChartIcon fontSize="small" /> },
   { href: '/products', label: '商品管理', icon: <CategoryIcon fontSize="small" /> },
   { href: '/woods', label: '木材管理', icon: <ForestIcon fontSize="small" /> },
-  { href: '/jobs', label: 'ジョブ', icon: <WorkIcon fontSize="small" /> },
   { href: '/images', label: '画像管理', icon: <ImageIcon fontSize="small" /> },
 ];
 
