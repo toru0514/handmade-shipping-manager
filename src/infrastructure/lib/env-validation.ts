@@ -30,7 +30,7 @@ const ENV_VARS: EnvVarConfig[] = [
     description: 'Base64-encoded Google service account JSON',
   },
   {
-    name: 'GOOGLE_SHEETS_SPREADSHEET_ID',
+    name: 'PRODUCT_SPREADSHEET_ID',
     required: false, // Not required if using mock data
     description: 'Google Sheets spreadsheet ID',
   },
@@ -55,7 +55,7 @@ export function validateEnv(): ValidationResult {
         // Special case: Google Sheets vars are only required if not using mock data
         if (
           (config.name === 'GOOGLE_SERVICE_ACCOUNT_BASE64' ||
-            config.name === 'GOOGLE_SHEETS_SPREADSHEET_ID') &&
+            config.name === 'PRODUCT_SPREADSHEET_ID') &&
           useMockData
         ) {
           continue;

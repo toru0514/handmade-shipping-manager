@@ -6,11 +6,11 @@ export function getSheetsClient(): sheets_v4.Sheets {
   if (cachedSheetsClient) return cachedSheetsClient;
 
   const base64 = process.env.GOOGLE_SERVICE_ACCOUNT_BASE64;
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = process.env.PRODUCT_SPREADSHEET_ID;
 
   if (!base64 || !spreadsheetId) {
     throw new Error(
-      'GOOGLE_SERVICE_ACCOUNT_BASE64 / GOOGLE_SHEETS_SPREADSHEET_ID が設定されていません。',
+      'GOOGLE_SERVICE_ACCOUNT_BASE64 / PRODUCT_SPREADSHEET_ID が設定されていません。',
     );
   }
 
@@ -26,9 +26,9 @@ export function getSheetsClient(): sheets_v4.Sheets {
 }
 
 export function getSpreadsheetId(): string {
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = process.env.PRODUCT_SPREADSHEET_ID;
   if (!spreadsheetId) {
-    throw new Error('GOOGLE_SHEETS_SPREADSHEET_ID が設定されていません。');
+    throw new Error('PRODUCT_SPREADSHEET_ID が設定されていません。');
   }
   return spreadsheetId;
 }

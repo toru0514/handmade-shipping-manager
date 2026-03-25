@@ -1097,7 +1097,7 @@ export class GoogleSheetsProductRepository implements ProductRepositoryPort {
       return { headerRow, rows };
     } catch (error) {
       log.error('スプレッドシート読み込み失敗', error, {
-        spreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
+        spreadsheetId: process.env.PRODUCT_SPREADSHEET_ID,
       });
       throw error;
     }
