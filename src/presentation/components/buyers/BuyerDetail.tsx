@@ -1,6 +1,17 @@
 'use client';
 
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Stack from '@mui/material/Stack';
 import type { BuyerDetailDto } from '@/application/usecases/SearchBuyersUseCase';
+import { StatusChip } from '@/presentation/components/common';
 
 interface BuyerDetailProps {
   readonly buyer: BuyerDetailDto | null;
@@ -18,71 +29,72 @@ function formatCurrency(value: number): string {
   return new Intl.NumberFormat('ja-JP', { style: 'currency', currency: 'JPY' }).format(value);
 }
 
-function statusLabel(status: string): string {
-  if (status === 'pending') return '発送前';
-  if (status === 'shipped') return '発送済み';
-  return status;
-}
-
 export function BuyerDetail({ buyer }: BuyerDetailProps) {
   if (buyer === null) {
     return (
-      <section className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-500 shadow-sm">
-        購入者を選択すると詳細が表示されます
-      </section>
+      <Paper variant="outlined" sx={{ p: 2 }}>
+        <Typography color="text.secondary" variant="body2">
+          購入者を選択すると詳細が表示されます
+        </Typography>
+      </Paper>
     );
   }
 
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-lg font-semibold">購入者詳細: {buyer.buyerName} 様</h2>
+    <Paper variant="outlined" sx={{ p: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        購入者詳細: {buyer.buyerName} 様
+      </Typography>
 
-      <div className="mb-4 grid gap-2 rounded border border-gray-100 bg-gray-50 p-3 text-sm">
-        <p>購入回数: {buyer.orderCount}回</p>
-        <p>総購入金額: {formatCurrency(buyer.totalAmount)}</p>
-        <p>初回購入日: {formatDate(buyer.firstOrderedAt)}</p>
-        <p>最終購入日: {formatDate(buyer.lastOrderedAt)}</p>
-      </div>
+      <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+        <Stack spacing={0.5}>
+          <Typography variant="body2">購入回数: {buyer.orderCount}回</Typography>
+          <Typography variant="body2">総購入金額: {formatCurrency(buyer.totalAmount)}</Typography>
+          <Typography variant="body2">初回購入日: {formatDate(buyer.firstOrderedAt)}</Typography>
+          <Typography variant="body2">最終購入日: {formatDate(buyer.lastOrderedAt)}</Typography>
+        </Stack>
+      </Paper>
 
-      <div className="mb-4 rounded border border-gray-100 bg-gray-50 p-3 text-sm">
-        <p>
-          住所: {buyer.postalCode} {buyer.prefecture}
-          {buyer.city}
-          {buyer.street}
-          {buyer.building ?? ''}
-        </p>
-        <p>電話番号: {buyer.phoneNumber ?? '未登録'}</p>
-      </div>
+      <Paper variant="outlined" sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+        <Stack spacing={0.5}>
+          <Typography variant="body2">
+            住所: {buyer.postalCode} {buyer.prefecture}
+            {buyer.city}
+            {buyer.street}
+            {buyer.building ?? ''}
+          </Typography>
+          <Typography variant="body2">電話番号: {buyer.phoneNumber ?? '未登録'}</Typography>
+        </Stack>
+      </Paper>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[560px] border-collapse text-sm">
-          <thead>
-            <tr className="border-b bg-gray-50">
-              <th className="px-2 py-2 text-left">注文番号</th>
-              <th className="px-2 py-2 text-left">購入日</th>
-              <th className="px-2 py-2 text-left">プラットフォーム</th>
-              <th className="px-2 py-2 text-left">購入品</th>
-              <th className="px-2 py-2 text-right">金額</th>
-              <th className="px-2 py-2 text-left">ステータス</th>
-            </tr>
-          </thead>
-          <tbody>
+      <TableContainer component={Box}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>注文番号</TableCell>
+              <TableCell>購入日</TableCell>
+              <TableCell>プラットフォーム</TableCell>
+              <TableCell>購入品</TableCell>
+              <TableCell align="right">金額</TableCell>
+              <TableCell>ステータス</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
             {buyer.orderHistory.map((order) => (
-              <tr
-                key={`${order.platform}-${order.orderId}-${order.orderedAt}`}
-                className="border-b"
-              >
-                <td className="px-2 py-2">{order.orderId}</td>
-                <td className="px-2 py-2">{formatDate(order.orderedAt)}</td>
-                <td className="px-2 py-2">{order.platform}</td>
-                <td className="px-2 py-2">{order.productName}</td>
-                <td className="px-2 py-2 text-right">{formatCurrency(order.price)}</td>
-                <td className="px-2 py-2">{statusLabel(order.status)}</td>
-              </tr>
+              <TableRow key={`${order.platform}-${order.orderId}-${order.orderedAt}`}>
+                <TableCell>{order.orderId}</TableCell>
+                <TableCell>{formatDate(order.orderedAt)}</TableCell>
+                <TableCell>{order.platform}</TableCell>
+                <TableCell>{order.productName}</TableCell>
+                <TableCell align="right">{formatCurrency(order.price)}</TableCell>
+                <TableCell>
+                  <StatusChip status={order.status} />
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
   );
 }

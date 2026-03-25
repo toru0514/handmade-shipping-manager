@@ -1,3 +1,5 @@
+import Button from '@mui/material/Button';
+
 interface FetchOrdersButtonProps {
   platform: 'minne' | 'creema';
   isLoading: boolean;
@@ -6,13 +8,14 @@ interface FetchOrdersButtonProps {
 
 export function FetchOrdersButton({ platform, isLoading, onClick }: FetchOrdersButtonProps) {
   return (
-    <button
-      type="button"
-      className="rounded bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+    <Button
+      variant="contained"
+      size="small"
       disabled={isLoading}
       onClick={onClick}
+      sx={{ bgcolor: 'grey.800', '&:hover': { bgcolor: 'grey.900' } }}
     >
       {isLoading ? `${platform} 取得中...` : `${platform} 未読を取得 ▶`}
-    </button>
+    </Button>
   );
 }

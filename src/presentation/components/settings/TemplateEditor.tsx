@@ -1,6 +1,10 @@
 'use client';
 
 import { FormEvent } from 'react';
+import Button from '@mui/material/Button';
+import TextField from '@mui/material/TextField';
+import Paper from '@mui/material/Paper';
+import Box from '@mui/material/Box';
 
 interface TemplateEditorProps {
   readonly value: string;
@@ -25,45 +29,29 @@ export function TemplateEditor({
   }
 
   return (
-    <form
-      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-      onSubmit={(event) => void handleSubmit(event)}
-    >
-      <label htmlFor="template-content" className="mb-2 block text-sm font-medium text-gray-700">
-        テンプレート本文
-      </label>
-      <textarea
-        id="template-content"
-        className="min-h-64 w-full rounded border border-gray-300 px-3 py-2 text-sm"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
+    <Paper variant="outlined" sx={{ p: 2 }}>
+      <form onSubmit={(event) => void handleSubmit(event)}>
+        <TextField
+          fullWidth
+          multiline
+          minRows={10}
+          label="テンプレート本文"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
 
-      <div className="mt-4 flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100 disabled:opacity-60"
-          onClick={() => void onResetToDefault()}
-          disabled={isSaving}
-        >
-          デフォルトに戻す
-        </button>
-        <button
-          type="button"
-          className="rounded border border-gray-300 px-4 py-2 text-sm hover:bg-gray-100 disabled:opacity-60"
-          onClick={onPreview}
-          disabled={isSaving}
-        >
-          プレビュー
-        </button>
-        <button
-          type="submit"
-          className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
-          disabled={isSaving}
-        >
-          {isSaving ? '保存中...' : '保存'}
-        </button>
-      </div>
-    </form>
+        <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1 }}>
+          <Button variant="outlined" onClick={() => void onResetToDefault()} disabled={isSaving}>
+            デフォルトに戻す
+          </Button>
+          <Button variant="outlined" onClick={onPreview} disabled={isSaving}>
+            プレビュー
+          </Button>
+          <Button type="submit" variant="contained" disabled={isSaving}>
+            {isSaving ? '保存中...' : '保存'}
+          </Button>
+        </Box>
+      </form>
+    </Paper>
   );
 }

@@ -1,7 +1,11 @@
 'use client';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
 import type { PlatformSalesDto } from '@/application/usecases/GetSalesSummaryUseCase';
+import { EmptyState } from '@/presentation/components/common';
 
 interface SalesPlatformBreakdownProps {
   readonly breakdown: PlatformSalesDto[];
@@ -20,14 +24,7 @@ export function SalesPlatformBreakdown({ breakdown }: SalesPlatformBreakdownProp
   const hasData = breakdown.some((b) => b.totalSales > 0);
 
   if (!hasData) {
-    return (
-      <div
-        className="flex h-64 items-center justify-center rounded-lg border border-gray-200 bg-white p-4"
-        data-testid="sales-platform-breakdown-empty"
-      >
-        <p className="text-gray-500">データがありません</p>
-      </div>
-    );
+    return <EmptyState message="データがありません" data-testid="sales-platform-breakdown-empty" />;
   }
 
   const data = breakdown
@@ -39,12 +36,11 @@ export function SalesPlatformBreakdown({ breakdown }: SalesPlatformBreakdownProp
     }));
 
   return (
-    <div
-      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-      data-testid="sales-platform-breakdown"
-    >
-      <h3 className="mb-4 text-sm font-medium text-gray-700">プラットフォーム別構成比</h3>
-      <div className="h-64">
+    <Paper variant="outlined" sx={{ p: 2 }} data-testid="sales-platform-breakdown">
+      <Typography variant="body2" color="text.secondary" fontWeight={500} sx={{ mb: 2 }}>
+        プラットフォーム別構成比
+      </Typography>
+      <Box sx={{ height: 256 }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
@@ -71,7 +67,7 @@ export function SalesPlatformBreakdown({ breakdown }: SalesPlatformBreakdownProp
             <Legend />
           </PieChart>
         </ResponsiveContainer>
-      </div>
-    </div>
+      </Box>
+    </Paper>
   );
 }

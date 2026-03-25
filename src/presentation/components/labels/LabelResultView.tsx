@@ -1,3 +1,9 @@
+import Alert from '@mui/material/Alert';
+import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
 import type { IssueShippingLabelResultDto } from '@/application/usecases/IssueShippingLabelUseCase';
 
 interface LabelResultViewProps {
@@ -19,90 +25,101 @@ export function LabelResultView({ result, onClose }: LabelResultViewProps) {
   const isExpired = expiresAt !== null && expiresAt.getTime() < Date.now();
 
   return (
-    <section
+    <Paper
+      variant="outlined"
+      component="section"
       aria-label="伝票発行結果"
-      className="mt-4 rounded border border-emerald-200 bg-emerald-50 p-4"
+      sx={{ mt: 2, p: 2, borderColor: 'success.main', bgcolor: 'success.50' }}
     >
-      <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-base font-semibold text-emerald-900">伝票を発行しました</h2>
-        <button
-          type="button"
-          className="rounded border border-emerald-400 bg-white px-2 py-1 text-sm text-emerald-700 hover:bg-emerald-100"
-          onClick={onClose}
-        >
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+        <Typography variant="subtitle2" color="success.dark">
+          伝票を発行しました
+        </Typography>
+        <Button size="small" variant="outlined" color="success" onClick={onClose}>
           閉じる
-        </button>
-      </div>
+        </Button>
+      </Box>
 
       {result.warnings && result.warnings.length > 0 && (
-        <div className="mb-3 rounded bg-yellow-100 px-3 py-2 text-sm text-yellow-800" role="alert">
+        <Alert severity="warning" sx={{ mb: 1.5 }}>
           {result.warnings.map((warning) => (
-            <p key={warning}>{warning}</p>
+            <Typography key={warning} variant="body2">
+              {warning}
+            </Typography>
           ))}
-        </div>
+        </Alert>
       )}
 
-      <dl className="grid gap-1 text-sm text-emerald-900">
-        <div>
-          <dt className="inline font-medium">注文ID:</dt>{' '}
-          <dd className="inline">{result.orderId}</dd>
-        </div>
-        <div>
-          <dt className="inline font-medium">伝票ID:</dt>{' '}
-          <dd className="inline">{result.labelId}</dd>
-        </div>
-        <div>
-          <dt className="inline font-medium">配送方法:</dt>{' '}
-          <dd className="inline">{result.shippingMethod}</dd>
-        </div>
-        <div>
-          <dt className="inline font-medium">発行日時:</dt>{' '}
-          <dd className="inline">{formatDateTime(result.issuedAt)}</dd>
-        </div>
+      <Stack spacing={0.5} sx={{ fontSize: '0.875rem' }}>
+        <Typography variant="body2">
+          <strong>注文ID:</strong> {result.orderId}
+        </Typography>
+        <Typography variant="body2">
+          <strong>伝票ID:</strong> {result.labelId}
+        </Typography>
+        <Typography variant="body2">
+          <strong>配送方法:</strong> {result.shippingMethod}
+        </Typography>
+        <Typography variant="body2">
+          <strong>発行日時:</strong> {formatDateTime(result.issuedAt)}
+        </Typography>
         {expiresAt && (
-          <div>
-            <dt className="inline font-medium">有効期限:</dt>{' '}
-            <dd className="inline">{formatDateTime(expiresAt.toISOString())}</dd>
-          </div>
+          <Typography variant="body2">
+            <strong>有効期限:</strong> {formatDateTime(expiresAt.toISOString())}
+          </Typography>
         )}
         {result.trackingNumber && (
-          <div>
-            <dt className="inline font-medium">追跡番号:</dt>{' '}
-            <dd className="inline">{result.trackingNumber}</dd>
-          </div>
+          <Typography variant="body2">
+            <strong>追跡番号:</strong> {result.trackingNumber}
+          </Typography>
         )}
-      </dl>
+      </Stack>
 
       {isYamatoCompact && result.qrCode && (
-        <div className="mt-3">
+        <Box sx={{ mt: 1.5 }}>
           {isExpired && (
-            <div className="mb-3 rounded bg-red-100 px-3 py-2 text-sm text-red-700" role="alert">
+            <Alert severity="error" sx={{ mb: 1.5 }}>
               このQRコードは有効期限切れです
-            </div>
+            </Alert>
           )}
-          <p className="mb-2 text-sm font-medium text-emerald-900">QRコード</p>
-          <img
+          <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
+            QRコード
+          </Typography>
+          <Box
+            component="img"
             alt="宅急便コンパクトQRコード"
-            className="h-40 w-40 rounded border border-emerald-200 bg-white p-2"
             src={result.qrCode}
+            sx={{
+              width: 160,
+              height: 160,
+              borderRadius: 1,
+              border: 1,
+              borderColor: 'success.200',
+              bgcolor: 'background.paper',
+              p: 1,
+            }}
           />
           {result.waybillNumber && (
-            <p className="mt-2 text-sm text-emerald-900">
-              送り状番号: <span className="font-medium">{result.waybillNumber}</span>
-            </p>
+            <Typography variant="body2" sx={{ mt: 1 }}>
+              送り状番号: <strong>{result.waybillNumber}</strong>
+            </Typography>
           )}
-        </div>
+        </Box>
       )}
 
       {pdfDataUrl && (
-        <a
-          className="mt-3 inline-flex rounded bg-emerald-700 px-3 py-1.5 text-sm text-white hover:bg-emerald-800"
+        <Button
+          variant="contained"
+          color="success"
+          size="small"
+          component="a"
           download={`${result.labelId}.pdf`}
           href={pdfDataUrl}
+          sx={{ mt: 1.5 }}
         >
           PDFをダウンロード
-        </a>
+        </Button>
       )}
-    </section>
+    </Paper>
   );
 }

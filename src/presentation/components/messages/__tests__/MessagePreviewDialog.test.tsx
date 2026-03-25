@@ -33,7 +33,7 @@ describe('MessagePreviewDialog', () => {
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith('山田 太郎 様\nありがとうございます。');
-      expect(screen.getByRole('status')).toHaveTextContent('コピーしました');
+      expect(screen.getByText('コピーしました')).toBeInTheDocument();
     });
 
     fireEvent.click(screen.getByRole('button', { name: '閉じる' }));

@@ -107,7 +107,7 @@ describe('PendingOrderCard', () => {
     expect(screen.getByText('creema')).toBeInTheDocument();
   });
 
-  it('超過注文は赤枠スタイルが適用される', () => {
+  it('超過注文はカードとアラートが表示される', () => {
     render(
       <PendingOrderCard
         order={createDto({ isOverdue: true, daysSinceOrder: 4 })}
@@ -117,11 +117,11 @@ describe('PendingOrderCard', () => {
     );
 
     const card = screen.getByTestId('order-card-ORD-001');
-    expect(card.className).toContain('border-red-400');
-    expect(card.className).toContain('bg-red-50');
+    expect(card).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('3日以上経過しています');
   });
 
-  it('通常注文はデフォルトスタイルが適用される', () => {
+  it('通常注文にはアラートが表示されない', () => {
     render(
       <PendingOrderCard
         order={createDto({ isOverdue: false })}
@@ -131,8 +131,8 @@ describe('PendingOrderCard', () => {
     );
 
     const card = screen.getByTestId('order-card-ORD-001');
-    expect(card.className).toContain('border-gray-200');
-    expect(card.className).toContain('bg-white');
+    expect(card).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('購入お礼生成中はボタンが無効化される', () => {

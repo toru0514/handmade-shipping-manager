@@ -270,7 +270,7 @@ describe('OrdersPage (UC-006)', () => {
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith('山田 太郎 様\nご購入ありがとうございます。');
-      expect(screen.getByRole('status')).toHaveTextContent('コピーしました');
+      expect(screen.getByText('コピーしました')).toBeInTheDocument();
     });
   });
 
@@ -352,7 +352,7 @@ describe('OrdersPage (UC-006)', () => {
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith('山田 太郎 様\n発送しました。');
-      expect(screen.getByRole('status')).toHaveTextContent('コピーしました');
+      expect(screen.getByText('コピーしました')).toBeInTheDocument();
     });
   });
 
@@ -461,9 +461,12 @@ describe('OrdersPage (UC-006)', () => {
       expect(screen.getByTestId('order-card-ORD-010')).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByLabelText('配送方法'), {
-      target: { value: 'yamato_compact' },
-    });
+    // MUI Select: open dropdown and select option
+    const shippingSelect = screen.getByLabelText('配送方法');
+    fireEvent.mouseDown(shippingSelect);
+    const listbox = within(screen.getByRole('listbox'));
+    fireEvent.click(listbox.getByText('宅急便コンパクト'));
+
     fireEvent.click(screen.getByRole('button', { name: '伝票発行' }));
 
     await waitFor(() => {

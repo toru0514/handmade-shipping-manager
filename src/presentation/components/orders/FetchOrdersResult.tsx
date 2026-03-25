@@ -1,3 +1,8 @@
+import Alert from '@mui/material/Alert';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import Stack from '@mui/material/Stack';
+import Box from '@mui/material/Box';
 import type { FetchNewOrdersResult } from '@/application/usecases/FetchNewOrdersUseCase';
 
 interface FetchOrdersResultProps {
@@ -11,32 +16,39 @@ export function FetchOrdersResult({ result, requestError }: FetchOrdersResultPro
   }
 
   return (
-    <div className="mt-3 space-y-2">
-      {requestError && (
-        <div className="rounded bg-red-100 px-4 py-3 text-sm text-red-700" role="alert">
-          {requestError}
-        </div>
-      )}
+    <Stack spacing={1} sx={{ mt: 1.5 }}>
+      {requestError && <Alert severity="error">{requestError}</Alert>}
 
       {result && (
-        <section className="rounded border border-gray-200 bg-white p-4" aria-label="取得結果">
-          <p className="text-sm text-emerald-700">✓ {result.fetched}件取得</p>
-          <p className="text-sm text-gray-700">- {result.skipped}件スキップ（重複）</p>
+        <Paper variant="outlined" sx={{ p: 2 }} component="section" aria-label="取得結果">
+          <Typography variant="body2" color="success.main">
+            ✓ {result.fetched}件取得
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            - {result.skipped}件スキップ（重複）
+          </Typography>
           {result.errors.length > 0 && (
-            <p className="text-sm text-red-700">✗ {result.errors.length}件エラー</p>
+            <Typography variant="body2" color="error">
+              ✗ {result.errors.length}件エラー
+            </Typography>
           )}
 
           {result.errors.length > 0 && (
-            <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-red-700" role="list">
+            <Box component="ul" role="list" sx={{ mt: 1, pl: 2.5 }}>
               {result.errors.map((error, index) => (
-                <li key={`${error.orderId}-${index}`}>
+                <Typography
+                  component="li"
+                  variant="body2"
+                  color="error"
+                  key={`${error.orderId}-${index}`}
+                >
                   {error.orderId || '(orderId なし)'}: {error.reason}
-                </li>
+                </Typography>
               ))}
-            </ul>
+            </Box>
           )}
-        </section>
+        </Paper>
       )}
-    </div>
+    </Stack>
   );
 }

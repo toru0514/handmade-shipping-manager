@@ -1,5 +1,8 @@
 'use client';
 
+import Button from '@mui/material/Button';
+import ContentCopy from '@mui/icons-material/ContentCopy';
+
 interface CopyToClipboardButtonProps {
   readonly content: string;
   readonly onCopied?: () => void;
@@ -21,12 +24,8 @@ export function CopyToClipboardButton({ content, onCopied, onError }: CopyToClip
   }
 
   return (
-    <button
-      type="button"
-      className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
-      onClick={() => void handleCopy()}
-    >
+    <Button variant="contained" startIcon={<ContentCopy />} onClick={() => void handleCopy()}>
       コピー
-    </button>
+    </Button>
   );
 }

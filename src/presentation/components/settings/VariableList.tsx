@@ -1,5 +1,12 @@
 'use client';
 
+import Button from '@mui/material/Button';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import List from '@mui/material/List';
+import ListItem from '@mui/material/ListItem';
+import ListItemText from '@mui/material/ListItemText';
+import Chip from '@mui/material/Chip';
 import { TemplateVariableDefinition } from '@/application/usecases/UpdateMessageTemplateUseCase';
 
 interface VariableListProps {
@@ -9,23 +16,30 @@ interface VariableListProps {
 
 export function VariableList({ variables, onInsert }: VariableListProps) {
   return (
-    <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-lg font-semibold">利用可能な変数</h2>
-      <ul className="space-y-2">
+    <Paper variant="outlined" sx={{ p: 2 }}>
+      <Typography variant="h6" gutterBottom>
+        利用可能な変数
+      </Typography>
+      <List dense disablePadding>
         {variables.map((variable) => (
-          <li key={variable.name} className="flex items-center justify-between gap-3">
-            <code className="rounded bg-gray-100 px-2 py-1 text-sm">{`{{${variable.name}}}`}</code>
-            <span className="flex-1 text-sm text-gray-700">{variable.label}</span>
-            <button
-              type="button"
-              className="rounded border border-gray-300 px-3 py-1 text-xs hover:bg-gray-100"
-              onClick={() => onInsert(variable.name)}
-            >
-              挿入
-            </button>
-          </li>
+          <ListItem
+            key={variable.name}
+            secondaryAction={
+              <Button size="small" variant="outlined" onClick={() => onInsert(variable.name)}>
+                挿入
+              </Button>
+            }
+          >
+            <Chip
+              label={`{{${variable.name}}}`}
+              size="small"
+              variant="outlined"
+              sx={{ mr: 1.5, fontFamily: 'monospace' }}
+            />
+            <ListItemText primary={variable.label} primaryTypographyProps={{ variant: 'body2' }} />
+          </ListItem>
         ))}
-      </ul>
-    </section>
+      </List>
+    </Paper>
   );
 }

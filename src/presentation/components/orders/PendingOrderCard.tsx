@@ -1,3 +1,11 @@
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import Typography from '@mui/material/Typography';
+import Button from '@mui/material/Button';
+import Box from '@mui/material/Box';
+import Alert from '@mui/material/Alert';
+import Link from '@mui/material/Link';
+import Divider from '@mui/material/Divider';
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
 import { IssueLabelButton } from '@/presentation/components/labels/IssueLabelButton';
 
@@ -37,74 +45,95 @@ export function PendingOrderCard({
   canIssueLabel = true,
 }: PendingOrderCardProps) {
   return (
-    <div
-      className={`rounded-lg border p-4 shadow-sm ${
-        order.isOverdue ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-white'
-      }`}
+    <Card
+      variant="outlined"
       data-testid={`order-card-${order.orderId}`}
+      sx={{
+        borderColor: order.isOverdue ? 'error.main' : 'divider',
+        bgcolor: order.isOverdue ? 'error.50' : 'background.paper',
+      }}
     >
-      <div className="mb-2 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-500">{platformLabel(order.platform)}</span>
-        {order.transactionUrl ? (
-          <a
-            href={order.transactionUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-gray-400 hover:text-blue-500 hover:underline"
+      <CardContent>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="body2" color="text.secondary" fontWeight={500}>
+            {platformLabel(order.platform)}
+          </Typography>
+          {order.transactionUrl ? (
+            <Link
+              href={order.transactionUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              variant="body2"
+              color="text.disabled"
+              underline="hover"
+            >
+              #{order.orderId}
+            </Link>
+          ) : (
+            <Typography variant="body2" color="text.disabled">
+              #{order.orderId}
+            </Typography>
+          )}
+        </Box>
+
+        <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+          {order.buyerName}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1.5 }}>
+          {order.productName}
+        </Typography>
+
+        <Box
+          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}
+        >
+          <Typography variant="body2" color="text.secondary">
+            注文日: {formatDate(order.orderedAt)}
+          </Typography>
+          <Typography
+            variant="body2"
+            color={order.isOverdue ? 'error' : 'text.secondary'}
+            fontWeight={order.isOverdue ? 700 : 400}
           >
-            #{order.orderId}
-          </a>
-        ) : (
-          <span className="text-sm text-gray-400">#{order.orderId}</span>
+            {order.daysSinceOrder}日経過
+          </Typography>
+        </Box>
+
+        {order.isOverdue && (
+          <Alert severity="error" sx={{ mb: 1.5 }}>
+            3日以上経過しています
+          </Alert>
         )}
-      </div>
 
-      <h3 className="mb-1 text-lg font-semibold">{order.buyerName}</h3>
-      <p className="mb-3 text-sm text-gray-600">{order.productName}</p>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="contained"
+            size="small"
+            color="success"
+            onClick={() => onRequestShipmentComplete(order)}
+          >
+            発送完了
+          </Button>
+          <Button
+            variant="contained"
+            size="small"
+            disabled={isGeneratingPurchaseThanks}
+            onClick={() => onRequestPurchaseThanks(order)}
+          >
+            {isGeneratingPurchaseThanks ? '生成中...' : '購入お礼'}
+          </Button>
+        </Box>
 
-      <div className="mb-3 flex items-center justify-between text-sm">
-        <span className="text-gray-500">注文日: {formatDate(order.orderedAt)}</span>
-        <span className={order.isOverdue ? 'font-bold text-red-600' : 'text-gray-500'}>
-          {order.daysSinceOrder}日経過
-        </span>
-      </div>
-
-      {order.isOverdue && (
-        <div
-          className="mb-3 rounded bg-red-100 px-3 py-1.5 text-sm font-medium text-red-700"
-          role="alert"
-        >
-          3日以上経過しています
-        </div>
-      )}
-
-      <div className="flex gap-2">
-        <button
-          type="button"
-          className="rounded bg-emerald-600 px-3 py-1.5 text-sm text-white hover:bg-emerald-700"
-          onClick={() => onRequestShipmentComplete(order)}
-        >
-          発送完了
-        </button>
-        <button
-          type="button"
-          className="rounded bg-blue-500 px-3 py-1.5 text-sm text-white hover:bg-blue-600 disabled:opacity-50"
-          disabled={isGeneratingPurchaseThanks}
-          onClick={() => onRequestPurchaseThanks(order)}
-        >
-          {isGeneratingPurchaseThanks ? '生成中...' : '購入お礼'}
-        </button>
-      </div>
-
-      {onRequestIssueLabel && (
-        <div className="mt-3 border-t border-gray-100 pt-3">
-          <IssueLabelButton
-            disabled={!canIssueLabel}
-            isIssuing={isIssuingLabel}
-            onIssue={async (shippingMethod) => onRequestIssueLabel(order, shippingMethod)}
-          />
-        </div>
-      )}
-    </div>
+        {onRequestIssueLabel && (
+          <>
+            <Divider sx={{ my: 1.5 }} />
+            <IssueLabelButton
+              disabled={!canIssueLabel}
+              isIssuing={isIssuingLabel}
+              onIssue={async (shippingMethod) => onRequestIssueLabel(order, shippingMethod)}
+            />
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }

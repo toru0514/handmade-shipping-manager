@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import type { PendingOrderDto } from '@/application/usecases/ListPendingOrdersUseCase';
 import { ShipmentConfirmDialog } from '../ShipmentConfirmDialog';
@@ -49,9 +49,12 @@ describe('ShipmentConfirmDialog', () => {
     expect(screen.getByText('注文番号: ORD-001')).toBeInTheDocument();
     expect(screen.getByText('購入者: 山田 太郎 様')).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText('配送方法'), {
-      target: { value: 'yamato_compact' },
-    });
+    // MUI Select: open dropdown and select option
+    const shippingSelect = screen.getByLabelText('配送方法');
+    fireEvent.mouseDown(shippingSelect);
+    const listbox = within(screen.getByRole('listbox'));
+    fireEvent.click(listbox.getByText('宅急便コンパクト'));
+
     fireEvent.change(screen.getByLabelText('追跡番号（任意）'), {
       target: { value: 'YMT1234567' },
     });

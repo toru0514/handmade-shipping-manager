@@ -68,7 +68,7 @@ describe('ShipmentCompleteMessage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'コピー' }));
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith('山田 太郎 様\n発送しました。');
-      expect(screen.getByRole('status')).toHaveTextContent('コピーしました');
+      expect(screen.getByText('コピーしました')).toBeInTheDocument();
     });
   });
 

@@ -53,7 +53,7 @@ describe('BuyerDetail', () => {
     expect(screen.getByText('電話番号: 09012345678')).toBeInTheDocument();
     expect(screen.getByText('ORD-001')).toBeInTheDocument();
     expect(screen.getByText('ORD-002')).toBeInTheDocument();
-    expect(screen.getByText('発送前')).toBeInTheDocument();
-    expect(screen.getByText('発送済み')).toBeInTheDocument();
+    expect(screen.getByText('未発送')).toBeInTheDocument();
+    expect(screen.getByText('発送済')).toBeInTheDocument();
   });
 });

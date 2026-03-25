@@ -10,7 +10,11 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
+import Paper from '@mui/material/Paper';
+import Typography from '@mui/material/Typography';
+import Box from '@mui/material/Box';
 import type { MonthlySalesDto } from '@/application/usecases/GetSalesSummaryUseCase';
+import { EmptyState } from '@/presentation/components/common';
 
 interface SalesMonthlyChartProps {
   readonly breakdown: MonthlySalesDto[];
@@ -29,14 +33,7 @@ export function SalesMonthlyChart({ breakdown }: SalesMonthlyChartProps) {
   const hasData = breakdown.some((b) => b.totalSales > 0);
 
   if (!hasData) {
-    return (
-      <div
-        className="flex h-64 items-center justify-center rounded-lg border border-gray-200 bg-white p-4"
-        data-testid="sales-monthly-chart-empty"
-      >
-        <p className="text-gray-500">データがありません</p>
-      </div>
-    );
+    return <EmptyState message="データがありません" data-testid="sales-monthly-chart-empty" />;
   }
 
   const data = breakdown.map((b) => ({
@@ -46,12 +43,11 @@ export function SalesMonthlyChart({ breakdown }: SalesMonthlyChartProps) {
   }));
 
   return (
-    <div
-      className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm"
-      data-testid="sales-monthly-chart"
-    >
-      <h3 className="mb-4 text-sm font-medium text-gray-700">月別売上推移</h3>
-      <div className="h-64">
+    <Paper variant="outlined" sx={{ p: 2 }} data-testid="sales-monthly-chart">
+      <Typography variant="body2" color="text.secondary" fontWeight={500} sx={{ mb: 2 }}>
+        月別売上推移
+      </Typography>
+      <Box sx={{ height: 256 }}>
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" />
@@ -82,7 +78,7 @@ export function SalesMonthlyChart({ breakdown }: SalesMonthlyChartProps) {
             <Bar yAxisId="right" dataKey="件数" fill="#10B981" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
-      </div>
-    </div>
+      </Box>
+    </Paper>
   );
 }

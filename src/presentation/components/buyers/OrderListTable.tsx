@@ -1,6 +1,17 @@
 'use client';
 
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import Paper from '@mui/material/Paper';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Typography from '@mui/material/Typography';
 import type { OrderSummaryDto } from '@/application/usecases/ListAllOrdersUseCase';
+import { PlatformChip, StatusChip } from '@/presentation/components/common';
 
 interface OrderListTableProps {
   orders: OrderSummaryDto[];
@@ -16,144 +27,87 @@ function formatDate(isoString: string): string {
   });
 }
 
-function getPlatformBadgeClass(platform: string): string {
-  switch (platform) {
-    case 'minne':
-      return 'bg-pink-100 text-pink-800';
-    case 'creema':
-      return 'bg-orange-100 text-orange-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-}
-
-function getStatusBadgeClass(status: string): string {
-  switch (status) {
-    case 'pending':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'shipped':
-      return 'bg-green-100 text-green-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-}
-
-function getStatusLabel(status: string): string {
-  switch (status) {
-    case 'pending':
-      return '未発送';
-    case 'shipped':
-      return '発送済';
-    default:
-      return status;
-  }
-}
-
 export function OrderListTable({ orders, isLoading }: OrderListTableProps) {
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-        <p className="text-gray-500">読み込み中...</p>
-      </div>
+      <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
+        <CircularProgress size={24} sx={{ mr: 1 }} />
+        <Typography variant="body2" color="text.secondary" component="span">
+          読み込み中...
+        </Typography>
+      </Paper>
     );
   }
 
   if (orders.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-8 text-center">
-        <p className="text-gray-500">注文データがありません</p>
-      </div>
+      <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
+        <Typography color="text.secondary">注文データがありません</Typography>
+      </Paper>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white shadow-sm">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-            >
-              PF
-            </th>
-            <th
-              scope="col"
-              className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-            >
-              購入者名
-            </th>
-            <th
-              scope="col"
-              className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-            >
-              住所
-            </th>
-            <th
-              scope="col"
-              className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-            >
-              商品名
-            </th>
-            <th
-              scope="col"
-              className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-            >
-              ステータス
-            </th>
-            <th
-              scope="col"
-              className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-            >
-              購入日
-            </th>
-            <th
-              scope="col"
-              className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500"
-            >
-              発送日
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200 bg-white">
+    <TableContainer component={Paper} variant="outlined">
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell>PF</TableCell>
+            <TableCell>購入者名</TableCell>
+            <TableCell>住所</TableCell>
+            <TableCell>商品名</TableCell>
+            <TableCell>ステータス</TableCell>
+            <TableCell>購入日</TableCell>
+            <TableCell>発送日</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
           {orders.map((order) => (
-            <tr
-              key={`${order.platform}-${order.orderId}-${order.orderedAt}`}
-              className="hover:bg-gray-50"
-            >
-              <td className="whitespace-nowrap px-4 py-3">
-                <span
-                  className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getPlatformBadgeClass(order.platform)}`}
+            <TableRow key={`${order.platform}-${order.orderId}-${order.orderedAt}`} hover>
+              <TableCell>
+                <PlatformChip platform={order.platform} />
+              </TableCell>
+              <TableCell>
+                <Typography variant="body2" fontWeight={500}>
+                  {order.buyerName}
+                </Typography>
+              </TableCell>
+              <TableCell>
+                <Typography variant="body2" color="text.secondary">
+                  {order.prefecture}
+                </Typography>
+              </TableCell>
+              <TableCell>
+                <Box
+                  sx={{
+                    maxWidth: 200,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
                 >
-                  {order.platform}
-                </span>
-              </td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-gray-900">
-                {order.buyerName}
-              </td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                {order.prefecture}
-              </td>
-              <td className="max-w-xs truncate px-4 py-3 text-sm text-gray-500">
-                {order.productName}
-              </td>
-              <td className="whitespace-nowrap px-4 py-3">
-                <span
-                  className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusBadgeClass(order.status)}`}
-                >
-                  {getStatusLabel(order.status)}
-                </span>
-              </td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                {formatDate(order.orderedAt)}
-              </td>
-              <td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500">
-                {order.shippedAt ? formatDate(order.shippedAt) : '-'}
-              </td>
-            </tr>
+                  <Typography variant="body2" color="text.secondary">
+                    {order.productName}
+                  </Typography>
+                </Box>
+              </TableCell>
+              <TableCell>
+                <StatusChip status={order.status} />
+              </TableCell>
+              <TableCell>
+                <Typography variant="body2" color="text.secondary">
+                  {formatDate(order.orderedAt)}
+                </Typography>
+              </TableCell>
+              <TableCell>
+                <Typography variant="body2" color="text.secondary">
+                  {order.shippedAt ? formatDate(order.shippedAt) : '-'}
+                </Typography>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
-    </div>
+        </TableBody>
+      </Table>
+    </TableContainer>
   );
 }
