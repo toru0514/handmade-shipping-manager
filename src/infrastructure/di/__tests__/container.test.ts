@@ -19,7 +19,7 @@ const VALID_SERVICE_ACCOUNT_BASE64 = Buffer.from(VALID_SERVICE_ACCOUNT_JSON, 'ut
 
 function baseEnv(overrides: Record<string, string> = {}): Record<string, string> {
   return {
-    GOOGLE_SHEETS_SPREADSHEET_ID: 'test-spreadsheet-id',
+    SHIPPING_SPREADSHEET_ID: 'test-spreadsheet-id',
     ...overrides,
   };
 }
@@ -67,9 +67,9 @@ describe('createContainer', () => {
     expect(() => createContainer(env)).toThrow('Google Sheets 認証情報が不足しています');
   });
 
-  it('GOOGLE_SHEETS_SPREADSHEET_ID がない場合はエラーを投げる', () => {
+  it('SHIPPING_SPREADSHEET_ID がない場合はエラーを投げる', () => {
     const env = { GOOGLE_SERVICE_ACCOUNT_BASE64: VALID_SERVICE_ACCOUNT_BASE64 };
-    expect(() => createContainer(env)).toThrow('GOOGLE_SHEETS_SPREADSHEET_ID is not configured');
+    expect(() => createContainer(env)).toThrow('SHIPPING_SPREADSHEET_ID is not configured');
   });
 
   it('不正な BASE64 の GOOGLE_SERVICE_ACCOUNT_BASE64 はエラーを投げる', () => {

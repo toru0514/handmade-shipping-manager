@@ -48,9 +48,9 @@ function parseServiceAccountKey(base64: string): ServiceAccountKey {
 }
 
 function createClient(): GoogleSheetsClient {
-  const spreadsheetId = resolveRequired('GOOGLE_SHEETS_SPREADSHEET_ID');
+  const spreadsheetId = resolveRequired('SHIPPING_SPREADSHEET_ID');
   const sheetName =
-    process.env.GOOGLE_SHEETS_SHIPPING_METHOD_LABEL_SHEET_NAME?.trim() || 'ShippingMethodLabelMap';
+    process.env.SHIPPING_METHOD_LABEL_SHEET_NAME?.trim() || 'ShippingMethodLabelMap';
   const serviceAccountBase64 = process.env.GOOGLE_SERVICE_ACCOUNT_BASE64?.trim();
   const accessToken = process.env.GOOGLE_SHEETS_ACCESS_TOKEN?.trim();
   const refreshToken = process.env.GOOGLE_SHEETS_REFRESH_TOKEN?.trim();
@@ -87,7 +87,7 @@ async function main(): Promise<void> {
   loadEnvLocal();
   const client = createClient();
   const sheetName =
-    process.env.GOOGLE_SHEETS_SHIPPING_METHOD_LABEL_SHEET_NAME?.trim() || 'ShippingMethodLabelMap';
+    process.env.SHIPPING_METHOD_LABEL_SHEET_NAME?.trim() || 'ShippingMethodLabelMap';
   const range = `${sheetName}!A1:B`;
   const existing = await client.readRows(range);
   const rows = existing.length > 0 ? existing.map((row) => [...row]) : [];

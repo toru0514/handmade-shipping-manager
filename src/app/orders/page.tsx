@@ -41,6 +41,7 @@ export default function OrdersPage() {
   const [fetchingPlatform, setFetchingPlatform] = useState<'minne' | 'creema' | null>(null);
   const [fetchOrdersResult, setFetchOrdersResult] = useState<FetchNewOrdersResult | null>(null);
   const [fetchOrdersError, setFetchOrdersError] = useState<string | null>(null);
+  const [spreadsheetUrl, setSpreadsheetUrl] = useState<string | null>(null);
 
   const fetchOrders = useCallback(async () => {
     const response = await fetch('/api/orders/pending');
@@ -49,6 +50,15 @@ export default function OrdersPage() {
     }
     const data = (await response.json()) as PendingOrderDto[];
     setOrders(data);
+  }, []);
+
+  useEffect(() => {
+    fetch('/api/spreadsheet-url')
+      .then((res) => res.json())
+      .then((data: { url?: string }) => {
+        if (data.url) setSpreadsheetUrl(data.url);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -231,9 +241,9 @@ export default function OrdersPage() {
               void handleFetchOrders('creema');
             }}
           />
-          {process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID && (
+          {spreadsheetUrl && (
             <a
-              href={`https://docs.google.com/spreadsheets/d/${process.env.NEXT_PUBLIC_GOOGLE_SHEETS_SPREADSHEET_ID}`}
+              href={spreadsheetUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1 rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"

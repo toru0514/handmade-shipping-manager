@@ -16,11 +16,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "poll:orders": "npx tsx scripts/poll-orders.ts",
-    "poll:orders:once": "npx tsx scripts/poll-orders.ts --once",
-    "test:minne": "npx tsx scripts/test-minne-fetch.ts",
-    "test:minne:batch": "npx tsx scripts/test-minne-batch-fetch.ts",
-    "test:creema:batch": "npx tsx scripts/test-creema-batch-fetch.ts"
+    "poll:orders": "bun scripts/poll-orders.ts",
+    "poll:orders:once": "bun scripts/poll-orders.ts --once",
+    "test:minne": "bun scripts/test-minne-fetch.ts",
+    "test:minne:batch": "bun scripts/test-minne-batch-fetch.ts",
+    "test:creema:batch": "bun scripts/test-creema-batch-fetch.ts"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

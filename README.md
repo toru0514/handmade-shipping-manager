@@ -37,7 +37,7 @@ minne、creemaなどのハンドメイドプラットフォームで販売した
 
 ### 技術スタック
 
-- **フロントエンド**: Next.js, shadcn/ui, TailwindCSS
+- **フロントエンド**: Next.js, MUI (Material UI), TailwindCSS
 - **バックエンド**: Next.js API Routes
 - **データストア**: Google Spreadsheet
 - **外部連携**:
@@ -76,16 +76,16 @@ minne、creemaなどのハンドメイドプラットフォームで販売した
 
 ```bash
 # 依存関係のインストール
-npm install
+bun install
 
 # Playwright (Chromium) のインストール
-npm run playwright:install
+bun run playwright:install
 
 # 開発サーバー起動
-npm run dev
+bun run dev
 
 # テスト実行
-npm test
+bun run test
 ```
 
 ## Playwright 実行環境について
@@ -97,17 +97,14 @@ npm test
 ## 環境変数
 
 ```env
-# Google API
-# サービスアカウントJSONをbase64化した値
+# Google API（サービスアカウントJSONをbase64化した値）
 GOOGLE_SERVICE_ACCOUNT_BASE64=
-# 初回アクセストークン（任意。未指定時は refresh token で自動取得）
-GOOGLE_SHEETS_ACCESS_TOKEN=
-# 必須
-GOOGLE_SHEETS_SPREADSHEET_ID=
-# 任意（デフォルト: Orders）
-GOOGLE_SHEETS_SHEET_NAME=
-# アクセストークン自動更新に必須
-GOOGLE_SHEETS_REFRESH_TOKEN=
+
+# 発送管理スプレッドシート（必須）
+SHIPPING_SPREADSHEET_ID=
+SHIPPING_ORDERS_SHEET_NAME=Orders
+
+# Google OAuth（注文自動取得に必要）
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
@@ -122,13 +119,13 @@ MINNE_PASSWORD=
 CREEMA_EMAIL=
 CREEMA_PASSWORD=
 
-# クリックポスト（Amazon）
-AMAZON_EMAIL=
-AMAZON_PASSWORD=
+# クリックポスト
+CLICKPOST_EMAIL=
+CLICKPOST_PASSWORD=
 
 # ヤマト運輸（クロネコメンバーズ）
-KURONEKO_EMAIL=
-KURONEKO_PASSWORD=
+YAMATO_MEMBER_ID=
+YAMATO_PASSWORD=
 ```
 
 `GOOGLE_SERVICE_ACCOUNT_BASE64` は次のコマンドで作成できます。
