@@ -5,11 +5,11 @@ config({ path: '.env.local' });
 
 async function main() {
   const base64 = process.env.GOOGLE_SERVICE_ACCOUNT_BASE64;
-  const spreadsheetId = process.env.GOOGLE_SHEETS_SPREADSHEET_ID;
+  const spreadsheetId = process.env.PRODUCT_SPREADSHEET_ID;
 
   if (!base64 || !spreadsheetId) {
     throw new Error(
-      'Environment variables GOOGLE_SERVICE_ACCOUNT_BASE64 / GOOGLE_SHEETS_SPREADSHEET_ID are not set.',
+      'Environment variables GOOGLE_SERVICE_ACCOUNT_BASE64 / PRODUCT_SPREADSHEET_ID are not set.',
     );
   }
 
@@ -22,7 +22,7 @@ async function main() {
 
   const sheets = google.sheets({ version: 'v4', auth });
 
-  const sheetTitle = process.env.GOOGLE_SHEETS_WORKSHEET_TITLE || 'シート1';
+  const sheetTitle = process.env.PRODUCT_WORKSHEET_TITLE || 'シート1';
 
   const response = await sheets.spreadsheets.values.get({
     spreadsheetId,

@@ -174,22 +174,22 @@ function getMockSheetMatrix(): SheetMatrix {
 }
 
 function getSheetTitle(): string {
-  return process.env.GOOGLE_SHEETS_WORKSHEET_TITLE || DEFAULT_SHEET_TITLE;
+  return process.env.PRODUCT_WORKSHEET_TITLE || DEFAULT_SHEET_TITLE;
 }
 
 function getSheetConfig(): SheetConfig {
   return {
-    common: process.env.GOOGLE_SHEETS_COMMON_SHEET || '共通',
-    creema: process.env.GOOGLE_SHEETS_CREEMA_SHEET || 'Creema',
-    minne: process.env.GOOGLE_SHEETS_MINNE_SHEET || 'minne',
-    base: process.env.GOOGLE_SHEETS_BASE_SHEET || 'BASE',
-    iichi: process.env.GOOGLE_SHEETS_IICHI_SHEET || 'iichi',
+    common: process.env.PRODUCT_COMMON_SHEET || '共通',
+    creema: process.env.PRODUCT_CREEMA_SHEET || 'Creema',
+    minne: process.env.PRODUCT_MINNE_SHEET || 'minne',
+    base: process.env.PRODUCT_BASE_SHEET || 'BASE',
+    iichi: process.env.PRODUCT_IICHI_SHEET || 'iichi',
   };
 }
 
 function isMultiSheetMode(): boolean {
   // 共通シートの環境変数が設定されていればマルチシートモード
-  return !!process.env.GOOGLE_SHEETS_COMMON_SHEET;
+  return !!process.env.PRODUCT_COMMON_SHEET;
 }
 
 function mapToIichiMaterialLabel(material: string): string {
