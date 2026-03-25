@@ -18,6 +18,21 @@ const theme = createTheme({
       main: '#6d28d9', // Tailwind violet-700
       dark: '#5b21b6', // Tailwind violet-800
     },
+    error: {
+      main: '#dc2626',
+      50: '#fef2f2',
+      200: '#fecaca',
+    },
+    warning: {
+      main: '#d97706',
+      50: '#fffbeb',
+      200: '#fde68a',
+    },
+    success: {
+      main: '#16a34a',
+      50: '#f0fdf4',
+      200: '#bbf7d0',
+    },
   },
 });
 
