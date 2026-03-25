@@ -3,6 +3,7 @@ import { cookies } from 'next/headers';
 import './globals.css';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { GlobalNav, DRAWER_WIDTH_OPEN } from '@/presentation/components/layout/GlobalNav';
+import { ToastProvider } from '@/presentation/components/providers/ToastProvider';
 
 export const metadata: Metadata = {
   title: 'ハンドメイド発送管理',
@@ -31,19 +32,21 @@ export default async function RootLayout({
   return (
     <html lang="ja">
       <body className="bg-gray-50 min-h-screen">
-        {isLoggedIn && <GlobalNav />}
-        <div
-          style={
-            isLoggedIn
-              ? {
-                  marginLeft: `var(--nav-width, ${DRAWER_WIDTH_OPEN}px)`,
-                  transition: 'margin-left 0.2s',
-                }
-              : undefined
-          }
-        >
-          {children}
-        </div>
+        <ToastProvider>
+          {isLoggedIn && <GlobalNav />}
+          <div
+            style={
+              isLoggedIn
+                ? {
+                    marginLeft: `var(--nav-width, ${DRAWER_WIDTH_OPEN}px)`,
+                    transition: 'margin-left 0.2s',
+                  }
+                : undefined
+            }
+          >
+            {children}
+          </div>
+        </ToastProvider>
       </body>
     </html>
   );
