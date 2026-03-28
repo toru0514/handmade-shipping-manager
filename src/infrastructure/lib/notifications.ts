@@ -44,8 +44,30 @@ function getSlackWebhookUrl(): string | null {
   return process.env.SLACK_WEBHOOK_URL || null;
 }
 
-async function sendSlackWebhook(message: SlackMessage): Promise<boolean> {
-  const webhookUrl = getSlackWebhookUrl();
+export async function getSlackWebhookUrlForUser(userId: string): Promise<string | null> {
+  try {
+    const { createSupabaseAdminClient } = await import('@/lib/supabase/admin');
+    const supabase = createSupabaseAdminClient();
+    const { data } = await supabase
+      .from('user_settings')
+      .select('slack_webhook_url, slack_enabled')
+      .eq('user_id', userId)
+      .single();
+
+    if (data?.slack_enabled && data.slack_webhook_url) {
+      return data.slack_webhook_url;
+    }
+  } catch {
+    // fallback to env
+  }
+  return process.env.SLACK_WEBHOOK_URL || null;
+}
+
+async function sendSlackWebhook(
+  message: SlackMessage,
+  webhookUrlOverride?: string,
+): Promise<boolean> {
+  const webhookUrl = webhookUrlOverride ?? getSlackWebhookUrl();
 
   if (!webhookUrl) {
     log.debug('SLACK_WEBHOOK_URL が設定されていないため、通知をスキップしました');
@@ -89,6 +111,7 @@ export type NotificationOptions = {
   level?: NotificationLevel;
   fields?: Array<{ title: string; value: string; short?: boolean }>;
   footer?: string;
+  webhookUrl?: string;
 };
 
 /**
@@ -117,7 +140,7 @@ export async function notify(message: string, options: NotificationOptions = {})
     ];
   }
 
-  return sendSlackWebhook(slackMessage);
+  return sendSlackWebhook(slackMessage, options.webhookUrl);
 }
 
 /**
