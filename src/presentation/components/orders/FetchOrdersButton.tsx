@@ -7,7 +7,13 @@ interface FetchOrdersButtonProps {
   onClick: () => void;
 }
 
+const PLATFORM_DISPLAY_NAME: Record<'minne' | 'creema', string> = {
+  minne: 'minne',
+  creema: 'Creema',
+};
+
 export function FetchOrdersButton({ platform, isLoading, onClick }: FetchOrdersButtonProps) {
+  const displayName = PLATFORM_DISPLAY_NAME[platform];
   return (
     <Button
       variant="contained"
@@ -21,14 +27,14 @@ export function FetchOrdersButton({ platform, isLoading, onClick }: FetchOrdersB
       }}
     >
       {isLoading ? (
-        `${platform} 取得中...`
+        `${displayName} 取得中...`
       ) : (
         <>
           <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
-            {platform} 未読を取得 ▶
+            {displayName} 未読を取得 ▶
           </Box>
           <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' }, fontSize: '0.75rem' }}>
-            {platform}取得
+            {displayName}取得
           </Box>
         </>
       )}
