@@ -94,29 +94,6 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleResetToDefault() {
-    setIsSaving(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const response = await fetch(`/api/settings/templates/${activeType}/reset`, {
-        method: 'POST',
-      });
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as {
-          error?: { message?: string };
-        };
-        throw new Error(body.error?.message ?? 'テンプレートの初期化に失敗しました');
-      }
-      const reset = (await response.json()) as MessageTemplateDto;
-      setTemplateContent(reset.content);
-      setNotice('テンプレートをデフォルトに戻しました');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'テンプレートの初期化に失敗しました');
-    } finally {
-      setIsSaving(false);
-    }
-  }
 
   function handlePreview() {
     setPreviewContent(previewTemplate(templateContent));
@@ -172,7 +149,6 @@ export default function SettingsPage() {
           onChange={setTemplateContent}
           onSave={handleSave}
           onPreview={handlePreview}
-          onResetToDefault={handleResetToDefault}
         />
         <VariableList
           variables={AVAILABLE_TEMPLATE_VARIABLES[activeType]}

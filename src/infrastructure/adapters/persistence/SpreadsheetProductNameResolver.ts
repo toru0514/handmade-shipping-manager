@@ -1,14 +1,16 @@
-import { PurchaseThanksProductNameResolver } from '@/domain/ports/PurchaseThanksProductNameResolver';
+import { ProductNameResolver } from '@/domain/ports/ProductNameResolver';
 import { SheetsClient } from '@/infrastructure/external/google/SheetsClient';
 
-const DEFAULT_RANGE = 'PurchaseThanksProductNameMap!A2:B';
+const DEFAULT_RANGE = 'ProductNameMap!A2:B';
 
 const COL = {
   originalProductName: 0,
-  purchaseThanksProductName: 1,
+  productName: 1,
 } as const;
 
-export class SpreadsheetPurchaseThanksProductNameResolver implements PurchaseThanksProductNameResolver {
+export class SpreadsheetProductNameResolver implements ProductNameResolver {
+  private cachedRows: string[][] | null = null;
+
   constructor(private readonly sheetsClient: SheetsClient) {}
 
   async resolve(originalProductName: string): Promise<string> {
@@ -17,7 +19,10 @@ export class SpreadsheetPurchaseThanksProductNameResolver implements PurchaseTha
       return originalProductName;
     }
 
-    const rows = await this.sheetsClient.readRows(DEFAULT_RANGE);
+    if (!this.cachedRows) {
+      this.cachedRows = await this.sheetsClient.readRows(DEFAULT_RANGE);
+    }
+    const rows = this.cachedRows;
     let prefixMatched: string | null = null;
     let prefixMatchedLength = -1;
 
@@ -26,7 +31,7 @@ export class SpreadsheetPurchaseThanksProductNameResolver implements PurchaseTha
       if (!raw) {
         continue;
       }
-      const mapped = (row[COL.purchaseThanksProductName] ?? '').trim();
+      const mapped = (row[COL.productName] ?? '').trim();
       if (!mapped) {
         continue;
       }

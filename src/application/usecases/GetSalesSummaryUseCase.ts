@@ -1,5 +1,11 @@
 import { Order } from '@/domain/entities/Order';
 import { OrderRepository } from '@/domain/ports/OrderRepository';
+import {
+  IdentityProductNameResolver,
+  ProductNameResolver,
+  resolveAllProductNames,
+  stripOptionSuffix,
+} from '@/domain/ports/ProductNameResolver';
 import { PlatformValue, PlatformValues } from '@/domain/valueObjects/Platform';
 
 // 入力フィルタ
@@ -56,7 +62,14 @@ export interface SalesSummaryDto {
 }
 
 export class GetSalesSummaryUseCase {
-  constructor(private readonly orderRepository: OrderRepository<Order>) {}
+  private readonly productNameResolver: ProductNameResolver;
+
+  constructor(
+    private readonly orderRepository: OrderRepository<Order>,
+    productNameResolver?: ProductNameResolver,
+  ) {
+    this.productNameResolver = productNameResolver ?? new IdentityProductNameResolver();
+  }
 
   async execute(input: SalesFilterInput = {}): Promise<SalesSummaryDto> {
     const { startDate, endDate, platform } = this.normalizeInput(input);
@@ -97,11 +110,15 @@ export class GetSalesSummaryUseCase {
     // 月別集計
     const monthlyBreakdown = this.calculateMonthlyBreakdown(filteredOrders, startDate, endDate);
 
+    // 商品名を一括解決（API呼び出し回数を最小化）
+    const allNames = filteredOrders.flatMap((o) => o.products.map((p) => p.name));
+    const nameCache = await resolveAllProductNames(this.productNameResolver, allNames);
+
     // 商品別集計
-    const productBreakdown = this.calculateProductBreakdown(filteredOrders);
+    const productBreakdown = this.calculateProductBreakdown(filteredOrders, nameCache);
 
     // 注文一覧
-    const orders = this.toOrderDtos(filteredOrders);
+    const orders = this.toOrderDtos(filteredOrders, nameCache);
 
     // 価格未入力（totalPrice === 0）の注文数
     const ordersWithMissingPrice = orders.filter((o) => o.priceMissing).length;
@@ -216,7 +233,10 @@ export class GetSalesSummaryUseCase {
     return months;
   }
 
-  private calculateProductBreakdown(orders: Order[]): ProductSalesDto[] {
+  private calculateProductBreakdown(
+    orders: Order[],
+    nameCache: Map<string, string>,
+  ): ProductSalesDto[] {
     const productMap = new Map<
       string,
       { totalSales: number; totalQuantity: number; orderCount: number }
@@ -225,8 +245,8 @@ export class GetSalesSummaryUseCase {
     for (const order of orders) {
       const countedProducts = new Set<string>();
       for (const product of order.products) {
-        if (product.name.includes('オプション')) continue;
-        const name = product.name;
+        const resolved = nameCache.get(product.name) ?? product.name;
+        const name = stripOptionSuffix(resolved);
         const existing = productMap.get(name) ?? { totalSales: 0, totalQuantity: 0, orderCount: 0 };
         existing.totalSales += product.subtotal;
         existing.totalQuantity += product.quantity;
@@ -249,13 +269,13 @@ export class GetSalesSummaryUseCase {
       .sort((a, b) => b.totalSales - a.totalSales);
   }
 
-  private toOrderDtos(orders: Order[]): SalesOrderDto[] {
+  private toOrderDtos(orders: Order[], nameCache: Map<string, string>): SalesOrderDto[] {
     return orders
       .map((order) => ({
         orderId: order.orderId.toString(),
         platform: order.platform.toString(),
         buyerName: order.buyer.name.toString(),
-        productName: order.products.map((p) => p.name).join('、'),
+        productName: order.products.map((p) => nameCache.get(p.name) ?? p.name).join('、'),
         totalPrice: order.totalPrice,
         shippedAt: order.shippedAt!.toISOString(),
         priceMissing: order.totalPrice === 0,

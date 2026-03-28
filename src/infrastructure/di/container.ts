@@ -21,7 +21,7 @@ import { DualWriteOrderRepository } from '@/infrastructure/adapters/persistence/
 import { DualWriteShippingLabelRepository } from '@/infrastructure/adapters/persistence/DualWriteShippingLabelRepository';
 import { SpreadsheetMessageTemplateRepository } from '@/infrastructure/adapters/persistence/SpreadsheetMessageTemplateRepository';
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
-import { SpreadsheetPurchaseThanksProductNameResolver } from '@/infrastructure/adapters/persistence/SpreadsheetPurchaseThanksProductNameResolver';
+import { SpreadsheetProductNameResolver } from '@/infrastructure/adapters/persistence/SpreadsheetProductNameResolver';
 import { SpreadsheetShippingMethodLabelResolver } from '@/infrastructure/adapters/persistence/SpreadsheetShippingMethodLabelResolver';
 import { SpreadsheetShippingLabelRepository } from '@/infrastructure/adapters/persistence/SpreadsheetShippingLabelRepository';
 import { SupabaseMessageTemplateRepository } from '@/infrastructure/adapters/persistence/SupabaseMessageTemplateRepository';
@@ -103,17 +103,15 @@ function createTemplateRepository(env: Env): SpreadsheetMessageTemplateRepositor
   return new SpreadsheetMessageTemplateRepository(sheetsClient);
 }
 
-function createPurchaseThanksProductNameResolver(
-  env: Env,
-): SpreadsheetPurchaseThanksProductNameResolver {
+function createProductNameResolver(env: Env): SpreadsheetProductNameResolver {
   const auth = createAuth(env);
   const spreadsheetId = resolveRequiredEnv('SHIPPING_SPREADSHEET_ID', env);
   const sheetsClient = new GoogleSheetsClient({
     spreadsheetId,
-    sheetName: env.SHIPPING_PRODUCT_NAME_MAP_SHEET_NAME?.trim() || 'PurchaseThanksProductNameMap',
+    sheetName: env.SHIPPING_PRODUCT_NAME_MAP_SHEET_NAME?.trim() || 'ProductNameMap',
     ...auth,
   });
-  return new SpreadsheetPurchaseThanksProductNameResolver(sheetsClient);
+  return new SpreadsheetProductNameResolver(sheetsClient);
 }
 
 function createShippingMethodLabelResolver(env: Env): SpreadsheetShippingMethodLabelResolver {
@@ -459,11 +457,12 @@ export function createContainer(
     : spreadsheetTemplateRepo;
 
   const overdueSpec = new OverdueOrderSpecification();
-  const purchaseThanksProductNameResolver = createPurchaseThanksProductNameResolver(env);
+  const productNameResolver = createProductNameResolver(env);
   const shippingMethodLabelResolver = createShippingMethodLabelResolver(env);
 
   return {
-    getListPendingOrdersUseCase: () => new ListPendingOrdersUseCase(orderRepository, overdueSpec),
+    getListPendingOrdersUseCase: () =>
+      new ListPendingOrdersUseCase(orderRepository, overdueSpec, productNameResolver),
     getListAllOrdersUseCase: () => new ListAllOrdersUseCase(orderRepository),
     getMarkOrderAsShippedUseCase: () => new MarkOrderAsShippedUseCase(orderRepository),
     getSearchBuyersUseCase: () => new SearchBuyersUseCase(orderRepository),
@@ -472,7 +471,7 @@ export function createContainer(
         orderRepository,
         templateRepository,
         new MessageGenerator(),
-        purchaseThanksProductNameResolver,
+        productNameResolver,
       ),
     getGenerateShippingNoticeUseCase: () =>
       new GenerateShippingNoticeUseCase(
@@ -509,6 +508,6 @@ export function createContainer(
         spreadsheetTemplateRepo,
       );
     },
-    getSalesSummaryUseCase: () => new GetSalesSummaryUseCase(orderRepository),
+    getSalesSummaryUseCase: () => new GetSalesSummaryUseCase(orderRepository, productNameResolver),
   };
 }

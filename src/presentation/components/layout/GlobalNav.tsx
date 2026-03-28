@@ -20,7 +20,6 @@ import Tooltip from '@mui/material/Tooltip';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import PeopleIcon from '@mui/icons-material/People';
 import BarChartIcon from '@mui/icons-material/BarChart';
-import MessageIcon from '@mui/icons-material/Message';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import MenuIcon from '@mui/icons-material/Menu';
@@ -35,12 +34,11 @@ const MOBILE_APPBAR_HEIGHT = 56;
 
 const navItems = [
   { href: '/orders', label: '注文管理', icon: <InventoryIcon fontSize="small" /> },
-  { href: '/buyers', label: '購入者一覧', icon: <PeopleIcon fontSize="small" /> },
-  { href: '/settings', label: '定型文設定', icon: <MessageIcon fontSize="small" /> },
-  { href: '/sales', label: '売上集計', icon: <BarChartIcon fontSize="small" /> },
   { href: '/products', label: '商品管理', icon: <CategoryIcon fontSize="small" /> },
   { href: '/woods', label: '木材管理', icon: <ForestIcon fontSize="small" /> },
   { href: '/images', label: '画像管理', icon: <ImageIcon fontSize="small" /> },
+  { href: '/buyers', label: '購入者一覧', icon: <PeopleIcon fontSize="small" /> },
+  { href: '/sales', label: '売上集計', icon: <BarChartIcon fontSize="small" /> },
   { href: '/settings/account', label: 'アカウント設定', icon: <SettingsIcon fontSize="small" /> },
 ];
 
