@@ -41,6 +41,7 @@ export default async function RootLayout({
                 isLoggedIn
                   ? {
                       marginLeft: `var(--nav-width, ${DRAWER_WIDTH_OPEN}px)`,
+                      paddingTop: 'var(--appbar-height, 0px)',
                       transition: 'margin-left 0.2s',
                     }
                   : undefined
