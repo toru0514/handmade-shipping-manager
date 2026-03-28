@@ -263,7 +263,9 @@ export class GetSalesSummaryUseCase {
     for (const order of orders) {
       const countedProducts = new Set<string>();
       for (const product of order.products) {
-        const name = nameCache.get(product.name) ?? product.name;
+        // オプション部分（末尾の括弧、複数対応）を除去してベース商品名でグルーピング
+        const resolved = nameCache.get(product.name) ?? product.name;
+        const name = resolved.replace(/(\s*[（(][^)）]*[)）])+\s*$/, '').trim();
         const existing = productMap.get(name) ?? { totalSales: 0, totalQuantity: 0, orderCount: 0 };
         existing.totalSales += product.subtotal;
         existing.totalQuantity += product.quantity;
