@@ -36,8 +36,12 @@ export function SalesProductBreakdown({ breakdown }: SalesProductBreakdownProps)
           </TableRow>
         </TableHead>
         <TableBody>
-          {breakdown.map((product) => (
-            <TableRow key={product.productName} hover>
+          {breakdown.map((product, index) => (
+            <TableRow
+              key={index}
+              hover
+              sx={product.priceMissing ? { bgcolor: 'warning.50' } : undefined}
+            >
               <TableCell>
                 <Typography variant="body2" fontWeight={500}>
                   {product.productName}
@@ -52,9 +56,15 @@ export function SalesProductBreakdown({ breakdown }: SalesProductBreakdownProps)
                 </Typography>
               </TableCell>
               <TableCell align="right">
-                <Typography variant="body2" fontWeight={500}>
-                  {formatCurrency(product.totalSales)}
-                </Typography>
+                {product.priceMissing ? (
+                  <Typography variant="body2" color="warning.main" fontWeight={500}>
+                    ⚠ 未入力
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" fontWeight={500}>
+                    {formatCurrency(product.totalSales)}
+                  </Typography>
+                )}
               </TableCell>
             </TableRow>
           ))}
