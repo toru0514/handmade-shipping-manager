@@ -226,7 +226,7 @@ export default function OrdersPage() {
     <main className="mx-auto max-w-6xl p-6">
       <h1 className="mb-6 text-2xl font-bold">発送前注文一覧</h1>
       <section className="mb-6">
-        <div className="flex gap-2">
+        <div className="flex flex-nowrap gap-2">
           <FetchOrdersButton
             platform="minne"
             isLoading={fetchingPlatform === 'minne'}
@@ -246,9 +246,9 @@ export default function OrdersPage() {
               href={spreadsheetUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-green-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-800"
             >
-              スプレッドシートを開く
+              スプシを開く
             </a>
           )}
         </div>

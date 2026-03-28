@@ -13,9 +13,9 @@ export function FetchOrdersButton({ platform, isLoading, onClick }: FetchOrdersB
       size="small"
       disabled={isLoading}
       onClick={onClick}
-      sx={{ bgcolor: 'grey.800', '&:hover': { bgcolor: 'grey.900' } }}
+      sx={{ bgcolor: 'grey.800', '&:hover': { bgcolor: 'grey.900' }, fontSize: '0.75rem' }}
     >
-      {isLoading ? `${platform} 取得中...` : `${platform} 未読を取得 ▶`}
+      {isLoading ? `${platform}取得中...` : `${platform}取得`}
     </Button>
   );
 }
