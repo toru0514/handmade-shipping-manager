@@ -14,7 +14,7 @@ export async function PUT(request: Request) {
 
   const body = (await request.json()) as { email: string };
 
-  if (!body.email || !body.email.includes('@')) {
+  if (!body.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.email)) {
     return NextResponse.json({ error: '有効なメールアドレスを入力してください' }, { status: 400 });
   }
 

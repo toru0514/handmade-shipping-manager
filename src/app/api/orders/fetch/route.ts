@@ -5,6 +5,8 @@ import {
   normalizeHttpError,
   toApiErrorResponse,
 } from '@/infrastructure/errors/HttpErrors';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSlackWebhookUrlForUser } from '@/infrastructure/lib/notifications';
 
 export async function POST(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -21,7 +23,14 @@ export async function POST(request: Request) {
   }
 
   try {
-    const container = createContainer();
+    // Resolve user-specific Slack webhook URL
+    const supabase = await createSupabaseServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const userWebhookUrl = user ? await getSlackWebhookUrlForUser(user.id) : null;
+
+    const container = createContainer({ slackWebhookUrlOverride: userWebhookUrl ?? undefined });
     const useCase = container.getFetchNewOrdersUseCase(platform as 'minne' | 'creema');
     const result = await useCase.execute({ platform });
     return NextResponse.json(result);

@@ -11,15 +11,16 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import Alert from '@mui/material/Alert';
 import Divider from '@mui/material/Divider';
 
-type UserSettings = {
+type UserSettingsResponse = {
   email: string;
   slackWebhookUrl: string;
+  slackWebhookUrlSet: boolean;
   slackEnabled: boolean;
 };
 
 export default function AccountSettingsPage() {
-  const [settings, setSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initialEmail, setInitialEmail] = useState('');
 
   // Account
   const [email, setEmail] = useState('');
@@ -40,6 +41,7 @@ export default function AccountSettingsPage() {
 
   // Slack
   const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
+  const [slackWebhookUrlSet, setSlackWebhookUrlSet] = useState(false);
   const [slackEnabled, setSlackEnabled] = useState(false);
   const [slackSaving, setSlackSaving] = useState(false);
   const [slackMessage, setSlackMessage] = useState<{
@@ -52,10 +54,10 @@ export default function AccountSettingsPage() {
       try {
         const res = await fetch('/api/settings/user');
         if (!res.ok) throw new Error();
-        const data = (await res.json()) as UserSettings;
-        setSettings(data);
+        const data = (await res.json()) as UserSettingsResponse;
+        setInitialEmail(data.email);
         setEmail(data.email);
-        setSlackWebhookUrl(data.slackWebhookUrl);
+        setSlackWebhookUrlSet(data.slackWebhookUrlSet);
         setSlackEnabled(data.slackEnabled);
       } catch {
         // ignore
@@ -186,7 +188,7 @@ export default function AccountSettingsPage() {
             variant="contained"
             size="small"
             onClick={handleEmailSave}
-            disabled={emailSaving || email === settings?.email}
+            disabled={emailSaving || email === initialEmail}
             sx={{ whiteSpace: 'nowrap' }}
           >
             {emailSaving ? '保存中...' : '変更'}
@@ -264,10 +266,19 @@ export default function AccountSettingsPage() {
           <TextField
             size="small"
             label="Webhook URL"
-            placeholder="https://hooks.slack.com/services/..."
+            placeholder={
+              slackWebhookUrlSet
+                ? '設定済み（変更する場合は新しいURLを入力）'
+                : 'https://hooks.slack.com/services/...'
+            }
             value={slackWebhookUrl}
             onChange={(e) => setSlackWebhookUrl(e.target.value)}
             fullWidth
+            helperText={
+              slackWebhookUrlSet && !slackWebhookUrl
+                ? 'Webhook URLは設定済みです。変更する場合のみ入力してください。'
+                : undefined
+            }
             sx={{ mb: 2 }}
           />
         )}
