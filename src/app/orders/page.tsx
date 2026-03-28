@@ -246,9 +246,10 @@ export default function OrdersPage() {
               href={spreadsheetUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-green-700 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-800"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-green-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-800"
             >
-              スプシを開く
+              <span className="hidden sm:inline">スプレッドシートを開く</span>
+              <span className="inline sm:hidden text-xs">スプシを開く</span>
             </a>
           )}
         </div>
