@@ -34,20 +34,33 @@ export class ListPendingOrdersUseCase {
 
   async execute(): Promise<PendingOrderDto[]> {
     const orders = await this.orderRepository.findByStatus(OrderStatus.Pending);
-    return Promise.all(orders.map((order) => this.toDto(order)));
+
+    // 全ユニーク商品名を一括解決（API呼び出し回数を最小化）
+    const uniqueNames = new Set<string>();
+    for (const order of orders) {
+      for (const product of order.products) {
+        uniqueNames.add(product.name);
+      }
+    }
+    const nameCache = new Map<string, string>();
+    await Promise.all(
+      Array.from(uniqueNames).map(async (name) => {
+        const resolved = await this.productNameResolver.resolve(name);
+        nameCache.set(name, resolved);
+      }),
+    );
+
+    return orders.map((order) => this.toDto(order, nameCache));
   }
 
-  private async toDto(order: Order): Promise<PendingOrderDto> {
+  private toDto(order: Order, nameCache: Map<string, string>): PendingOrderDto {
     const orderId = order.orderId.toString();
     const platform = order.platform.toString();
-    const resolvedNames = await Promise.all(
-      order.products.map((p) => this.productNameResolver.resolve(p.name)),
-    );
     return {
       orderId,
       platform,
       buyerName: order.buyer.name.toString(),
-      productName: resolvedNames.join('、'),
+      productName: order.products.map((p) => nameCache.get(p.name) ?? p.name).join('、'),
       orderedAt: order.orderedAt.toISOString(),
       daysSinceOrder: order.getDaysSinceOrder(),
       isOverdue: this.overdueSpec.isSatisfiedBy(order),

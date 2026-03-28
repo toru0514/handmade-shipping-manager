@@ -9,6 +9,8 @@ const COL = {
 } as const;
 
 export class SpreadsheetProductNameResolver implements ProductNameResolver {
+  private cachedRows: string[][] | null = null;
+
   constructor(private readonly sheetsClient: SheetsClient) {}
 
   async resolve(originalProductName: string): Promise<string> {
@@ -17,7 +19,10 @@ export class SpreadsheetProductNameResolver implements ProductNameResolver {
       return originalProductName;
     }
 
-    const rows = await this.sheetsClient.readRows(DEFAULT_RANGE);
+    if (!this.cachedRows) {
+      this.cachedRows = await this.sheetsClient.readRows(DEFAULT_RANGE);
+    }
+    const rows = this.cachedRows;
     let prefixMatched: string | null = null;
     let prefixMatchedLength = -1;
 
