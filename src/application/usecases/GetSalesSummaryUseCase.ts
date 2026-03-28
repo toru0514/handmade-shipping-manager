@@ -23,6 +23,15 @@ export interface MonthlySalesDto {
   readonly orderCount: number;
 }
 
+// 商品別集計DTO
+export interface ProductSalesDto {
+  readonly productName: string;
+  readonly totalSales: number; // 売上合計（subtotal の合計）
+  readonly totalQuantity: number; // 販売数合計
+  readonly orderCount: number; // この商品を含む注文数
+  readonly priceMissing: boolean; // 売上0円（価格未入力の可能性）
+}
+
 // 注文一覧DTO
 export interface SalesOrderDto {
   readonly orderId: string;
@@ -42,6 +51,7 @@ export interface SalesSummaryDto {
   readonly ordersWithMissingPrice: number; // 価格未入力の注文数
   readonly platformBreakdown: PlatformSalesDto[]; // PF別集計
   readonly monthlyBreakdown: MonthlySalesDto[]; // 月別集計（グラフ用）
+  readonly productBreakdown: ProductSalesDto[]; // 商品別集計
   readonly orders: SalesOrderDto[]; // 注文一覧
 }
 
@@ -87,6 +97,9 @@ export class GetSalesSummaryUseCase {
     // 月別集計
     const monthlyBreakdown = this.calculateMonthlyBreakdown(filteredOrders, startDate, endDate);
 
+    // 商品別集計
+    const productBreakdown = this.calculateProductBreakdown(filteredOrders);
+
     // 注文一覧
     const orders = this.toOrderDtos(filteredOrders);
 
@@ -100,6 +113,7 @@ export class GetSalesSummaryUseCase {
       ordersWithMissingPrice,
       platformBreakdown,
       monthlyBreakdown,
+      productBreakdown,
       orders,
     };
   }
@@ -200,6 +214,38 @@ export class GetSalesSummaryUseCase {
     }
 
     return months;
+  }
+
+  private calculateProductBreakdown(orders: Order[]): ProductSalesDto[] {
+    const productMap = new Map<
+      string,
+      { totalSales: number; totalQuantity: number; orderCount: number }
+    >();
+
+    for (const order of orders) {
+      const countedProducts = new Set<string>();
+      for (const product of order.products) {
+        const name = product.name;
+        const existing = productMap.get(name) ?? { totalSales: 0, totalQuantity: 0, orderCount: 0 };
+        existing.totalSales += product.subtotal;
+        existing.totalQuantity += product.quantity;
+        if (!countedProducts.has(name)) {
+          existing.orderCount += 1;
+          countedProducts.add(name);
+        }
+        productMap.set(name, existing);
+      }
+    }
+
+    return Array.from(productMap.entries())
+      .map(([productName, data]) => ({
+        productName,
+        totalSales: data.totalSales,
+        totalQuantity: data.totalQuantity,
+        orderCount: data.orderCount,
+        priceMissing: data.totalSales === 0 && data.totalQuantity > 0,
+      }))
+      .sort((a, b) => b.totalSales - a.totalSales);
   }
 
   private toOrderDtos(orders: Order[]): SalesOrderDto[] {
