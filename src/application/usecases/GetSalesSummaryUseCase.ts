@@ -225,6 +225,7 @@ export class GetSalesSummaryUseCase {
     for (const order of orders) {
       const countedProducts = new Set<string>();
       for (const product of order.products) {
+        if (product.name.includes('オプション')) continue;
         const name = product.name;
         const existing = productMap.get(name) ?? { totalSales: 0, totalQuantity: 0, orderCount: 0 };
         existing.totalSales += product.subtotal;
