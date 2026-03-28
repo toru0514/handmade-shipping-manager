@@ -8,7 +8,7 @@ import { Order } from '@/domain/entities/Order';
 import { OrderFactory } from '@/domain/factories/OrderFactory';
 import { MessageTemplateRepository } from '@/domain/ports/MessageTemplateRepository';
 import { OrderRepository } from '@/domain/ports/OrderRepository';
-import { PurchaseThanksProductNameResolver } from '@/domain/ports/PurchaseThanksProductNameResolver';
+import { ProductNameResolver } from '@/domain/ports/ProductNameResolver';
 import { MessageTemplate } from '@/domain/services/MessageGenerator';
 import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
 import { OrderId } from '@/domain/valueObjects/OrderId';
@@ -80,7 +80,7 @@ class InMemoryMessageTemplateRepository implements MessageTemplateRepository<Mes
   }
 }
 
-class StubPurchaseThanksProductNameResolver implements PurchaseThanksProductNameResolver {
+class StubProductNameResolver implements ProductNameResolver {
   constructor(private readonly mappedValue?: string) {}
 
   async resolve(originalProductName: string): Promise<string> {
@@ -164,9 +164,7 @@ describe('GeneratePurchaseThanksUseCase', () => {
     const orderRepository = new InMemoryOrderRepository([createOrder('ORD-003')]);
     const templateRepository = new InMemoryMessageTemplateRepository();
     await templateRepository.save(purchaseThanksTemplate());
-    const resolver = new StubPurchaseThanksProductNameResolver(
-      'ウッドイヤーカフ_エボニー(三角M_金箔)',
-    );
+    const resolver = new StubProductNameResolver('ウッドイヤーカフ_エボニー(三角M_金箔)');
     const useCase = new GeneratePurchaseThanksUseCase(
       orderRepository,
       templateRepository,

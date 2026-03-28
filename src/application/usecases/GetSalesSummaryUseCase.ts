@@ -1,5 +1,6 @@
 import { Order } from '@/domain/entities/Order';
 import { OrderRepository } from '@/domain/ports/OrderRepository';
+import { ProductNameResolver } from '@/domain/ports/ProductNameResolver';
 import { PlatformValue, PlatformValues } from '@/domain/valueObjects/Platform';
 
 // 入力フィルタ
@@ -55,8 +56,21 @@ export interface SalesSummaryDto {
   readonly orders: SalesOrderDto[]; // 注文一覧
 }
 
+class IdentityProductNameResolver implements ProductNameResolver {
+  async resolve(name: string): Promise<string> {
+    return name;
+  }
+}
+
 export class GetSalesSummaryUseCase {
-  constructor(private readonly orderRepository: OrderRepository<Order>) {}
+  private readonly productNameResolver: ProductNameResolver;
+
+  constructor(
+    private readonly orderRepository: OrderRepository<Order>,
+    productNameResolver?: ProductNameResolver,
+  ) {
+    this.productNameResolver = productNameResolver ?? new IdentityProductNameResolver();
+  }
 
   async execute(input: SalesFilterInput = {}): Promise<SalesSummaryDto> {
     const { startDate, endDate, platform } = this.normalizeInput(input);
@@ -98,10 +112,10 @@ export class GetSalesSummaryUseCase {
     const monthlyBreakdown = this.calculateMonthlyBreakdown(filteredOrders, startDate, endDate);
 
     // 商品別集計
-    const productBreakdown = this.calculateProductBreakdown(filteredOrders);
+    const productBreakdown = await this.calculateProductBreakdown(filteredOrders);
 
     // 注文一覧
-    const orders = this.toOrderDtos(filteredOrders);
+    const orders = await this.toOrderDtos(filteredOrders);
 
     // 価格未入力（totalPrice === 0）の注文数
     const ordersWithMissingPrice = orders.filter((o) => o.priceMissing).length;
@@ -216,7 +230,7 @@ export class GetSalesSummaryUseCase {
     return months;
   }
 
-  private calculateProductBreakdown(orders: Order[]): ProductSalesDto[] {
+  private async calculateProductBreakdown(orders: Order[]): Promise<ProductSalesDto[]> {
     const productMap = new Map<
       string,
       { totalSales: number; totalQuantity: number; orderCount: number }
@@ -225,8 +239,7 @@ export class GetSalesSummaryUseCase {
     for (const order of orders) {
       const countedProducts = new Set<string>();
       for (const product of order.products) {
-        if (product.name.includes('オプション')) continue;
-        const name = product.name;
+        const name = await this.productNameResolver.resolve(product.name);
         const existing = productMap.get(name) ?? { totalSales: 0, totalQuantity: 0, orderCount: 0 };
         existing.totalSales += product.subtotal;
         existing.totalQuantity += product.quantity;
@@ -249,17 +262,23 @@ export class GetSalesSummaryUseCase {
       .sort((a, b) => b.totalSales - a.totalSales);
   }
 
-  private toOrderDtos(orders: Order[]): SalesOrderDto[] {
-    return orders
-      .map((order) => ({
-        orderId: order.orderId.toString(),
-        platform: order.platform.toString(),
-        buyerName: order.buyer.name.toString(),
-        productName: order.products.map((p) => p.name).join('、'),
-        totalPrice: order.totalPrice,
-        shippedAt: order.shippedAt!.toISOString(),
-        priceMissing: order.totalPrice === 0,
-      }))
-      .sort((a, b) => b.shippedAt.localeCompare(a.shippedAt));
+  private async toOrderDtos(orders: Order[]): Promise<SalesOrderDto[]> {
+    const dtos = await Promise.all(
+      orders.map(async (order) => {
+        const resolvedNames = await Promise.all(
+          order.products.map((p) => this.productNameResolver.resolve(p.name)),
+        );
+        return {
+          orderId: order.orderId.toString(),
+          platform: order.platform.toString(),
+          buyerName: order.buyer.name.toString(),
+          productName: resolvedNames.join('、'),
+          totalPrice: order.totalPrice,
+          shippedAt: order.shippedAt!.toISOString(),
+          priceMissing: order.totalPrice === 0,
+        };
+      }),
+    );
+    return dtos.sort((a, b) => b.shippedAt.localeCompare(a.shippedAt));
   }
 }

@@ -1,5 +1,5 @@
 import { OrderRepository } from '@/domain/ports/OrderRepository';
-import { PurchaseThanksProductNameResolver } from '@/domain/ports/PurchaseThanksProductNameResolver';
+import { ProductNameResolver } from '@/domain/ports/ProductNameResolver';
 import { MessageTemplateRepository } from '@/domain/ports/MessageTemplateRepository';
 import { MessageGenerator, MessageTemplate } from '@/domain/services/MessageGenerator';
 import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
@@ -28,7 +28,7 @@ export class PurchaseThanksTemplateNotFoundError extends Error {
   }
 }
 
-class IdentityPurchaseThanksProductNameResolver implements PurchaseThanksProductNameResolver {
+class IdentityProductNameResolver implements ProductNameResolver {
   async resolve(originalProductName: string): Promise<string> {
     return originalProductName;
   }
@@ -39,7 +39,7 @@ export class GeneratePurchaseThanksUseCase {
     private readonly orderRepository: OrderRepository,
     private readonly templateRepository: MessageTemplateRepository<MessageTemplate>,
     private readonly messageGenerator: MessageGenerator = new MessageGenerator(),
-    private readonly productNameResolver: PurchaseThanksProductNameResolver = new IdentityPurchaseThanksProductNameResolver(),
+    private readonly productNameResolver: ProductNameResolver = new IdentityProductNameResolver(),
   ) {}
 
   async execute(input: GeneratePurchaseThanksInput): Promise<GeneratePurchaseThanksResultDto> {

@@ -57,8 +57,7 @@ function parseServiceAccountKey(base64: string): ServiceAccountKey {
 
 function createClient(): GoogleSheetsClient {
   const spreadsheetId = resolveRequired('SHIPPING_SPREADSHEET_ID');
-  const sheetName =
-    process.env.SHIPPING_PRODUCT_NAME_MAP_SHEET_NAME?.trim() || 'PurchaseThanksProductNameMap';
+  const sheetName = process.env.SHIPPING_PRODUCT_NAME_MAP_SHEET_NAME?.trim() || 'ProductNameMap';
   const serviceAccountBase64 = process.env.GOOGLE_SERVICE_ACCOUNT_BASE64?.trim();
   const accessToken = process.env.GOOGLE_SHEETS_ACCESS_TOKEN?.trim();
   const refreshToken = process.env.GOOGLE_SHEETS_REFRESH_TOKEN?.trim();
@@ -96,15 +95,14 @@ function createClient(): GoogleSheetsClient {
 async function main(): Promise<void> {
   loadEnvLocal();
   const client = createClient();
-  const sheetName =
-    process.env.SHIPPING_PRODUCT_NAME_MAP_SHEET_NAME?.trim() || 'PurchaseThanksProductNameMap';
+  const sheetName = process.env.SHIPPING_PRODUCT_NAME_MAP_SHEET_NAME?.trim() || 'ProductNameMap';
   const range = `${sheetName}!A1:B`;
 
   const existing = await client.readRows(range);
   const rows = existing.length > 0 ? existing.map((row) => [...row]) : [];
 
   if (rows.length === 0) {
-    rows.push(['original_product_name', 'purchase_thanks_product_name']);
+    rows.push(['original_product_name', 'product_name']);
   }
 
   const entries: Array<[string, string]> = [
