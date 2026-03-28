@@ -12,7 +12,6 @@ interface TemplateEditorProps {
   readonly onChange: (value: string) => void;
   readonly onSave: () => Promise<void>;
   readonly onPreview: () => void;
-  readonly onResetToDefault: () => Promise<void>;
 }
 
 export function TemplateEditor({
@@ -21,7 +20,6 @@ export function TemplateEditor({
   onChange,
   onSave,
   onPreview,
-  onResetToDefault,
 }: TemplateEditorProps) {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,9 +39,6 @@ export function TemplateEditor({
         />
 
         <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 1 }}>
-          <Button variant="outlined" onClick={() => void onResetToDefault()} disabled={isSaving}>
-            デフォルトに戻す
-          </Button>
           <Button variant="outlined" onClick={onPreview} disabled={isSaving}>
             プレビュー
           </Button>
