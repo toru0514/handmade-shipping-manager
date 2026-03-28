@@ -1,5 +1,8 @@
 import { OrderRepository } from '@/domain/ports/OrderRepository';
-import { ProductNameResolver } from '@/domain/ports/ProductNameResolver';
+import {
+  IdentityProductNameResolver,
+  ProductNameResolver,
+} from '@/domain/ports/ProductNameResolver';
 import { MessageTemplateRepository } from '@/domain/ports/MessageTemplateRepository';
 import { MessageGenerator, MessageTemplate } from '@/domain/services/MessageGenerator';
 import { MessageTemplateType } from '@/domain/valueObjects/MessageTemplateType';
@@ -25,12 +28,6 @@ export class PurchaseThanksTemplateNotFoundError extends Error {
   constructor() {
     super('購入お礼テンプレートが見つかりません');
     this.name = 'PurchaseThanksTemplateNotFoundError';
-  }
-}
-
-class IdentityProductNameResolver implements ProductNameResolver {
-  async resolve(originalProductName: string): Promise<string> {
-    return originalProductName;
   }
 }
 

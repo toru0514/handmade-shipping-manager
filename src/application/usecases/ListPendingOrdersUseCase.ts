@@ -1,6 +1,10 @@
 import { Order } from '@/domain/entities/Order';
 import { OrderRepository } from '@/domain/ports/OrderRepository';
-import { ProductNameResolver } from '@/domain/ports/ProductNameResolver';
+import {
+  IdentityProductNameResolver,
+  ProductNameResolver,
+  resolveAllProductNames,
+} from '@/domain/ports/ProductNameResolver';
 import { OverdueOrderSpecification } from '@/domain/specifications/OverdueOrderSpecification';
 import { OrderStatus } from '@/domain/valueObjects/OrderStatus';
 
@@ -13,12 +17,6 @@ export interface PendingOrderDto {
   readonly daysSinceOrder: number;
   readonly isOverdue: boolean;
   readonly transactionUrl: string;
-}
-
-class IdentityProductNameResolver implements ProductNameResolver {
-  async resolve(name: string): Promise<string> {
-    return name;
-  }
 }
 
 export class ListPendingOrdersUseCase {
@@ -35,20 +33,8 @@ export class ListPendingOrdersUseCase {
   async execute(): Promise<PendingOrderDto[]> {
     const orders = await this.orderRepository.findByStatus(OrderStatus.Pending);
 
-    // 全ユニーク商品名を一括解決（API呼び出し回数を最小化）
-    const uniqueNames = new Set<string>();
-    for (const order of orders) {
-      for (const product of order.products) {
-        uniqueNames.add(product.name);
-      }
-    }
-    const nameCache = new Map<string, string>();
-    await Promise.all(
-      Array.from(uniqueNames).map(async (name) => {
-        const resolved = await this.productNameResolver.resolve(name);
-        nameCache.set(name, resolved);
-      }),
-    );
+    const allNames = orders.flatMap((o) => o.products.map((p) => p.name));
+    const nameCache = await resolveAllProductNames(this.productNameResolver, allNames);
 
     return orders.map((order) => this.toDto(order, nameCache));
   }
