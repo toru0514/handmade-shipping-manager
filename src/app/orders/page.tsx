@@ -226,32 +226,43 @@ export default function OrdersPage() {
     <main className="mx-auto max-w-6xl p-6">
       <h1 className="mb-6 text-2xl font-bold">発送前注文一覧</h1>
       <section className="mb-6">
-        <div className="flex flex-nowrap gap-2">
-          <FetchOrdersButton
-            platform="minne"
-            isLoading={fetchingPlatform === 'minne'}
-            onClick={() => {
-              void handleFetchOrders('minne');
-            }}
-          />
-          <FetchOrdersButton
-            platform="creema"
-            isLoading={fetchingPlatform === 'creema'}
-            onClick={() => {
-              void handleFetchOrders('creema');
-            }}
-          />
-          {spreadsheetUrl && (
+        <div className="flex flex-wrap gap-2">
+          <div className="flex flex-nowrap gap-2">
+            <FetchOrdersButton
+              platform="minne"
+              isLoading={fetchingPlatform === 'minne'}
+              onClick={() => {
+                void handleFetchOrders('minne');
+              }}
+            />
+            <FetchOrdersButton
+              platform="creema"
+              isLoading={fetchingPlatform === 'creema'}
+              onClick={() => {
+                void handleFetchOrders('creema');
+              }}
+            />
+          </div>
+          <div className="flex flex-nowrap gap-2">
+            {spreadsheetUrl && (
+              <a
+                href={spreadsheetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-green-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-800"
+              >
+                <span className="hidden sm:inline">スプレッドシートを開く</span>
+                <span className="inline text-xs sm:hidden">スプシを開く</span>
+              </a>
+            )}
             <a
-              href={spreadsheetUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 whitespace-nowrap rounded-md bg-green-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-800"
+              href="/settings"
+              className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              <span className="hidden sm:inline">スプレッドシートを開く</span>
-              <span className="inline sm:hidden text-xs">スプシを開く</span>
+              <span className="hidden sm:inline">定型文設定</span>
+              <span className="inline text-xs sm:hidden">定型文</span>
             </a>
-          )}
+          </div>
         </div>
         <FetchOrdersResult result={fetchOrdersResult} requestError={fetchOrdersError} />
       </section>
