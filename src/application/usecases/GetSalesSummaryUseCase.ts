@@ -29,7 +29,6 @@ export interface ProductSalesDto {
   readonly totalSales: number; // 売上合計（subtotal の合計）
   readonly totalQuantity: number; // 販売数合計
   readonly orderCount: number; // この商品を含む注文数
-  readonly priceMissing: boolean; // 売上0円（価格未入力の可能性）
 }
 
 // 注文一覧DTO
@@ -225,7 +224,6 @@ export class GetSalesSummaryUseCase {
     for (const order of orders) {
       const countedProducts = new Set<string>();
       for (const product of order.products) {
-        if (product.name.includes('オプション')) continue;
         const name = product.name;
         const existing = productMap.get(name) ?? { totalSales: 0, totalQuantity: 0, orderCount: 0 };
         existing.totalSales += product.subtotal;
@@ -244,7 +242,6 @@ export class GetSalesSummaryUseCase {
         totalSales: data.totalSales,
         totalQuantity: data.totalQuantity,
         orderCount: data.orderCount,
-        priceMissing: data.totalSales === 0 && data.totalQuantity > 0,
       }))
       .sort((a, b) => b.totalSales - a.totalSales);
   }
