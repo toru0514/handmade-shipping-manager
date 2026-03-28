@@ -254,9 +254,10 @@ function createFetchNewOrdersUseCase(
   env: Env,
   orderRepository: OrderRepository<Order>,
   platform: 'minne' | 'creema',
+  slackWebhookUrlOverride?: string,
 ): FetchNewOrdersUseCase {
   const gmailClient = createGmailClient(env);
-  const slackWebhookUrl = env.SLACK_WEBHOOK_URL?.trim();
+  const slackWebhookUrl = slackWebhookUrlOverride ?? env.SLACK_WEBHOOK_URL?.trim();
   const slackAdapter = slackWebhookUrl ? new SlackAdapter(slackWebhookUrl) : undefined;
 
   const browserFactory = createBrowserFactory(env);
@@ -399,7 +400,18 @@ export interface Container {
   getSalesSummaryUseCase(): GetSalesSummaryUseCase;
 }
 
-export function createContainer(env: Env = process.env): Container {
+export type ContainerOptions = {
+  slackWebhookUrlOverride?: string;
+};
+
+export function createContainer(
+  envOrOptions: Env | ContainerOptions = process.env,
+  maybeOptions?: ContainerOptions,
+): Container {
+  const env: Env =
+    envOrOptions && 'slackWebhookUrlOverride' in envOrOptions ? process.env : envOrOptions;
+  const options: ContainerOptions | undefined =
+    envOrOptions && 'slackWebhookUrlOverride' in envOrOptions ? envOrOptions : maybeOptions;
   // Supabase client (optional — only created when env vars are set)
   const supabaseUrl = env.NEXT_PUBLIC_SUPABASE_URL?.trim();
   const supabaseServiceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -472,7 +484,7 @@ export function createContainer(env: Env = process.env): Container {
     getIssueShippingLabelUseCase: () =>
       createIssueShippingLabelUseCase(env, orderRepository, shippingLabelRepository),
     getFetchNewOrdersUseCase: (platform: 'minne' | 'creema') =>
-      createFetchNewOrdersUseCase(env, orderRepository, platform),
+      createFetchNewOrdersUseCase(env, orderRepository, platform, options?.slackWebhookUrlOverride),
     getUpdateMessageTemplateUseCase: () => new UpdateMessageTemplateUseCase(templateRepository),
     getSyncOrdersToDbUseCase: () => {
       if (!supabaseClient) {

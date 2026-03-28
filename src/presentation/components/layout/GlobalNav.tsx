@@ -27,6 +27,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import CategoryIcon from '@mui/icons-material/Category';
 import ForestIcon from '@mui/icons-material/Forest';
 import ImageIcon from '@mui/icons-material/Image';
+import SettingsIcon from '@mui/icons-material/Settings';
 
 const DRAWER_WIDTH_OPEN = 208;
 const DRAWER_WIDTH_CLOSED = 56;
@@ -40,6 +41,7 @@ const navItems = [
   { href: '/products', label: '商品管理', icon: <CategoryIcon fontSize="small" /> },
   { href: '/woods', label: '木材管理', icon: <ForestIcon fontSize="small" /> },
   { href: '/images', label: '画像管理', icon: <ImageIcon fontSize="small" /> },
+  { href: '/settings/account', label: 'アカウント設定', icon: <SettingsIcon fontSize="small" /> },
 ];
 
 export function GlobalNav() {

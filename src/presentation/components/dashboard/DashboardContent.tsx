@@ -930,4 +930,3 @@ function renderOperationLabel(type: OperationLogEntry['type']) {
   if (type === 'add') return '商品追加';
   return type;
 }
-
