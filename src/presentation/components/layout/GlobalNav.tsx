@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import useMediaQuery from '@mui/material/useMediaQuery';
@@ -50,6 +50,19 @@ export function GlobalNav() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // CSS カスタムプロパティでレイアウト調整値を設定
+  useEffect(() => {
+    const root = document.documentElement.style;
+    if (isMobile) {
+      root.setProperty('--nav-width', '0px');
+      root.setProperty('--appbar-height', `${MOBILE_APPBAR_HEIGHT}px`);
+    } else {
+      const width = open ? DRAWER_WIDTH_OPEN : DRAWER_WIDTH_CLOSED;
+      root.setProperty('--nav-width', `${width}px`);
+      root.setProperty('--appbar-height', '0px');
+    }
+  }, [isMobile, open]);
+
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/login');
@@ -62,6 +75,7 @@ export function GlobalNav() {
   };
 
   const drawerWidth = open ? DRAWER_WIDTH_OPEN : DRAWER_WIDTH_CLOSED;
+  const showText = isMobile || open;
 
   const drawerContent = (
     <>
@@ -99,10 +113,8 @@ export function GlobalNav() {
       <List sx={{ flex: 1, pt: 1 }}>
         {navItems.map(({ href, label, icon }) => {
           const selected = pathname.startsWith(href);
-          const showText = isMobile || open;
           const button = (
             <ListItemButton
-              key={href}
               component={Link}
               href={href}
               selected={selected}
@@ -132,7 +144,7 @@ export function GlobalNav() {
             </ListItemButton>
           );
           return showText ? (
-            button
+            <li key={href}>{button}</li>
           ) : (
             <Tooltip key={href} title={label} placement="right">
               {button}
@@ -142,16 +154,16 @@ export function GlobalNav() {
       </List>
       <Divider />
       <List>
-        <Tooltip title={isMobile || open ? '' : 'ログアウト'} placement="right">
+        <Tooltip title={showText ? '' : 'ログアウト'} placement="right">
           <ListItemButton
-            onClick={() => {
-              handleLogout();
+            onClick={async () => {
+              await handleLogout();
               handleNavClick();
             }}
             sx={{
               minHeight: 40,
-              px: isMobile || open ? 2 : 1.5,
-              justifyContent: isMobile || open ? 'initial' : 'center',
+              px: showText ? 2 : 1.5,
+              justifyContent: showText ? 'initial' : 'center',
               borderRadius: 1,
               mx: 0.5,
             }}
@@ -159,14 +171,14 @@ export function GlobalNav() {
             <ListItemIcon
               sx={{
                 minWidth: 0,
-                mr: isMobile || open ? 1.5 : 0,
+                mr: showText ? 1.5 : 0,
                 justifyContent: 'center',
                 color: 'text.secondary',
               }}
             >
               <LogoutIcon fontSize="small" />
             </ListItemIcon>
-            {(isMobile || open) && (
+            {showText && (
               <ListItemText
                 primary="ログアウト"
                 primaryTypographyProps={{ fontSize: 14, color: 'text.secondary' }}
@@ -210,41 +222,27 @@ export function GlobalNav() {
         >
           {drawerContent}
         </Drawer>
-        <style jsx global>{`
-          :root {
-            --nav-width: 0px;
-            --appbar-height: ${MOBILE_APPBAR_HEIGHT}px;
-          }
-        `}</style>
       </>
     );
   }
 
   return (
-    <>
-      <Drawer
-        variant="permanent"
-        sx={{
+    <Drawer
+      variant="permanent"
+      sx={{
+        width: drawerWidth,
+        flexShrink: 0,
+        transition: 'width 0.2s',
+        '& .MuiDrawer-paper': {
           width: drawerWidth,
-          flexShrink: 0,
           transition: 'width 0.2s',
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            transition: 'width 0.2s',
-            overflowX: 'hidden',
-            boxSizing: 'border-box',
-          },
-        }}
-      >
-        {drawerContent}
-      </Drawer>
-      <style jsx global>{`
-        :root {
-          --nav-width: ${drawerWidth}px;
-          --appbar-height: 0px;
-        }
-      `}</style>
-    </>
+          overflowX: 'hidden',
+          boxSizing: 'border-box',
+        },
+      }}
+    >
+      {drawerContent}
+    </Drawer>
   );
 }
 
