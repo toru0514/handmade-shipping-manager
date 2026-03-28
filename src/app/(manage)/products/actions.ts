@@ -150,8 +150,8 @@ export async function fetchMicroCmsImages(
   offset: number = 0,
   limit: number = 20,
 ): Promise<{ images: MicroCmsImage[]; totalCount: number }> {
-  const domain = process.env.MICROCMS_SERVICE_DOMAIN;
-  const apiKey = process.env.MICROCMS_API_KEY;
+  const domain = process.env.MICROCMS_SERVICE_DOMAIN?.trim();
+  const apiKey = process.env.MICROCMS_API_KEY?.trim();
   if (!domain || !apiKey) {
     throw new Error('microCMSの環境変数が設定されていません。');
   }
@@ -178,8 +178,8 @@ export async function fetchMicroCmsImages(
 export async function uploadImageToMicroCms(
   formData: FormData,
 ): Promise<{ url: string } | { error: string }> {
-  const domain = process.env.MICROCMS_SERVICE_DOMAIN;
-  const apiKey = process.env.MICROCMS_API_KEY;
+  const domain = process.env.MICROCMS_SERVICE_DOMAIN?.trim();
+  const apiKey = process.env.MICROCMS_API_KEY?.trim();
   if (!domain || !apiKey) {
     return { error: 'microCMSの環境変数が設定されていません。' };
   }
@@ -192,11 +192,17 @@ export async function uploadImageToMicroCms(
   const uploadForm = new FormData();
   uploadForm.append('file', file);
 
-  const res = await fetch(`https://${domain}.microcms-management.io/api/v1/media`, {
-    method: 'POST',
-    headers: { 'X-MICROCMS-API-KEY': apiKey },
-    body: uploadForm,
-  });
+  const url = `https://${domain}.microcms-management.io/api/v1/media`;
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-MICROCMS-API-KEY': apiKey },
+      body: uploadForm,
+    });
+  } catch (e) {
+    return { error: `microCMS接続エラー: ${e instanceof Error ? e.message : String(e)}` };
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => '');
