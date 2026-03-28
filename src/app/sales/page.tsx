@@ -6,6 +6,7 @@ import { SalesFilterForm } from '@/presentation/components/sales/SalesFilterForm
 import { SalesSummaryCard } from '@/presentation/components/sales/SalesSummaryCard';
 import { SalesPlatformBreakdown } from '@/presentation/components/sales/SalesPlatformBreakdown';
 import { SalesMonthlyChart } from '@/presentation/components/sales/SalesMonthlyChart';
+import { SalesProductBreakdown } from '@/presentation/components/sales/SalesProductBreakdown';
 import { SalesTable } from '@/presentation/components/sales/SalesTable';
 
 function getDefaultStartDate(): string {
@@ -120,6 +121,11 @@ export default function SalesPage() {
           <section className="mb-6 grid gap-4 lg:grid-cols-2">
             <SalesMonthlyChart breakdown={summary.monthlyBreakdown} />
             <SalesPlatformBreakdown breakdown={summary.platformBreakdown} />
+          </section>
+
+          <section className="mb-6">
+            <h2 className="mb-4 text-lg font-semibold">商品別売上</h2>
+            <SalesProductBreakdown breakdown={summary.productBreakdown} />
           </section>
 
           <section>
