@@ -10,6 +10,7 @@ import { LabelResultView } from '@/presentation/components/labels/LabelResultVie
 import { MessagePreviewDialog } from '@/presentation/components/messages/MessagePreviewDialog';
 import { FetchOrdersButton } from '@/presentation/components/orders/FetchOrdersButton';
 import { FetchOrdersResult } from '@/presentation/components/orders/FetchOrdersResult';
+import { SyncOrdersButton } from '@/presentation/components/orders/SyncOrdersButton';
 import {
   ShipmentCompleteData,
   ShipmentCompleteMessage,
@@ -255,6 +256,7 @@ export default function OrdersPage() {
                 <span className="inline text-xs sm:hidden">スプシを開く</span>
               </a>
             )}
+            <SyncOrdersButton />
             <a
               href="/settings"
               className="inline-flex items-center gap-1 whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
