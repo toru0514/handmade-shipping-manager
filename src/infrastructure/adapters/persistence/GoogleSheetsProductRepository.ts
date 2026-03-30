@@ -609,6 +609,10 @@ export class GoogleSheetsProductRepository implements ProductRepositoryPort {
           value: input.inventory !== null ? String(input.inventory) : '',
         },
         { aliases: HEADER_ALIASES.platforms, value: input.platforms.join(',') },
+        {
+          aliases: COMMON_HEADER_ALIASES.imageUrls,
+          value: input.imageUrls?.length ? input.imageUrls.join(',') : '',
+        },
         { aliases: HEADER_ALIASES.syncStatus, value: 'new' },
       ];
 

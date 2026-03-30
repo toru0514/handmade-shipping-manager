@@ -11,6 +11,10 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
+import IconButton from '@mui/material/IconButton';
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
+import CloseIcon from '@mui/icons-material/Close';
+import { ImagePickerDialog } from '@/presentation/components/products/ImagePickerDialog';
 
 const AVAILABLE_PLATFORMS = [
   { value: 'creema', label: 'Creema' },
@@ -26,6 +30,7 @@ export type AddProductFormData = {
   price: number | null;
   inventory: number | null;
   platforms: string[];
+  imageUrls?: string[];
 };
 
 type Props = {
@@ -43,6 +48,8 @@ export function AddProductModal({ pending, onSubmit, onClose }: Props) {
   const [priceText, setPriceText] = useState('');
   const [inventoryText, setInventoryText] = useState('');
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>([]);
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [showImagePicker, setShowImagePicker] = useState(false);
 
   const priceError =
     priceText.trim() && !Number.isFinite(Number(priceText.replace(/,/g, '')))
@@ -75,6 +82,7 @@ export function AddProductModal({ pending, onSubmit, onClose }: Props) {
       price: price !== null && Number.isFinite(price) ? price : null,
       inventory: inventory !== null && Number.isFinite(inventory) ? inventory : null,
       platforms: selectedPlatforms,
+      imageUrls: imageUrls.length > 0 ? imageUrls : undefined,
     });
   };
 
@@ -160,8 +168,75 @@ export function AddProductModal({ pending, onSubmit, onClose }: Props) {
               ))}
             </ToggleButtonGroup>
           </Box>
+
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+              商品画像
+            </Typography>
+            {imageUrls.length > 0 && (
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+                {imageUrls.map((url) => (
+                  <Box
+                    key={url}
+                    sx={{
+                      position: 'relative',
+                      width: 72,
+                      height: 72,
+                      borderRadius: 1,
+                      overflow: 'hidden',
+                      border: 1,
+                      borderColor: 'divider',
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={`${url}?w=80&h=80&fit=crop`}
+                      alt=""
+                      sx={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <IconButton
+                      size="small"
+                      onClick={() => setImageUrls((prev) => prev.filter((u) => u !== url))}
+                      disabled={pending}
+                      sx={{
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        bgcolor: 'rgba(0,0,0,0.5)',
+                        color: 'white',
+                        p: 0.25,
+                        '&:hover': { bgcolor: 'rgba(0,0,0,0.7)' },
+                      }}
+                    >
+                      <CloseIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  </Box>
+                ))}
+              </Box>
+            )}
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<AddPhotoAlternateIcon />}
+              onClick={() => setShowImagePicker(true)}
+              disabled={pending}
+            >
+              microCMSから選択
+            </Button>
+          </Box>
         </Box>
       </DialogContent>
+
+      {showImagePicker && (
+        <ImagePickerDialog
+          currentUrls={imageUrls}
+          onConfirm={(urls) => {
+            setImageUrls(urls);
+            setShowImagePicker(false);
+          }}
+          onClose={() => setShowImagePicker(false)}
+        />
+      )}
       <DialogActions>
         <Button onClick={onClose} disabled={pending}>
           キャンセル
