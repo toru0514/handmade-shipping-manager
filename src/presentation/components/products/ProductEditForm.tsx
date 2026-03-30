@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { getProductDetail, updateProduct, getFieldOptions } from '@/app/(manage)/products/actions';
 import { ImagePickerDialog } from './ImagePickerDialog';
+import { AIDescriptionGenerator } from './AIDescriptionGenerator';
+import { getWoods } from '@/app/(manage)/woods/actions';
+import type { WoodMaterial } from '@/domain/types/wood';
 import {
   FIELD_CONFIGS,
   SECTION_LABELS,
@@ -47,6 +50,7 @@ export function ProductEditForm({ productId }: Props) {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [pendingSave, startSave] = useTransition();
   const [showImagePicker, setShowImagePicker] = useState(false);
+  const [woods, setWoods] = useState<WoodMaterial[]>([]);
 
   const loadProduct = useCallback(async () => {
     setLoading(true);
@@ -69,6 +73,12 @@ export function ProductEditForm({ productId }: Props) {
   useEffect(() => {
     loadProduct();
   }, [loadProduct]);
+
+  useEffect(() => {
+    getWoods()
+      .then(setWoods)
+      .catch(() => {});
+  }, []);
 
   const handleFieldChange = (key: string, value: string) => {
     setSaveSuccess(false);
@@ -186,6 +196,7 @@ export function ProductEditForm({ productId }: Props) {
                         onPickImages={
                           field.key === 'image_urls' ? () => setShowImagePicker(true) : undefined
                         }
+                        woods={field.key === 'description' ? woods : undefined}
                       />
                     ))}
                   </Box>
@@ -245,6 +256,7 @@ function FieldInput({
   disabled,
   options,
   onPickImages,
+  woods,
 }: {
   field: FieldConfig;
   value: string;
@@ -252,6 +264,7 @@ function FieldInput({
   disabled: boolean;
   options?: string[];
   onPickImages?: () => void;
+  woods?: WoodMaterial[];
 }) {
   const isWide = field.type === 'textarea' || field.type === 'platforms';
 
@@ -277,6 +290,13 @@ function FieldInput({
             </Button>
           )}
         </Box>
+        {field.key === 'description' && woods && woods.length > 0 && (
+          <AIDescriptionGenerator
+            woods={woods}
+            onGenerated={(text) => onChange(text)}
+            disabled={disabled}
+          />
+        )}
         <TextField
           value={value}
           onChange={(e) => onChange(e.target.value)}

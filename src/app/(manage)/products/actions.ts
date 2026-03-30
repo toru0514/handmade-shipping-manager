@@ -224,3 +224,50 @@ export async function getSpreadsheetUrl(): Promise<string | null> {
 
   return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
 }
+
+// --- AI 説明文生成 ---
+
+import { GenerateProductDescriptionUseCase } from '@/application/usecases/GenerateProductDescriptionUseCase';
+import { GeminiTextGenerationAdapter } from '@/infrastructure/adapters/ai/GeminiTextGenerationAdapter';
+import { listWoods } from '@/infrastructure/adapters/persistence/DualWriteWoodRepository';
+
+export async function generateProductDescription(input: unknown): Promise<string> {
+  if (
+    typeof input !== 'object' ||
+    input === null ||
+    !Array.isArray((input as Record<string, unknown>).woodIds) ||
+    typeof (input as Record<string, unknown>).productCharacteristics !== 'string'
+  ) {
+    throw new Error('不正な入力です。');
+  }
+
+  const raw = input as Record<string, unknown>;
+  const woodIds = raw.woodIds as string[];
+  const productCharacteristics = raw.productCharacteristics as string;
+  const referenceExample =
+    typeof raw.referenceExample === 'string' ? raw.referenceExample : undefined;
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error('GEMINI_API_KEY が設定されていません。環境変数を確認してください。');
+  }
+
+  const woods = await listWoods();
+  const selectedWoods = woodIds
+    .map((id) => woods.find((w) => w.id === id))
+    .filter((w): w is NonNullable<typeof w> => w !== undefined);
+
+  if (selectedWoods.length === 0) {
+    throw new Error('選択された木材が見つかりません。');
+  }
+
+  const adapter = new GeminiTextGenerationAdapter(apiKey, process.env.GEMINI_MODEL || undefined);
+  const useCase = new GenerateProductDescriptionUseCase(adapter);
+
+  return useCase.execute({
+    woodNames: selectedWoods.map((w) => w.name),
+    woodFeatures: selectedWoods.map((w) => w.features),
+    productCharacteristics,
+    referenceExample,
+  });
+}

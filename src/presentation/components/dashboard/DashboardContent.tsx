@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState, useTransition } from 'react';
+import { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import ContentCopy from '@mui/icons-material/ContentCopy';
 import OpenInNew from '@mui/icons-material/OpenInNew';
@@ -29,6 +29,8 @@ import {
 import { AddProductModal, type AddProductFormData } from './AddProductModal';
 import { CopyProductDialog } from '@/presentation/components/products/CopyProductDialog';
 import { useToast } from '@/presentation/components/providers/ToastProvider';
+import { getWoods } from '@/app/(manage)/woods/actions';
+import type { WoodMaterial } from '@/domain/types/wood';
 
 type Props = {
   products: ProductRow[];
@@ -116,7 +118,14 @@ export function DashboardContent({ products, jobs, spreadsheetUrl }: Props) {
   const [copyingProductId, setCopyingProductId] = useState<string | null>(null);
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [operationLogs, setOperationLogs] = useState<OperationLogEntry[]>([]);
+  const [woods, setWoods] = useState<WoodMaterial[]>([]);
   const { showToast } = useToast();
+
+  useEffect(() => {
+    getWoods()
+      .then(setWoods)
+      .catch(() => {});
+  }, []);
 
   const appendLog = useCallback(
     (entry: Omit<OperationLogEntry, 'id' | 'createdAt'> & { detail?: string }) => {
@@ -533,6 +542,7 @@ export function DashboardContent({ products, jobs, spreadsheetUrl }: Props) {
       {showAddProductModal && (
         <AddProductModal
           pending={pendingAddProduct}
+          woods={woods}
           onSubmit={handleAddProduct}
           onClose={() => setShowAddProductModal(false)}
         />

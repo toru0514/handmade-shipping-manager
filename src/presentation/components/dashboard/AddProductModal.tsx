@@ -15,6 +15,8 @@ import IconButton from '@mui/material/IconButton';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import CloseIcon from '@mui/icons-material/Close';
 import { ImagePickerDialog } from '@/presentation/components/products/ImagePickerDialog';
+import { AIDescriptionGenerator } from '@/presentation/components/products/AIDescriptionGenerator';
+import type { WoodMaterial } from '@/domain/types/wood';
 
 const AVAILABLE_PLATFORMS = [
   { value: 'creema', label: 'Creema' },
@@ -35,11 +37,12 @@ export type AddProductFormData = {
 
 type Props = {
   pending: boolean;
+  woods: WoodMaterial[];
   onSubmit: (data: AddProductFormData) => void;
   onClose: () => void;
 };
 
-export function AddProductModal({ pending, onSubmit, onClose }: Props) {
+export function AddProductModal({ pending, woods, onSubmit, onClose }: Props) {
   const [productId] = useState(
     () => `prod-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
   );
@@ -109,6 +112,12 @@ export function AddProductModal({ pending, onSubmit, onClose }: Props) {
             disabled={pending}
             size="small"
             fullWidth
+          />
+
+          <AIDescriptionGenerator
+            woods={woods}
+            onGenerated={(text) => setDescription(text)}
+            disabled={pending}
           />
 
           <TextField
