@@ -1,25 +1,85 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { OrderSummaryDto } from '@/application/usecases/ListAllOrdersUseCase';
 import type { BuyerDetailDto } from '@/application/usecases/SearchBuyersUseCase';
 import { BuyerDetail } from '@/presentation/components/buyers/BuyerDetail';
 import { BuyerSearchForm } from '@/presentation/components/buyers/BuyerSearchForm';
-import { OrderListTable } from '@/presentation/components/buyers/OrderListTable';
+import { BuyerListTable } from '@/presentation/components/buyers/BuyerListTable';
+
+/** 全注文から購入者ごとに集約する */
+function aggregateBuyers(orders: OrderSummaryDto[]): BuyerDetailDto[] {
+  const grouped = new Map<string, OrderSummaryDto[]>();
+
+  for (const order of orders) {
+    const key = order.buyerName;
+    const current = grouped.get(key) ?? [];
+    current.push(order);
+    grouped.set(key, current);
+  }
+
+  return [...grouped.entries()]
+    .map(([buyerName, buyerOrders]) => {
+      const sorted = [...buyerOrders].sort((a, b) => b.orderedAt.localeCompare(a.orderedAt));
+      const latest = sorted[0]!;
+      const oldest = sorted[sorted.length - 1]!;
+      const totalAmount = sorted.reduce((sum, o) => sum + (o.totalPrice ?? 0), 0);
+
+      return {
+        buyerId: `buyer_${buyerName}`,
+        buyerName,
+        postalCode: latest.postalCode ?? '',
+        prefecture: latest.prefecture,
+        city: latest.city ?? '',
+        street: latest.street ?? '',
+        building: latest.building,
+        phoneNumber: latest.phoneNumber,
+        orderCount: sorted.length,
+        totalAmount,
+        firstOrderedAt: oldest.orderedAt,
+        lastOrderedAt: latest.orderedAt,
+        orderHistory: sorted.map((o) => ({
+          orderId: o.orderId,
+          platform: o.platform,
+          productName: o.productName,
+          price: o.totalPrice ?? 0,
+          status: o.status,
+          orderedAt: o.orderedAt,
+        })),
+      };
+    })
+    .sort((a, b) => b.lastOrderedAt.localeCompare(a.lastOrderedAt));
+}
+
+/** 検索キーワードで購入者をフィルタリング（購入者名・商品名・日付） */
+function filterBuyers(buyers: BuyerDetailDto[], keyword: string): BuyerDetailDto[] {
+  if (!keyword) return buyers;
+  const lower = keyword.toLowerCase();
+  return buyers.filter((buyer) => {
+    if (buyer.buyerName.toLowerCase().includes(lower)) return true;
+    if (buyer.orderHistory.some((o) => o.productName.toLowerCase().includes(lower))) return true;
+    if (buyer.orderHistory.some((o) => o.orderedAt.includes(keyword))) return true;
+    // 日付フォーマット（YYYY/MM/DD等）での検索にも対応
+    if (
+      buyer.orderHistory.some((o) => {
+        const d = new Date(o.orderedAt);
+        if (Number.isNaN(d.getTime())) return false;
+        const formatted = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+        return formatted.includes(keyword);
+      })
+    )
+      return true;
+    return false;
+  });
+}
 
 export default function BuyersPage() {
-  const [buyers, setBuyers] = useState<BuyerDetailDto[]>([]);
-  const [selectedBuyerId, setSelectedBuyerId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [searched, setSearched] = useState(false);
-
-  // 全注文一覧
   const [allOrders, setAllOrders] = useState<OrderSummaryDto[]>([]);
-  const [isLoadingOrders, setIsLoadingOrders] = useState(true);
-  const [ordersError, setOrdersError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [selectedBuyerId, setSelectedBuyerId] = useState<string | null>(null);
 
-  // 初回マウント時に全注文を取得
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -30,50 +90,38 @@ export default function BuyersPage() {
         const data = (await response.json()) as OrderSummaryDto[];
         setAllOrders(data);
       } catch (err) {
-        setOrdersError(err instanceof Error ? err.message : '注文一覧の取得に失敗しました');
+        setError(err instanceof Error ? err.message : '注文一覧の取得に失敗しました');
       } finally {
-        setIsLoadingOrders(false);
+        setIsLoading(false);
       }
     };
     fetchOrders();
   }, []);
 
-  const selectedBuyer = buyers.find((buyer) => buyer.buyerId === selectedBuyerId) ?? null;
+  const allBuyers = useMemo(() => aggregateBuyers(allOrders), [allOrders]);
 
-  const handleSearch = useCallback(async (buyerName: string) => {
-    const keyword = buyerName.trim();
-    setError(null);
-    setSearched(true);
+  const filteredBuyers = useMemo(
+    () => filterBuyers(allBuyers, searchKeyword.trim()),
+    [allBuyers, searchKeyword],
+  );
 
-    if (keyword.length === 0) {
-      setBuyers([]);
-      setSelectedBuyerId(null);
-      return;
-    }
+  const selectedBuyer = useMemo(
+    () => filteredBuyers.find((b) => b.buyerId === selectedBuyerId) ?? null,
+    [filteredBuyers, selectedBuyerId],
+  );
 
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/buyers/search?name=${encodeURIComponent(keyword)}`);
-      if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? '購入者情報の検索に失敗しました');
-      }
+  const handleSearch = useCallback(async (keyword: string) => {
+    setSearchKeyword(keyword);
+    setSelectedBuyerId(null);
+  }, []);
 
-      const data = (await response.json()) as BuyerDetailDto[];
-      setBuyers(data);
-      setSelectedBuyerId(data[0]?.buyerId ?? null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '購入者情報の検索に失敗しました');
-      setBuyers([]);
-      setSelectedBuyerId(null);
-    } finally {
-      setIsLoading(false);
-    }
+  const handleSelectBuyer = useCallback((buyerId: string) => {
+    setSelectedBuyerId(buyerId);
   }, []);
 
   return (
     <main className="mx-auto max-w-6xl p-6">
-      <h1 className="mb-6 text-2xl font-bold">購入者検索</h1>
+      <h1 className="mb-6 text-2xl font-bold">購入者一覧</h1>
 
       <BuyerSearchForm isLoading={isLoading} onSearch={handleSearch} />
 
@@ -83,48 +131,14 @@ export default function BuyersPage() {
         </div>
       )}
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[320px,1fr]">
-        <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-lg font-semibold">検索結果</h2>
-          {isLoading && <p className="text-sm text-gray-500">検索中...</p>}
-          {!isLoading && searched && buyers.length === 0 && (
-            <p className="text-sm text-gray-500">該当する購入者が見つかりませんでした</p>
-          )}
-          <ul className="space-y-2">
-            {buyers.map((buyer) => (
-              <li key={buyer.buyerId}>
-                <button
-                  type="button"
-                  className={`w-full rounded border px-3 py-2 text-left text-sm ${
-                    selectedBuyerId === buyer.buyerId
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:bg-gray-50'
-                  }`}
-                  onClick={() => setSelectedBuyerId(buyer.buyerId)}
-                >
-                  <p className="font-medium">{buyer.buyerName}</p>
-                  <p className="text-xs text-gray-500">
-                    {buyer.orderCount}件 /{' '}
-                    {new Intl.NumberFormat('ja-JP').format(buyer.totalAmount)}円
-                  </p>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-
+      <section className="mt-6 grid gap-4 lg:grid-cols-[1fr,1fr]">
+        <BuyerListTable
+          buyers={filteredBuyers}
+          selectedBuyerId={selectedBuyerId}
+          isLoading={isLoading}
+          onSelectBuyer={handleSelectBuyer}
+        />
         <BuyerDetail buyer={selectedBuyer} />
-      </section>
-
-      {/* 過去の購入者一覧 */}
-      <section className="mt-8">
-        <h2 className="mb-4 text-xl font-semibold">過去の購入者一覧</h2>
-        {ordersError && (
-          <div className="mb-4 rounded bg-red-100 px-4 py-3 text-red-700" role="alert">
-            {ordersError}
-          </div>
-        )}
-        <OrderListTable orders={allOrders} isLoading={isLoadingOrders} />
       </section>
     </main>
   );
