@@ -231,14 +231,16 @@ import { GenerateProductDescriptionUseCase } from '@/application/usecases/Genera
 import { GeminiTextGenerationAdapter } from '@/infrastructure/adapters/ai/GeminiTextGenerationAdapter';
 import { listWoods } from '@/infrastructure/adapters/persistence/DualWriteWoodRepository';
 
-export async function generateProductDescription(input: unknown): Promise<string> {
+export async function generateProductDescription(
+  input: unknown,
+): Promise<{ text: string } | { error: string }> {
   if (
     typeof input !== 'object' ||
     input === null ||
     !Array.isArray((input as Record<string, unknown>).woodIds) ||
     typeof (input as Record<string, unknown>).productCharacteristics !== 'string'
   ) {
-    throw new Error('不正な入力です。');
+    return { error: '不正な入力です。' };
   }
 
   const raw = input as Record<string, unknown>;
@@ -249,25 +251,32 @@ export async function generateProductDescription(input: unknown): Promise<string
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('GEMINI_API_KEY が設定されていません。環境変数を確認してください。');
+    return { error: 'GEMINI_API_KEY が設定されていません。環境変数を確認してください。' };
   }
 
-  const woods = await listWoods();
-  const selectedWoods = woodIds
-    .map((id) => woods.find((w) => w.id === id))
-    .filter((w): w is NonNullable<typeof w> => w !== undefined);
+  try {
+    const woods = await listWoods();
+    const selectedWoods = woodIds
+      .map((id) => woods.find((w) => w.id === id))
+      .filter((w): w is NonNullable<typeof w> => w !== undefined);
 
-  if (selectedWoods.length === 0) {
-    throw new Error('選択された木材が見つかりません。');
+    if (selectedWoods.length === 0) {
+      return { error: '選択された木材が見つかりません。' };
+    }
+
+    const adapter = new GeminiTextGenerationAdapter(apiKey, process.env.GEMINI_MODEL || undefined);
+    const useCase = new GenerateProductDescriptionUseCase(adapter);
+
+    const text = await useCase.execute({
+      woodNames: selectedWoods.map((w) => w.name),
+      woodFeatures: selectedWoods.map((w) => w.features),
+      productCharacteristics,
+      referenceExample,
+    });
+
+    return { text };
+  } catch (e) {
+    const message = e instanceof Error ? e.message : 'AI説明文の生成に失敗しました';
+    return { error: message };
   }
-
-  const adapter = new GeminiTextGenerationAdapter(apiKey, process.env.GEMINI_MODEL || undefined);
-  const useCase = new GenerateProductDescriptionUseCase(adapter);
-
-  return useCase.execute({
-    woodNames: selectedWoods.map((w) => w.name),
-    woodFeatures: selectedWoods.map((w) => w.features),
-    productCharacteristics,
-    referenceExample,
-  });
 }
