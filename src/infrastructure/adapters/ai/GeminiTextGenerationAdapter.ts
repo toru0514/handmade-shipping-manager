@@ -8,7 +8,7 @@ import { getLogger } from '@/infrastructure/lib/logger';
 
 const log = getLogger('gemini-adapter');
 
-const DEFAULT_MODEL = 'gemini-2.0-flash';
+const DEFAULT_MODEL = 'gemini-2.5-flash';
 const DEFAULT_MAX_TOKENS = 1024;
 
 export class GeminiTextGenerationAdapter implements TextGenerationPort {
