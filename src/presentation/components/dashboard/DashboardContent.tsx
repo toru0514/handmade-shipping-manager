@@ -543,7 +543,6 @@ export function DashboardContent({ products, jobs, spreadsheetUrl }: Props) {
         <AddProductModal
           pending={pendingAddProduct}
           woods={woods}
-          products={products}
           onSubmit={handleAddProduct}
           onClose={() => setShowAddProductModal(false)}
         />

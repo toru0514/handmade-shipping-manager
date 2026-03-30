@@ -35,21 +35,14 @@ export type AddProductFormData = {
   imageUrls?: string[];
 };
 
-type ReferenceProduct = {
-  readonly id: string;
-  readonly title: string;
-  readonly description: string;
-};
-
 type Props = {
   pending: boolean;
   woods: WoodMaterial[];
-  products?: ReferenceProduct[];
   onSubmit: (data: AddProductFormData) => void;
   onClose: () => void;
 };
 
-export function AddProductModal({ pending, woods, products, onSubmit, onClose }: Props) {
+export function AddProductModal({ pending, woods, onSubmit, onClose }: Props) {
   const [productId] = useState(
     () => `prod-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
   );
@@ -123,7 +116,6 @@ export function AddProductModal({ pending, woods, products, onSubmit, onClose }:
 
           <AIDescriptionGenerator
             woods={woods}
-            products={products}
             onGenerated={(text) => setDescription(text)}
             disabled={pending}
           />

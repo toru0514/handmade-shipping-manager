@@ -246,8 +246,7 @@ export async function generateProductDescription(
   const raw = input as Record<string, unknown>;
   const woodIds = raw.woodIds as string[];
   const productCharacteristics = raw.productCharacteristics as string;
-  const referenceExample =
-    typeof raw.referenceExample === 'string' ? raw.referenceExample : undefined;
+  const template = typeof raw.template === 'string' ? raw.template : undefined;
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -271,7 +270,7 @@ export async function generateProductDescription(
       woodNames: selectedWoods.map((w) => w.name),
       woodFeatures: selectedWoods.map((w) => w.features),
       productCharacteristics,
-      referenceExample,
+      template,
     });
 
     return { text };
