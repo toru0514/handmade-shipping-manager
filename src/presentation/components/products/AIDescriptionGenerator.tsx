@@ -52,7 +52,11 @@ export function AIDescriptionGenerator({
           productCharacteristics: characteristics.trim(),
           referenceExample: referenceExample.trim() || undefined,
         });
-        onGenerated(result);
+        if ('error' in result) {
+          setError(result.error);
+        } else {
+          onGenerated(result.text);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'AI説明文の生成に失敗しました');
       }
