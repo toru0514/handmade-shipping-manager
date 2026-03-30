@@ -18,7 +18,7 @@ type SyncStatus = {
 export function SyncOrdersButton({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const [syncing, setSyncing] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const lastKnownCount = useRef<number | null>(null);
+  const lastKnownStatus = useRef<SyncStatus | null>(null);
   const { showToast } = useToast();
 
   const checkForChanges = useCallback(async () => {
@@ -27,12 +27,16 @@ export function SyncOrdersButton({ onSyncComplete }: { onSyncComplete?: () => vo
       if (!res.ok) return;
       const data = (await res.json()) as SyncStatus;
 
-      if (lastKnownCount.current === null) {
-        lastKnownCount.current = data.totalCount;
+      if (lastKnownStatus.current === null) {
+        lastKnownStatus.current = data;
         return;
       }
 
-      if (data.totalCount !== lastKnownCount.current) {
+      if (
+        data.totalCount !== lastKnownStatus.current.totalCount ||
+        data.shippedCount !== lastKnownStatus.current.shippedCount ||
+        data.pendingCount !== lastKnownStatus.current.pendingCount
+      ) {
         setHasChanges(true);
       }
     } catch {
@@ -62,11 +66,11 @@ export function SyncOrdersButton({ onSyncComplete }: { onSyncComplete?: () => vo
         errors: string[];
       };
 
-      // 現在のカウントを更新
+      // 現在のステータスを更新
       const statusRes = await fetch('/api/sync/orders/status');
       if (statusRes.ok) {
         const data = (await statusRes.json()) as SyncStatus;
-        lastKnownCount.current = data.totalCount;
+        lastKnownStatus.current = data;
       }
       setHasChanges(false);
 
