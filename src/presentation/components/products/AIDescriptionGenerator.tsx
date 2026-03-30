@@ -15,13 +15,25 @@ import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import type { WoodMaterial } from '@/domain/types/wood';
 import { generateProductDescription } from '@/app/(manage)/products/actions';
 
+type ReferenceProduct = {
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+};
+
 type Props = {
   woods: WoodMaterial[];
+  products?: ReferenceProduct[];
   onGenerated: (description: string) => void;
   disabled?: boolean;
 };
 
-export function AIDescriptionGenerator({ woods, onGenerated, disabled = false }: Props) {
+export function AIDescriptionGenerator({
+  woods,
+  products = [],
+  onGenerated,
+  disabled = false,
+}: Props) {
   const [selectedWoods, setSelectedWoods] = useState<WoodMaterial[]>([]);
   const [characteristics, setCharacteristics] = useState('');
   const [referenceExample, setReferenceExample] = useState('');
@@ -97,6 +109,28 @@ export function AIDescriptionGenerator({ woods, onGenerated, disabled = false }:
             onChange={(e) => setCharacteristics(e.target.value)}
             disabled={disabled || pending}
           />
+
+          {products.length > 0 && (
+            <Autocomplete
+              size="small"
+              options={products.filter((p) => p.description.trim().length > 0)}
+              getOptionLabel={(option) => option.title}
+              onChange={(_, value) => {
+                if (value) {
+                  setReferenceExample(value.description);
+                }
+              }}
+              disabled={disabled || pending}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="参考にする既存商品（オプション）"
+                  placeholder="商品名で検索"
+                />
+              )}
+              noOptionsText="説明文のある商品がありません"
+            />
+          )}
 
           <TextField
             size="small"
