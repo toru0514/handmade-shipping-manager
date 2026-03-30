@@ -9,6 +9,7 @@ export async function updateSession(request: NextRequest) {
   if (
     pathname.startsWith('/login') ||
     pathname.startsWith('/api/auth') ||
+    pathname.startsWith('/api/sync') ||
     pathname.startsWith('/_next') ||
     pathname === '/favicon.ico'
   ) {
