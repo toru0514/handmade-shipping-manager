@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import Autocomplete from '@mui/material/Autocomplete';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import TextField from '@mui/material/TextField';
@@ -27,6 +28,8 @@ type Props = {
   onGenerated: (description: string) => void;
   disabled?: boolean;
 };
+
+const PLACEHOLDER_CHIPS = ['{木材名}', '{木材の特徴}', '{商品の特徴}'] as const;
 
 export function AIDescriptionGenerator({
   woods,
@@ -61,6 +64,10 @@ export function AIDescriptionGenerator({
         setError(err instanceof Error ? err.message : 'AI説明文の生成に失敗しました');
       }
     });
+  };
+
+  const insertPlaceholder = (placeholder: string) => {
+    setReferenceExample((prev) => prev + placeholder);
   };
 
   return (
@@ -136,16 +143,39 @@ export function AIDescriptionGenerator({
             />
           )}
 
-          <TextField
-            size="small"
-            label="参考例（オプション）"
-            placeholder="既存の商品説明など、参考にしたい文体を入力"
-            value={referenceExample}
-            onChange={(e) => setReferenceExample(e.target.value)}
-            disabled={disabled || pending}
-            multiline
-            rows={3}
-          />
+          <Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+              <Typography variant="caption" color="text.secondary">
+                テンプレート（オプション）— プレースホルダーを挿入:
+              </Typography>
+              {PLACEHOLDER_CHIPS.map((ph) => (
+                <Chip
+                  key={ph}
+                  label={ph}
+                  size="small"
+                  variant="outlined"
+                  onClick={() => insertPlaceholder(ph)}
+                  disabled={disabled || pending}
+                  sx={{ cursor: 'pointer', fontSize: '0.7rem' }}
+                />
+              ))}
+            </Box>
+            <TextField
+              size="small"
+              placeholder={
+                '例: {木材名}の温もりを感じる{商品の特徴}です。\n{木材の特徴}を活かした一品。'
+              }
+              value={referenceExample}
+              onChange={(e) => setReferenceExample(e.target.value)}
+              disabled={disabled || pending}
+              fullWidth
+              multiline
+              rows={5}
+            />
+            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
+              既存商品の説明文を読み込み、木材や商品に関する部分をプレースホルダーに書き換えると、同じ構成で新しい説明文が生成されます。
+            </Typography>
+          </Box>
 
           {error && (
             <Alert severity="error" onClose={() => setError(null)}>

@@ -1,5 +1,9 @@
 import type { TextGenerationPort } from '@/domain/ports/TextGenerationPort';
-import { buildDescriptionPrompt } from '@/domain/services/ProductDescriptionPromptBuilder';
+import {
+  applyTemplate,
+  buildPolishPrompt,
+  buildFreeGenerationPrompt,
+} from '@/domain/services/ProductDescriptionPromptBuilder';
 
 export type GenerateProductDescriptionInput = {
   readonly woodNames: string[];
@@ -20,18 +24,34 @@ export class GenerateProductDescriptionUseCase {
       throw new Error('使用木材を選択してください');
     }
 
-    const { systemPrompt, userPrompt } = buildDescriptionPrompt({
-      woodNames: input.woodNames,
-      woodFeatures: input.woodFeatures,
-      productCharacteristics: input.productCharacteristics,
-      referenceExample: input.referenceExample,
-    });
+    const hasTemplate = !!input.referenceExample?.trim();
 
-    const result = await this.textGenerator.generate({
-      systemPrompt,
-      userPrompt,
-    });
+    if (hasTemplate) {
+      // テンプレート方式: プレースホルダー置換 → AIで文章を整える
+      const draft = applyTemplate(input.referenceExample!, {
+        woodNames: input.woodNames,
+        woodFeatures: input.woodFeatures,
+        productCharacteristics: input.productCharacteristics,
+      });
 
-    return result.text;
+      const { systemPrompt, userPrompt } = buildPolishPrompt(draft);
+      const result = await this.textGenerator.generate({
+        systemPrompt,
+        userPrompt,
+        maxTokens: 2048,
+      });
+
+      return result.text;
+    } else {
+      // 自由生成方式
+      const { systemPrompt, userPrompt } = buildFreeGenerationPrompt(input);
+      const result = await this.textGenerator.generate({
+        systemPrompt,
+        userPrompt,
+        maxTokens: 2048,
+      });
+
+      return result.text;
+    }
   }
 }
