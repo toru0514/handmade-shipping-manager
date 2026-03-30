@@ -69,6 +69,10 @@ export async function addProduct(input: unknown) {
       ? (raw.inventory as number | null)
       : null;
   const description = typeof raw.description === 'string' ? raw.description : '';
+  const imageUrls =
+    Array.isArray(raw.imageUrls) && raw.imageUrls.every((v: unknown) => typeof v === 'string')
+      ? (raw.imageUrls as string[])
+      : undefined;
 
   await addProductUseCase({
     productId: raw.productId as string,
@@ -77,6 +81,7 @@ export async function addProduct(input: unknown) {
     price,
     inventory,
     platforms: raw.platforms as string[],
+    imageUrls,
   });
   revalidatePath('/products');
   revalidatePath('/');

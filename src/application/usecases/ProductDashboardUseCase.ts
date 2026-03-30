@@ -80,6 +80,7 @@ export async function addProductUseCase(input: {
   price: number | null;
   inventory: number | null;
   platforms: string[];
+  imageUrls?: string[];
 }): Promise<void> {
   if (!input.productId.trim()) {
     throw new Error('商品IDは必須です。');
@@ -106,6 +107,7 @@ export async function addProductUseCase(input: {
     price: input.price,
     inventory: input.inventory,
     platforms: normalizedPlatforms,
+    imageUrls: input.imageUrls,
   });
 }
 

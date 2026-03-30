@@ -8,6 +8,7 @@ export type AddProductInput = {
   price: number | null;
   inventory: number | null;
   platforms: string[];
+  imageUrls?: string[];
 };
 
 export type UpdateProductStatusInput = {

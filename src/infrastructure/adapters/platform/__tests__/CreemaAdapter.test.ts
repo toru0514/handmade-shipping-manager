@@ -4,6 +4,7 @@ import { OrderFetcher } from '@/domain/ports/OrderFetcher';
 import { OrderId } from '@/domain/valueObjects/OrderId';
 import { Platform } from '@/domain/valueObjects/Platform';
 import { CreemaAdapter, CreemaBrowserFactory } from '../CreemaAdapter';
+import type { CreemaPageLike } from '@/infrastructure/external/playwright/CreemaPage';
 
 function createTextContentMock(values: Record<string, string>) {
   return vi.fn(async (selector: string) => values[selector] ?? null);
@@ -46,7 +47,7 @@ describe('CreemaAdapter', () => {
           fill,
           click,
           textContent,
-          evaluate,
+          evaluate: evaluate as CreemaPageLike['evaluate'],
         })),
         close,
       })),
@@ -121,7 +122,7 @@ describe('CreemaAdapter', () => {
             productName: 'ハンドメイドバッグ',
             productOption: '9号',
             orderedAtText: '2026年2月25日',
-          })),
+          })) as CreemaPageLike['evaluate'],
         })),
         close: vi.fn(async () => undefined),
       })),
