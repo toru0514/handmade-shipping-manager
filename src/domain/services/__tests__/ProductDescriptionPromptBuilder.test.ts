@@ -28,7 +28,7 @@ describe('buildDescriptionPrompt', () => {
     expect(result.userPrompt).toContain('三角形の指輪');
   });
 
-  it('参考例が指定された場合はプロンプトに含める', () => {
+  it('参考例が指定された場合は踏襲プロンプトになる', () => {
     const result = buildDescriptionPrompt({
       woodNames: ['チェリー'],
       woodFeatures: ['淡いピンク色'],
@@ -36,8 +36,10 @@ describe('buildDescriptionPrompt', () => {
       referenceExample: '天然木の温もりを感じる一品です。',
     });
 
-    expect(result.userPrompt).toContain('参考にしたい文体');
+    expect(result.systemPrompt).toContain('踏襲');
+    expect(result.userPrompt).toContain('参考例');
     expect(result.userPrompt).toContain('天然木の温もりを感じる一品です。');
+    expect(result.userPrompt).toContain('差し替え');
   });
 
   it('参考例が空文字の場合は含めない', () => {
