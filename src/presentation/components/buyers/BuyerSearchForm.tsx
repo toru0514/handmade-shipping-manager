@@ -31,8 +31,8 @@ export function BuyerSearchForm({ isLoading = false, onSearch }: BuyerSearchForm
           <TextField
             fullWidth
             size="small"
-            label="購入者名"
-            placeholder="例: 山田"
+            label="検索"
+            placeholder="購入者名・商品名・日付で検索"
             value={buyerName}
             onChange={(event) => setBuyerName(event.target.value)}
             disabled={isLoading}

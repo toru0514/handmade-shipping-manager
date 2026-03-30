@@ -4,6 +4,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 import BuyersPage from '../page';
 
+function createAllOrdersResponse(orders: Record<string, unknown>[]) {
+  return vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url === '/api/orders/all') {
+      return new Response(JSON.stringify(orders), { status: 200 });
+    }
+    return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
+  });
+}
+
 describe('BuyersPage (UC-007)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -13,141 +23,197 @@ describe('BuyersPage (UC-007)', () => {
     vi.unstubAllGlobals();
   });
 
-  it('購入者名検索が動作し、詳細情報を表示できる', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      if (url.startsWith('/api/buyers/search?name=')) {
-        return new Response(
-          JSON.stringify([
-            {
-              buyerId: 'buyer_001',
-              buyerName: '山田 太郎',
-              postalCode: '1000001',
-              prefecture: '東京都',
-              city: '千代田区',
-              street: '千代田1-1',
-              phoneNumber: '09012345678',
-              orderCount: 2,
-              totalAmount: 5500,
-              firstOrderedAt: '2026-02-15T00:00:00.000Z',
-              lastOrderedAt: '2026-02-16T00:00:00.000Z',
-              orderHistory: [
-                {
-                  orderId: 'ORD-002',
-                  platform: 'creema',
-                  productName: 'ピアス',
-                  price: 3000,
-                  status: 'shipped',
-                  orderedAt: '2026-02-16T00:00:00.000Z',
-                },
-              ],
-            },
-          ]),
-          { status: 200 },
-        );
-      }
-
-      return new Response(JSON.stringify({ error: 'not found' }), { status: 404 });
-    });
-
+  it('購入者一覧が表示され、行クリックで詳細が表示される', async () => {
+    const fetchMock = createAllOrdersResponse([
+      {
+        orderId: 'ORD-001',
+        platform: 'creema',
+        buyerName: '山田 太郎',
+        postalCode: '1000001',
+        prefecture: '東京都',
+        city: '千代田区',
+        street: '千代田1-1',
+        phoneNumber: '09012345678',
+        productName: 'ピアス',
+        totalPrice: 3000,
+        status: 'shipped',
+        orderedAt: '2026-02-16T00:00:00.000Z',
+        shippedAt: '2026-02-17T00:00:00.000Z',
+      },
+    ]);
     vi.stubGlobal('fetch', fetchMock);
     render(<BuyersPage />);
 
-    fireEvent.change(screen.getByLabelText('購入者名'), { target: { value: '山田' } });
-    fireEvent.click(screen.getByRole('button', { name: '検索' }));
-
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: /山田 太郎/ })).toBeInTheDocument();
+      expect(screen.getByText('山田 太郎')).toBeInTheDocument();
     });
+
+    // 行クリックで詳細表示
+    fireEvent.click(screen.getByText('山田 太郎'));
 
     expect(screen.getByText('購入者詳細: 山田 太郎 様')).toBeInTheDocument();
     expect(screen.getByText('電話番号: 09012345678')).toBeInTheDocument();
-    expect(screen.getByText('ORD-002')).toBeInTheDocument();
+    expect(screen.getByText('ORD-001')).toBeInTheDocument();
+  });
+
+  it('タイトルが「購入者一覧」と表示される', async () => {
+    vi.stubGlobal('fetch', createAllOrdersResponse([]));
+    render(<BuyersPage />);
+
+    expect(screen.getByText('購入者一覧')).toBeInTheDocument();
+  });
+
+  it('検索で購入者名・商品名をフィルタリングできる', async () => {
+    const fetchMock = createAllOrdersResponse([
+      {
+        orderId: 'ORD-001',
+        platform: 'creema',
+        buyerName: '山田 太郎',
+        postalCode: '1000001',
+        prefecture: '東京都',
+        city: '千代田区',
+        street: '千代田1-1',
+        productName: 'ピアス',
+        totalPrice: 3000,
+        status: 'shipped',
+        orderedAt: '2026-02-16T00:00:00.000Z',
+        shippedAt: null,
+      },
+      {
+        orderId: 'ORD-002',
+        platform: 'minne',
+        buyerName: '佐藤 花子',
+        postalCode: '1500001',
+        prefecture: '東京都',
+        city: '渋谷区',
+        street: '神宮前1-2-3',
+        productName: 'リング',
+        totalPrice: 5000,
+        status: 'pending',
+        orderedAt: '2026-02-15T00:00:00.000Z',
+        shippedAt: null,
+      },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+    render(<BuyersPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('山田 太郎')).toBeInTheDocument();
+      expect(screen.getByText('佐藤 花子')).toBeInTheDocument();
+    });
+
+    // 購入者名で検索
+    fireEvent.change(screen.getByLabelText('検索'), { target: { value: '山田' } });
+    fireEvent.click(screen.getByRole('button', { name: '検索' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('山田 太郎')).toBeInTheDocument();
+      expect(screen.queryByText('佐藤 花子')).not.toBeInTheDocument();
+    });
+
+    // 商品名で検索
+    fireEvent.change(screen.getByLabelText('検索'), { target: { value: 'リング' } });
+    fireEvent.click(screen.getByRole('button', { name: '検索' }));
+
+    await waitFor(() => {
+      expect(screen.queryByText('山田 太郎')).not.toBeInTheDocument();
+      expect(screen.getByText('佐藤 花子')).toBeInTheDocument();
+    });
   });
 
   it('検索結果が0件の場合にメッセージを表示する', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify([]), { status: 200 }));
+    const fetchMock = createAllOrdersResponse([
+      {
+        orderId: 'ORD-001',
+        platform: 'creema',
+        buyerName: '山田 太郎',
+        postalCode: '1000001',
+        prefecture: '東京都',
+        city: '千代田区',
+        street: '千代田1-1',
+        productName: 'ピアス',
+        totalPrice: 3000,
+        status: 'shipped',
+        orderedAt: '2026-02-16T00:00:00.000Z',
+        shippedAt: null,
+      },
+    ]);
     vi.stubGlobal('fetch', fetchMock);
-
     render(<BuyersPage />);
 
-    fireEvent.change(screen.getByLabelText('購入者名'), { target: { value: '該当なし' } });
+    await waitFor(() => {
+      expect(screen.getByText('山田 太郎')).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText('検索'), { target: { value: '該当なし' } });
     fireEvent.click(screen.getByRole('button', { name: '検索' }));
 
     await waitFor(() => {
-      expect(screen.getByText('該当する購入者が見つかりませんでした')).toBeInTheDocument();
+      expect(screen.getByText('該当する購入者がいません')).toBeInTheDocument();
     });
   });
 
-  it('同姓同名が2件ある場合に選択した購入者の詳細へ切り替えられる', async () => {
-    const fetchMock = vi.fn(async () => {
-      return new Response(
-        JSON.stringify([
-          {
-            buyerId: 'buyer_101',
-            buyerName: '佐藤 花子',
-            postalCode: '1000001',
-            prefecture: '東京都',
-            city: '千代田区',
-            street: '千代田1-1',
-            phoneNumber: '09011112222',
-            orderCount: 1,
-            totalAmount: 2000,
-            firstOrderedAt: '2026-02-10T00:00:00.000Z',
-            lastOrderedAt: '2026-02-10T00:00:00.000Z',
-            orderHistory: [
-              {
-                orderId: 'ORD-101',
-                platform: 'minne',
-                productName: 'A',
-                price: 2000,
-                status: 'shipped',
-                orderedAt: '2026-02-10T00:00:00.000Z',
-              },
-            ],
-          },
-          {
-            buyerId: 'buyer_102',
-            buyerName: '佐藤 花子',
-            postalCode: '1500001',
-            prefecture: '東京都',
-            city: '渋谷区',
-            street: '神宮前1-2-3',
-            phoneNumber: '09033334444',
-            orderCount: 1,
-            totalAmount: 2800,
-            firstOrderedAt: '2026-02-12T00:00:00.000Z',
-            lastOrderedAt: '2026-02-12T00:00:00.000Z',
-            orderHistory: [
-              {
-                orderId: 'ORD-102',
-                platform: 'creema',
-                productName: 'B',
-                price: 2800,
-                status: 'pending',
-                orderedAt: '2026-02-12T00:00:00.000Z',
-              },
-            ],
-          },
-        ]),
-        { status: 200 },
-      );
-    });
+  it('同姓同名・別住所の購入者が別々に表示される', async () => {
+    const fetchMock = createAllOrdersResponse([
+      {
+        orderId: 'ORD-101',
+        platform: 'minne',
+        buyerName: '佐藤 花子',
+        postalCode: '1000001',
+        prefecture: '東京都',
+        city: '千代田区',
+        street: '千代田1-1',
+        phoneNumber: '09011112222',
+        productName: 'A',
+        totalPrice: 2000,
+        status: 'shipped',
+        orderedAt: '2026-02-10T00:00:00.000Z',
+        shippedAt: null,
+      },
+      {
+        orderId: 'ORD-102',
+        platform: 'creema',
+        buyerName: '佐藤 花子',
+        postalCode: '1500001',
+        prefecture: '東京都',
+        city: '渋谷区',
+        street: '神宮前1-2-3',
+        phoneNumber: '09033334444',
+        productName: 'B',
+        totalPrice: 2800,
+        status: 'pending',
+        orderedAt: '2026-02-12T00:00:00.000Z',
+        shippedAt: null,
+      },
+    ]);
     vi.stubGlobal('fetch', fetchMock);
-
     render(<BuyersPage />);
 
-    fireEvent.change(screen.getByLabelText('購入者名'), { target: { value: '佐藤' } });
-    fireEvent.click(screen.getByRole('button', { name: '検索' }));
-
+    // 同姓同名でも2行表示される
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: /佐藤 花子/ })).toHaveLength(2);
+      expect(screen.getAllByText('佐藤 花子')).toHaveLength(2);
     });
 
-    const buyerButtons = screen.getAllByRole('button', { name: /佐藤 花子/ });
-    fireEvent.click(buyerButtons[1] as HTMLButtonElement);
+    // テーブルのデータ行を取得（ヘッダー行を除外）
+    const tableRows = screen
+      .getAllByRole('row')
+      .filter((row) => row.textContent?.includes('佐藤 花子'));
+    expect(tableRows).toHaveLength(2);
 
-    expect(screen.getByText('電話番号: 09033334444')).toBeInTheDocument();
-    expect(screen.getByText('ORD-102')).toBeInTheDocument();
+    // 1行目をクリック（最終購入日降順なので渋谷区が先）
+    fireEvent.click(tableRows[0] as HTMLElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('電話番号: 09033334444')).toBeInTheDocument();
+      expect(screen.getByText('ORD-102')).toBeInTheDocument();
+    });
+
+    // 2行目をクリック → 千代田区の詳細に切り替わる
+    fireEvent.click(tableRows[1] as HTMLElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('電話番号: 09011112222')).toBeInTheDocument();
+      expect(screen.getByText('ORD-101')).toBeInTheDocument();
+    });
   });
 });
