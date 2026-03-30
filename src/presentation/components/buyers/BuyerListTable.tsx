@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
@@ -8,9 +9,36 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
+import TableSortLabel from '@mui/material/TableSortLabel';
 import Typography from '@mui/material/Typography';
 import type { BuyerDetailDto } from '@/application/usecases/SearchBuyersUseCase';
 import { formatCurrency, formatDate } from '@/presentation/utils/format';
+
+type SortKey = 'buyerName' | 'prefecture' | 'orderCount' | 'totalAmount' | 'lastOrderedAt';
+type SortDirection = 'asc' | 'desc';
+
+const COLUMNS: { key: SortKey; label: string; align?: 'right' }[] = [
+  { key: 'buyerName', label: '購入者名' },
+  { key: 'prefecture', label: '都道府県' },
+  { key: 'orderCount', label: '購入回数', align: 'right' },
+  { key: 'totalAmount', label: '総購入金額', align: 'right' },
+  { key: 'lastOrderedAt', label: '最終購入日' },
+];
+
+function compareBuyers(a: BuyerDetailDto, b: BuyerDetailDto, key: SortKey): number {
+  switch (key) {
+    case 'buyerName':
+      return a.buyerName.localeCompare(b.buyerName, 'ja');
+    case 'prefecture':
+      return a.prefecture.localeCompare(b.prefecture, 'ja');
+    case 'orderCount':
+      return a.orderCount - b.orderCount;
+    case 'totalAmount':
+      return a.totalAmount - b.totalAmount;
+    case 'lastOrderedAt':
+      return a.lastOrderedAt.localeCompare(b.lastOrderedAt);
+  }
+}
 
 interface BuyerListTableProps {
   buyers: BuyerDetailDto[];
@@ -25,6 +53,23 @@ export function BuyerListTable({
   isLoading,
   onSelectBuyer,
 }: BuyerListTableProps) {
+  const [sortKey, setSortKey] = useState<SortKey>('lastOrderedAt');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  const sortedBuyers = useMemo(() => {
+    const sorted = [...buyers].sort((a, b) => compareBuyers(a, b, sortKey));
+    return sortDirection === 'desc' ? sorted.reverse() : sorted;
+  }, [buyers, sortKey, sortDirection]);
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDirection(key === 'buyerName' || key === 'prefecture' ? 'asc' : 'desc');
+    }
+  };
+
   if (isLoading) {
     return (
       <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
@@ -49,15 +94,21 @@ export function BuyerListTable({
       <Table size="small" stickyHeader>
         <TableHead>
           <TableRow>
-            <TableCell>購入者名</TableCell>
-            <TableCell>都道府県</TableCell>
-            <TableCell align="right">購入回数</TableCell>
-            <TableCell align="right">総購入金額</TableCell>
-            <TableCell>最終購入日</TableCell>
+            {COLUMNS.map((col) => (
+              <TableCell key={col.key} align={col.align}>
+                <TableSortLabel
+                  active={sortKey === col.key}
+                  direction={sortKey === col.key ? sortDirection : 'asc'}
+                  onClick={() => handleSort(col.key)}
+                >
+                  {col.label}
+                </TableSortLabel>
+              </TableCell>
+            ))}
           </TableRow>
         </TableHead>
         <TableBody>
-          {buyers.map((buyer) => (
+          {sortedBuyers.map((buyer) => (
             <TableRow
               key={buyer.buyerId}
               hover
