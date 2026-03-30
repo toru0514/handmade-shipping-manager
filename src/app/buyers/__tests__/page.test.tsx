@@ -152,4 +152,68 @@ describe('BuyersPage (UC-007)', () => {
       expect(screen.getByText('該当する購入者がいません')).toBeInTheDocument();
     });
   });
+
+  it('同姓同名・別住所の購入者が別々に表示される', async () => {
+    const fetchMock = createAllOrdersResponse([
+      {
+        orderId: 'ORD-101',
+        platform: 'minne',
+        buyerName: '佐藤 花子',
+        postalCode: '1000001',
+        prefecture: '東京都',
+        city: '千代田区',
+        street: '千代田1-1',
+        phoneNumber: '09011112222',
+        productName: 'A',
+        totalPrice: 2000,
+        status: 'shipped',
+        orderedAt: '2026-02-10T00:00:00.000Z',
+        shippedAt: null,
+      },
+      {
+        orderId: 'ORD-102',
+        platform: 'creema',
+        buyerName: '佐藤 花子',
+        postalCode: '1500001',
+        prefecture: '東京都',
+        city: '渋谷区',
+        street: '神宮前1-2-3',
+        phoneNumber: '09033334444',
+        productName: 'B',
+        totalPrice: 2800,
+        status: 'pending',
+        orderedAt: '2026-02-12T00:00:00.000Z',
+        shippedAt: null,
+      },
+    ]);
+    vi.stubGlobal('fetch', fetchMock);
+    render(<BuyersPage />);
+
+    // 同姓同名でも2行表示される
+    await waitFor(() => {
+      expect(screen.getAllByText('佐藤 花子')).toHaveLength(2);
+    });
+
+    // テーブルのデータ行を取得（ヘッダー行を除外）
+    const tableRows = screen
+      .getAllByRole('row')
+      .filter((row) => row.textContent?.includes('佐藤 花子'));
+    expect(tableRows).toHaveLength(2);
+
+    // 1行目をクリック（最終購入日降順なので渋谷区が先）
+    fireEvent.click(tableRows[0] as HTMLElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('電話番号: 09033334444')).toBeInTheDocument();
+      expect(screen.getByText('ORD-102')).toBeInTheDocument();
+    });
+
+    // 2行目をクリック → 千代田区の詳細に切り替わる
+    fireEvent.click(tableRows[1] as HTMLElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('電話番号: 09011112222')).toBeInTheDocument();
+      expect(screen.getByText('ORD-101')).toBeInTheDocument();
+    });
+  });
 });

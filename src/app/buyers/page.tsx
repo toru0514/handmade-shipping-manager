@@ -7,26 +7,36 @@ import { BuyerDetail } from '@/presentation/components/buyers/BuyerDetail';
 import { BuyerSearchForm } from '@/presentation/components/buyers/BuyerSearchForm';
 import { BuyerListTable } from '@/presentation/components/buyers/BuyerListTable';
 
+function fnv1aHash(str: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i += 1) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
 /** 全注文から購入者ごとに集約する */
 function aggregateBuyers(orders: OrderSummaryDto[]): BuyerDetailDto[] {
   const grouped = new Map<string, OrderSummaryDto[]>();
 
   for (const order of orders) {
-    const key = order.buyerName;
+    const key = [order.buyerName, order.postalCode ?? '', order.street ?? ''].join('::');
     const current = grouped.get(key) ?? [];
     current.push(order);
     grouped.set(key, current);
   }
 
   return [...grouped.entries()]
-    .map(([buyerName, buyerOrders]) => {
+    .map(([identityKey, buyerOrders]) => {
+      const buyerName = buyerOrders[0]!.buyerName;
       const sorted = [...buyerOrders].sort((a, b) => b.orderedAt.localeCompare(a.orderedAt));
       const latest = sorted[0]!;
       const oldest = sorted[sorted.length - 1]!;
       const totalAmount = sorted.reduce((sum, o) => sum + (o.totalPrice ?? 0), 0);
 
       return {
-        buyerId: `buyer_${buyerName}`,
+        buyerId: `buyer_${fnv1aHash(identityKey)}`,
         buyerName,
         postalCode: latest.postalCode ?? '',
         prefecture: latest.prefecture,
