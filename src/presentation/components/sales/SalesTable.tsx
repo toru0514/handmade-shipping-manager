@@ -1,6 +1,5 @@
 'use client';
 
-import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import Paper from '@mui/material/Paper';
 import Table from '@mui/material/Table';
@@ -67,18 +66,9 @@ export function SalesTable({ orders, isLoading = false }: SalesTableProps) {
                 </Typography>
               </TableCell>
               <TableCell>
-                <Box
-                  sx={{
-                    maxWidth: 200,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  <Typography variant="body2" color="text.secondary">
-                    {order.productName}
-                  </Typography>
-                </Box>
+                <Typography variant="body2" color="text.secondary">
+                  {order.productName}
+                </Typography>
               </TableCell>
               <TableCell align="right">
                 {order.priceMissing ? (

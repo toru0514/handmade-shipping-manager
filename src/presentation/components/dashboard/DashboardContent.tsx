@@ -223,10 +223,10 @@ export function DashboardContent({ products, jobs, spreadsheetUrl }: Props) {
       >
         <Box>
           <Typography variant="h5" component="h1" fontWeight={600} color="text.primary">
-            ダッシュボード
+            商品管理
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            スプレッドシートの同期状態と自動化ジョブの状況を確認できます。
+            商品の登録・編集と各プラットフォームへの出品状況を管理できます。
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 1 }}>
