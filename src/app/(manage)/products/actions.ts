@@ -230,6 +230,13 @@ export async function getSpreadsheetUrl(): Promise<string | null> {
 import { GenerateProductDescriptionUseCase } from '@/application/usecases/GenerateProductDescriptionUseCase';
 import { GeminiTextGenerationAdapter } from '@/infrastructure/adapters/ai/GeminiTextGenerationAdapter';
 import { listWoods } from '@/infrastructure/adapters/persistence/DualWriteWoodRepository';
+import {
+  listDescriptionTemplates,
+  addDescriptionTemplate,
+  updateDescriptionTemplate,
+  deleteDescriptionTemplate,
+  type DescriptionTemplate,
+} from '@/infrastructure/adapters/persistence/GoogleSheetsDescriptionTemplateRepository';
 
 export async function generateProductDescription(
   input: unknown,
@@ -246,8 +253,7 @@ export async function generateProductDescription(
   const raw = input as Record<string, unknown>;
   const woodIds = raw.woodIds as string[];
   const productCharacteristics = raw.productCharacteristics as string;
-  const referenceExample =
-    typeof raw.referenceExample === 'string' ? raw.referenceExample : undefined;
+  const template = typeof raw.template === 'string' ? raw.template : undefined;
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -271,7 +277,7 @@ export async function generateProductDescription(
       woodNames: selectedWoods.map((w) => w.name),
       woodFeatures: selectedWoods.map((w) => w.features),
       productCharacteristics,
-      referenceExample,
+      template,
     });
 
     return { text };
@@ -279,4 +285,56 @@ export async function generateProductDescription(
     const message = e instanceof Error ? e.message : 'AI説明文の生成に失敗しました';
     return { error: message };
   }
+}
+
+// --- AI 説明文テンプレート CRUD ---
+
+export async function getDescriptionTemplates(): Promise<DescriptionTemplate[]> {
+  return listDescriptionTemplates();
+}
+
+export async function addDescriptionTemplateAction(input: unknown): Promise<DescriptionTemplate> {
+  if (
+    typeof input !== 'object' ||
+    input === null ||
+    typeof (input as Record<string, unknown>).name !== 'string' ||
+    typeof (input as Record<string, unknown>).body !== 'string'
+  ) {
+    throw new Error('不正な入力です。');
+  }
+
+  const raw = input as Record<string, unknown>;
+  const name = (raw.name as string).trim();
+  const body = (raw.body as string).trim();
+  if (!name) throw new Error('テンプレート名を入力してください。');
+  if (!body) throw new Error('テンプレート本文を入力してください。');
+
+  const result = await addDescriptionTemplate({ name, body });
+  revalidatePath('/products');
+  return result;
+}
+
+export async function updateDescriptionTemplateAction(input: unknown): Promise<void> {
+  if (
+    typeof input !== 'object' ||
+    input === null ||
+    typeof (input as Record<string, unknown>).id !== 'string' ||
+    typeof (input as Record<string, unknown>).name !== 'string' ||
+    typeof (input as Record<string, unknown>).body !== 'string'
+  ) {
+    throw new Error('不正な入力です。');
+  }
+
+  const raw = input as Record<string, unknown>;
+  await updateDescriptionTemplate(raw.id as string, {
+    name: (raw.name as string).trim(),
+    body: (raw.body as string).trim(),
+  });
+  revalidatePath('/products');
+}
+
+export async function deleteDescriptionTemplateAction(templateId: unknown): Promise<void> {
+  if (typeof templateId !== 'string') throw new Error('不正な入力です。');
+  await deleteDescriptionTemplate(templateId);
+  revalidatePath('/products');
 }

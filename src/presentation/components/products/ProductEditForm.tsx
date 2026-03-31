@@ -2,12 +2,7 @@
 
 import { useCallback, useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  getProductDetail,
-  updateProduct,
-  getFieldOptions,
-  getDashboardData,
-} from '@/app/(manage)/products/actions';
+import { getProductDetail, updateProduct, getFieldOptions } from '@/app/(manage)/products/actions';
 import { ImagePickerDialog } from './ImagePickerDialog';
 import { AIDescriptionGenerator } from './AIDescriptionGenerator';
 import { getWoods } from '@/app/(manage)/woods/actions';
@@ -56,9 +51,6 @@ export function ProductEditForm({ productId }: Props) {
   const [pendingSave, startSave] = useTransition();
   const [showImagePicker, setShowImagePicker] = useState(false);
   const [woods, setWoods] = useState<WoodMaterial[]>([]);
-  const [referenceProducts, setReferenceProducts] = useState<
-    { id: string; title: string; description: string }[]
-  >([]);
 
   const loadProduct = useCallback(async () => {
     setLoading(true);
@@ -85,9 +77,6 @@ export function ProductEditForm({ productId }: Props) {
   useEffect(() => {
     getWoods()
       .then(setWoods)
-      .catch(() => {});
-    getDashboardData()
-      .then((data) => setReferenceProducts(data.products))
       .catch(() => {});
   }, []);
 
@@ -208,9 +197,6 @@ export function ProductEditForm({ productId }: Props) {
                           field.key === 'image_urls' ? () => setShowImagePicker(true) : undefined
                         }
                         woods={field.key === 'description' ? woods : undefined}
-                        referenceProducts={
-                          field.key === 'description' ? referenceProducts : undefined
-                        }
                       />
                     ))}
                   </Box>
@@ -271,7 +257,6 @@ function FieldInput({
   options,
   onPickImages,
   woods,
-  referenceProducts,
 }: {
   field: FieldConfig;
   value: string;
@@ -280,7 +265,6 @@ function FieldInput({
   options?: string[];
   onPickImages?: () => void;
   woods?: WoodMaterial[];
-  referenceProducts?: { id: string; title: string; description: string }[];
 }) {
   const isWide = field.type === 'textarea' || field.type === 'platforms';
 
@@ -309,7 +293,6 @@ function FieldInput({
         {field.key === 'description' && woods && woods.length > 0 && (
           <AIDescriptionGenerator
             woods={woods}
-            products={referenceProducts}
             onGenerated={(text) => onChange(text)}
             disabled={disabled}
           />

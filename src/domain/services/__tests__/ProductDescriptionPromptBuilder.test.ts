@@ -1,55 +1,69 @@
 import { describe, expect, it } from 'vitest';
-import { buildDescriptionPrompt } from '../ProductDescriptionPromptBuilder';
+import {
+  applyTemplate,
+  buildPolishPrompt,
+  DEFAULT_TEMPLATE,
+} from '../ProductDescriptionPromptBuilder';
 
-describe('buildDescriptionPrompt', () => {
-  it('木材情報と商品特徴からプロンプトを構築する', () => {
-    const result = buildDescriptionPrompt({
+describe('applyTemplate', () => {
+  it('プレースホルダーを置換する', () => {
+    const template = '{木材名}の温もりを感じる{商品の特徴}です。';
+    const result = applyTemplate(template, {
       woodNames: ['ウォールナット'],
-      woodFeatures: ['濃い茶色で重厚感がある。硬くて耐久性に優れる。'],
+      woodFeatures: ['濃い茶色で重厚感がある'],
       productCharacteristics: '丸いピアス',
     });
 
-    expect(result.systemPrompt).toContain('ハンドメイド');
-    expect(result.userPrompt).toContain('ウォールナット');
-    expect(result.userPrompt).toContain('濃い茶色で重厚感がある');
-    expect(result.userPrompt).toContain('丸いピアス');
-    expect(result.userPrompt).not.toContain('参考にしたい文体');
+    expect(result).toBe('ウォールナットの温もりを感じる丸いピアスです。');
   });
 
-  it('複数の木材を含めてプロンプトを構築する', () => {
-    const result = buildDescriptionPrompt({
+  it('複数の木材を「・」区切りで置換する', () => {
+    const template = '{木材名}を使用。';
+    const result = applyTemplate(template, {
       woodNames: ['ウォールナット', 'メープル'],
       woodFeatures: ['濃い茶色', '明るい色合い'],
-      productCharacteristics: '三角形の指輪',
+      productCharacteristics: '指輪',
     });
 
-    expect(result.userPrompt).toContain('ウォールナット: 濃い茶色');
-    expect(result.userPrompt).toContain('メープル: 明るい色合い');
-    expect(result.userPrompt).toContain('三角形の指輪');
+    expect(result).toBe('ウォールナット・メープルを使用。');
   });
 
-  it('参考例が指定された場合は踏襲プロンプトになる', () => {
-    const result = buildDescriptionPrompt({
+  it('{木材の特徴}を置換する', () => {
+    const template = '■ 素材の魅力\n{木材の特徴}';
+    const result = applyTemplate(template, {
+      woodNames: ['カリン'],
+      woodFeatures: ['赤みがかった落ち着いた色味と、艶やかで硬質な手触り。'],
+      productCharacteristics: 'リング',
+    });
+
+    expect(result).toContain('赤みがかった落ち着いた色味');
+  });
+
+  it('プレースホルダーがない場合はそのまま返す', () => {
+    const template = 'プレースホルダーなしの文章です。';
+    const result = applyTemplate(template, {
       woodNames: ['チェリー'],
       woodFeatures: ['淡いピンク色'],
       productCharacteristics: 'ネックレス',
-      referenceExample: '天然木の温もりを感じる一品です。',
     });
 
-    expect(result.systemPrompt).toContain('踏襲');
-    expect(result.userPrompt).toContain('参考例');
-    expect(result.userPrompt).toContain('天然木の温もりを感じる一品です。');
-    expect(result.userPrompt).toContain('差し替え');
+    expect(result).toBe('プレースホルダーなしの文章です。');
   });
+});
 
-  it('参考例が空文字の場合は含めない', () => {
-    const result = buildDescriptionPrompt({
-      woodNames: ['チェリー'],
-      woodFeatures: ['淡いピンク色'],
-      productCharacteristics: 'ネックレス',
-      referenceExample: '  ',
-    });
+describe('buildPolishPrompt', () => {
+  it('校正用プロンプトを構築する', () => {
+    const result = buildPolishPrompt('ウォールナットの丸いピアスです。');
 
-    expect(result.userPrompt).not.toContain('参考にしたい文体');
+    expect(result.systemPrompt).toContain('校正');
+    expect(result.userPrompt).toContain('ウォールナットの丸いピアスです。');
+  });
+});
+
+describe('DEFAULT_TEMPLATE', () => {
+  it('プレースホルダーが含まれている', () => {
+    expect(DEFAULT_TEMPLATE).toContain('{木材名}');
+    expect(DEFAULT_TEMPLATE).toContain('{木材の特徴}');
+    expect(DEFAULT_TEMPLATE).toContain('{商品の特徴}');
   });
 });
