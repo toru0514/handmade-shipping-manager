@@ -16,3 +16,20 @@ ALTER TABLE sync_logs ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE shipping_labels ENABLE ROW LEVEL SECURITY;
 -- ALTER TABLE message_templates ENABLE ROW LEVEL SECURITY;
+
+-- ============================================================
+-- 商品名マッピングテーブル（ProductNameMap のDBバックアップ）
+-- スプシの ProductNameMap シートと同じデータを保持する。
+-- ============================================================
+CREATE TABLE IF NOT EXISTS product_name_map (
+  original_product_name TEXT PRIMARY KEY,
+  product_name TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+ALTER TABLE product_name_map ENABLE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE TRIGGER trigger_product_name_map_updated_at
+  BEFORE UPDATE ON product_name_map
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();

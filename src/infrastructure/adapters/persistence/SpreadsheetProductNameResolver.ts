@@ -59,6 +59,24 @@ export class SpreadsheetProductNameResolver implements ProductNameResolver {
     return prefixMatched ?? source;
   }
 
+  /**
+   * スプシ上の全マッピングを返す（DB同期用）。
+   */
+  async getAllMappings(): Promise<Array<{ originalProductName: string; productName: string }>> {
+    if (!this.cachedRows) {
+      this.cachedRows = await this.sheetsClient.readRows(DEFAULT_RANGE);
+    }
+    const results: Array<{ originalProductName: string; productName: string }> = [];
+    for (const row of this.cachedRows) {
+      const original = (row[COL.originalProductName] ?? '').trim();
+      const mapped = (row[COL.productName] ?? '').trim();
+      if (original && mapped) {
+        results.push({ originalProductName: original, productName: mapped });
+      }
+    }
+    return results;
+  }
+
   private isOptionSuffix(suffix: string): boolean {
     if (!suffix) {
       return false;
