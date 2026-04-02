@@ -22,6 +22,7 @@ import { DualWriteShippingLabelRepository } from '@/infrastructure/adapters/pers
 import { SpreadsheetMessageTemplateRepository } from '@/infrastructure/adapters/persistence/SpreadsheetMessageTemplateRepository';
 import { SpreadsheetOrderRepository } from '@/infrastructure/adapters/persistence/SpreadsheetOrderRepository';
 import { SpreadsheetProductNameResolver } from '@/infrastructure/adapters/persistence/SpreadsheetProductNameResolver';
+import { DualWriteProductNameResolver } from '@/infrastructure/adapters/persistence/DualWriteProductNameResolver';
 import { SpreadsheetShippingMethodLabelResolver } from '@/infrastructure/adapters/persistence/SpreadsheetShippingMethodLabelResolver';
 import { SpreadsheetShippingLabelRepository } from '@/infrastructure/adapters/persistence/SpreadsheetShippingLabelRepository';
 import { SupabaseMessageTemplateRepository } from '@/infrastructure/adapters/persistence/SupabaseMessageTemplateRepository';
@@ -103,7 +104,7 @@ function createTemplateRepository(env: Env): SpreadsheetMessageTemplateRepositor
   return new SpreadsheetMessageTemplateRepository(sheetsClient);
 }
 
-function createProductNameResolver(env: Env): SpreadsheetProductNameResolver {
+function createProductNameResolver(env: Env): DualWriteProductNameResolver {
   const auth = createAuth(env);
   const spreadsheetId = resolveRequiredEnv('SHIPPING_SPREADSHEET_ID', env);
   const sheetsClient = new GoogleSheetsClient({
@@ -111,7 +112,8 @@ function createProductNameResolver(env: Env): SpreadsheetProductNameResolver {
     sheetName: env.SHIPPING_PRODUCT_NAME_MAP_SHEET_NAME?.trim() || 'ProductNameMap',
     ...auth,
   });
-  return new SpreadsheetProductNameResolver(sheetsClient);
+  const spreadsheetResolver = new SpreadsheetProductNameResolver(sheetsClient);
+  return new DualWriteProductNameResolver(spreadsheetResolver);
 }
 
 function createShippingMethodLabelResolver(env: Env): SpreadsheetShippingMethodLabelResolver {
