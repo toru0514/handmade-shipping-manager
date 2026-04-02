@@ -495,7 +495,12 @@ export function createContainer(
       }
 
       const syncRepository = new SupabaseOrderSyncRepository(supabaseClient);
-      return new SyncOrdersToDbUseCase(orderRepository, shippingLabelRepository, syncRepository);
+      return new SyncOrdersToDbUseCase(
+        orderRepository,
+        shippingLabelRepository,
+        syncRepository,
+        productNameResolver,
+      );
     },
     getRestoreFromDbUseCase: () => {
       if (!supabaseClient) {

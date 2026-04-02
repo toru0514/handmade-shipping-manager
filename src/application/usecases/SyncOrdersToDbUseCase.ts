@@ -3,9 +3,14 @@ import { ShippingLabelRepository } from '@/domain/ports/ShippingLabelRepository'
 import { OrderSyncRepository } from '@/domain/ports/OrderSyncRepository';
 import { ShippingLabel } from '@/domain/entities/ShippingLabel';
 
+export interface ProductNameMapSyncer {
+  syncToDb(): Promise<void>;
+}
+
 export interface SyncResult {
   readonly ordersSynced: number;
   readonly labelsSynced: number;
+  readonly productNameMapSynced: boolean;
   readonly errors: string[];
 }
 
@@ -14,6 +19,7 @@ export class SyncOrdersToDbUseCase {
     private readonly orderRepository: OrderRepository,
     private readonly labelRepository: ShippingLabelRepository<ShippingLabel>,
     private readonly syncRepository: OrderSyncRepository,
+    private readonly productNameMapSyncer?: ProductNameMapSyncer,
   ) {}
 
   async execute(): Promise<SyncResult> {
@@ -38,6 +44,19 @@ export class SyncOrdersToDbUseCase {
       errors.push(...labelResult.errors);
     }
 
-    return { ordersSynced: orderResult.synced, labelsSynced, errors };
+    // ProductNameMap を同期
+    let productNameMapSynced = false;
+    if (this.productNameMapSyncer) {
+      try {
+        await this.productNameMapSyncer.syncToDb();
+        productNameMapSynced = true;
+      } catch (e) {
+        errors.push(
+          `ProductNameMap同期エラー: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+    }
+
+    return { ordersSynced: orderResult.synced, labelsSynced, productNameMapSynced, errors };
   }
 }
