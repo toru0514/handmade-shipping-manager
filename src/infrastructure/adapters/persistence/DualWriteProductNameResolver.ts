@@ -23,7 +23,10 @@ export class DualWriteProductNameResolver implements ProductNameResolver {
     return this.spreadsheetResolver.resolve(originalProductName);
   }
 
-  private async syncToDb(): Promise<void> {
+  /**
+   * スプシの ProductNameMap を DB に同期する（外部から明示的に呼べる公開メソッド）。
+   */
+  async syncToDb(): Promise<void> {
     if (!isSupabaseEnabled()) return;
 
     const supabase = getSupabaseClient();

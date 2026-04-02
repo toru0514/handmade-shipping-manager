@@ -106,6 +106,7 @@ describe('SyncOrdersToDbUseCase', () => {
 
     expect(result.ordersSynced).toBe(1);
     expect(result.labelsSynced).toBe(1);
+    expect(result.productNameMapSynced).toBe(false);
     expect(result.errors).toEqual([]);
   });
 
@@ -119,6 +120,7 @@ describe('SyncOrdersToDbUseCase', () => {
 
     expect(result.ordersSynced).toBe(0);
     expect(result.labelsSynced).toBe(0);
+    expect(result.productNameMapSynced).toBe(false);
     expect(result.errors).toEqual([]);
   });
 
@@ -139,5 +141,37 @@ describe('SyncOrdersToDbUseCase', () => {
 
     expect(result.ordersSynced).toBe(0);
     expect(result.errors).toContain('orders upsert failed: DB error');
+  });
+
+  it('ProductNameMap を同期する', async () => {
+    const mockSyncer = { syncToDb: vi.fn().mockResolvedValue(undefined) };
+
+    const useCase = new SyncOrdersToDbUseCase(
+      mockOrderRepository as unknown as OrderRepository,
+      mockLabelRepository as unknown as ShippingLabelRepository<ShippingLabel>,
+      mockSyncRepository as unknown as OrderSyncRepository,
+      mockSyncer,
+    );
+    const result = await useCase.execute();
+
+    expect(mockSyncer.syncToDb).toHaveBeenCalled();
+    expect(result.productNameMapSynced).toBe(true);
+  });
+
+  it('ProductNameMap 同期エラーを集約する', async () => {
+    const mockSyncer = {
+      syncToDb: vi.fn().mockRejectedValue(new Error('sync failed')),
+    };
+
+    const useCase = new SyncOrdersToDbUseCase(
+      mockOrderRepository as unknown as OrderRepository,
+      mockLabelRepository as unknown as ShippingLabelRepository<ShippingLabel>,
+      mockSyncRepository as unknown as OrderSyncRepository,
+      mockSyncer,
+    );
+    const result = await useCase.execute();
+
+    expect(result.productNameMapSynced).toBe(false);
+    expect(result.errors).toContain('ProductNameMap同期エラー: sync failed');
   });
 });
