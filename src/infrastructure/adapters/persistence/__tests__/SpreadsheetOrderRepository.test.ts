@@ -88,7 +88,7 @@ describe('SpreadsheetOrderRepository', () => {
     const found = await repository.findById(new OrderId('ORD-001'));
     expect(found).not.toBeNull();
     expect(found?.orderId.toString()).toBe('ORD-001');
-    expect(found?.shortProductName).toBe('アクセサリー');
+    expect(found?.clickPostItemName).toBe('アクセサリー');
     expect(await repository.exists(new OrderId('ORD-001'))).toBe(true);
     expect(await repository.exists(new OrderId('ORD-999'))).toBe(false);
   });
@@ -294,7 +294,7 @@ describe('SpreadsheetOrderRepository', () => {
     expect(warnSpy.mock.calls[0]?.[0]).toContain('row=3');
   });
 
-  it('shortProductName 列がある場合はその値を優先して読み込む', async () => {
+  it('clickPostItemName 列がある場合はその値を優先して読み込む', async () => {
     const client = new InMemorySheetsClient();
     const repository = new SpreadsheetOrderRepository(client);
     await client.writeRows([
@@ -321,7 +321,7 @@ describe('SpreadsheetOrderRepository', () => {
 
     const found = await repository.findById(new OrderId('ORD-777'));
     expect(found).not.toBeNull();
-    expect(found?.shortProductName).toBe('書籍');
+    expect(found?.clickPostItemName).toBe('書籍');
   });
 
   describe('複数商品の注文', () => {

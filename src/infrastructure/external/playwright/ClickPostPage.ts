@@ -759,7 +759,7 @@ export class ClickPostPage {
         'textarea[name="contents"]',
         'input[name*="item"]',
       ],
-      order.shortProductName,
+      order.clickPostItemName,
       '内容品',
     );
 

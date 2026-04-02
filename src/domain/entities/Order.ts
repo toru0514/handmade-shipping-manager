@@ -21,7 +21,7 @@ export interface OrderShipped {
 }
 
 export type OrderDomainEvent = OrderRegistered | OrderShipped;
-export const DEFAULT_SHORT_PRODUCT_NAME = 'アクセサリー';
+export const DEFAULT_CLICK_POST_ITEM_NAME = 'アクセサリー';
 
 interface NewOrderParams {
   orderId: OrderId;
@@ -30,7 +30,7 @@ interface NewOrderParams {
   product?: Product;
   products?: Product[];
   orderedAt?: Date;
-  shortProductName?: string;
+  clickPostItemName?: string;
 }
 
 interface ReconstitutedOrderParams {
@@ -41,7 +41,7 @@ interface ReconstitutedOrderParams {
   products?: Product[];
   status: OrderStatus;
   orderedAt: Date;
-  shortProductName?: string;
+  clickPostItemName?: string;
   shippedAt?: Date;
   shippingMethod?: ShippingMethod;
   trackingNumber?: TrackingNumber;
@@ -55,7 +55,7 @@ export class Order {
   readonly platform: Platform;
   readonly buyer: Buyer;
   readonly products: Product[];
-  readonly shortProductName: string;
+  readonly clickPostItemName: string;
   status: OrderStatus;
   readonly orderedAt: Date;
   shippedAt?: Date;
@@ -69,7 +69,7 @@ export class Order {
     this.platform = params.platform;
     this.buyer = params.buyer;
     this.products = Order.resolveProducts(params);
-    this.shortProductName = this.normalizeShortProductName(params.shortProductName);
+    this.clickPostItemName = this.normalizeClickPostItemName(params.clickPostItemName);
     this.status = params.status;
     this.orderedAt = params.orderedAt;
     this.shippedAt = params.shippedAt;
@@ -103,7 +103,7 @@ export class Order {
       products: params.products,
       status: OrderStatus.Pending,
       orderedAt: params.orderedAt ?? new Date(),
-      shortProductName: params.shortProductName,
+      clickPostItemName: params.clickPostItemName,
     });
   }
 
@@ -149,9 +149,9 @@ export class Order {
     return events;
   }
 
-  private normalizeShortProductName(value?: string): string {
+  private normalizeClickPostItemName(value?: string): string {
     const normalized = value?.trim();
-    return normalized && normalized.length > 0 ? normalized : DEFAULT_SHORT_PRODUCT_NAME;
+    return normalized && normalized.length > 0 ? normalized : DEFAULT_CLICK_POST_ITEM_NAME;
   }
 
   private static resolveProducts(params: { product?: Product; products?: Product[] }): Product[] {
