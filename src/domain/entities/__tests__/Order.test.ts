@@ -50,7 +50,7 @@ describe('Order', () => {
     expect(order.shippedAt).toBeUndefined();
     expect(order.shippingMethod).toBeUndefined();
     expect(order.trackingNumber).toBeUndefined();
-    expect(order.clickPostItemName).toBe('アクセサリー');
+    expect(order.shortProductName).toBe('アクセサリー');
 
     const events = order.pullDomainEvents();
     expect(events).toHaveLength(1);
@@ -63,13 +63,13 @@ describe('Order', () => {
       platform: Platform.Creema,
       buyer: createBuyer(),
       product: createProduct(),
-      clickPostItemName: '衣類',
+      shortProductName: '衣類',
       status: OrderStatus.Pending,
       orderedAt: new Date('2026-02-10T00:00:00Z'),
     });
 
     expect(order.pullDomainEvents()).toEqual([]);
-    expect(order.clickPostItemName).toBe('衣類');
+    expect(order.shortProductName).toBe('衣類');
   });
 
   it('markAsShippedでpendingからshippedに遷移し、発送情報と日時を記録する', () => {

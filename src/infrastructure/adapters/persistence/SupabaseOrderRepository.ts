@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { DEFAULT_CLICK_POST_ITEM_NAME, Order } from '@/domain/entities/Order';
+import { DEFAULT_SHORT_PRODUCT_NAME, Order } from '@/domain/entities/Order';
 import { OrderRepository } from '@/domain/ports/OrderRepository';
 import { Address } from '@/domain/valueObjects/Address';
 import { Buyer } from '@/domain/valueObjects/Buyer';
@@ -33,7 +33,7 @@ interface OrderRow {
   shipped_at: string | null;
   shipping_method: string | null;
   tracking_number: string | null;
-  click_post_item_name: string;
+  short_product_name: string;
   synced_at: string;
 }
 
@@ -115,7 +115,7 @@ export class SupabaseOrderRepository implements OrderRepository<Order> {
       shipped_at: order.shippedAt?.toISOString() ?? null,
       shipping_method: order.shippingMethod?.toString() ?? null,
       tracking_number: order.trackingNumber?.toString() ?? null,
-      click_post_item_name: order.clickPostItemName,
+      short_product_name: order.shortProductName,
       synced_at: new Date().toISOString(),
     };
   }
@@ -140,7 +140,7 @@ export class SupabaseOrderRepository implements OrderRepository<Order> {
       products,
       status: new OrderStatus(row.status),
       orderedAt: new Date(row.ordered_at),
-      clickPostItemName: row.click_post_item_name || DEFAULT_CLICK_POST_ITEM_NAME,
+      shortProductName: row.short_product_name || DEFAULT_SHORT_PRODUCT_NAME,
       shippedAt: row.shipped_at ? new Date(row.shipped_at) : undefined,
       shippingMethod: row.shipping_method ? new ShippingMethod(row.shipping_method) : undefined,
       trackingNumber: row.tracking_number ? new TrackingNumber(row.tracking_number) : undefined,

@@ -38,7 +38,7 @@ function createTestOrder(
     products: [new Product({ name: 'テスト商品', price: 1000, quantity: 1 })],
     status: new OrderStatus(overrides.status ?? 'pending'),
     orderedAt: new Date('2026-01-01T00:00:00Z'),
-    clickPostItemName: 'テスト商品',
+    shortProductName: 'テスト商品',
     shippedAt: overrides.shippedAt,
     shippingMethod: overrides.shippingMethod
       ? new ShippingMethod(overrides.shippingMethod)
@@ -68,7 +68,7 @@ function createOrderRow(overrides: Partial<Record<string, unknown>> = {}) {
     shipped_at: null,
     shipping_method: null,
     tracking_number: null,
-    click_post_item_name: 'テスト商品',
+    short_product_name: 'テスト商品',
     synced_at: '2026-01-01T00:00:00.000Z',
     ...overrides,
   };

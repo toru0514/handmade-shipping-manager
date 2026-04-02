@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS orders (
   shipped_at TIMESTAMPTZ,
   shipping_method TEXT,
   tracking_number TEXT,
-  click_post_item_name TEXT,
+  short_product_name TEXT,
   synced_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 

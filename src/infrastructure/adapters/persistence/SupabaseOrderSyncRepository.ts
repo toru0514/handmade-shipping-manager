@@ -23,7 +23,7 @@ interface OrderRow {
   shipped_at: string | null;
   shipping_method: string | null;
   tracking_number: string | null;
-  click_post_item_name: string;
+  short_product_name: string;
   synced_at: string;
 }
 
@@ -71,7 +71,7 @@ export class SupabaseOrderSyncRepository implements OrderSyncRepository {
       shipped_at: order.shippedAt?.toISOString() ?? null,
       shipping_method: order.shippingMethod?.toString() ?? null,
       tracking_number: order.trackingNumber?.toString() ?? null,
-      click_post_item_name: order.clickPostItemName,
+      short_product_name: order.shortProductName,
       synced_at: new Date().toISOString(),
     }));
 

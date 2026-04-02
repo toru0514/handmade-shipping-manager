@@ -1,4 +1,4 @@
-import { DEFAULT_CLICK_POST_ITEM_NAME, Order } from '@/domain/entities/Order';
+import { DEFAULT_SHORT_PRODUCT_NAME, Order } from '@/domain/entities/Order';
 import { OrderRepository } from '@/domain/ports/OrderRepository';
 import { Address } from '@/domain/valueObjects/Address';
 import { Buyer } from '@/domain/valueObjects/Buyer';
@@ -33,7 +33,7 @@ const COL = {
   shippedAt: 13,
   shippingMethod: 14,
   trackingNumber: 15,
-  clickPostItemName: 16,
+  shortProductName: 16,
   productQuantity: 17,
 } as const;
 
@@ -163,7 +163,7 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
       order.shippedAt?.toISOString() ?? '',
       order.shippingMethod?.toString() ?? '',
       order.trackingNumber?.toString() ?? '',
-      order.clickPostItemName,
+      order.shortProductName,
       String(product.quantity),
     ]);
   }
@@ -193,7 +193,7 @@ export class SpreadsheetOrderRepository implements OrderRepository<Order> {
       products,
       status: new OrderStatus(firstRow[COL.status] ?? 'pending'),
       orderedAt: new Date(firstRow[COL.orderedAt] ?? ''),
-      clickPostItemName: firstRow[COL.clickPostItemName] ?? DEFAULT_CLICK_POST_ITEM_NAME,
+      shortProductName: firstRow[COL.shortProductName] ?? DEFAULT_SHORT_PRODUCT_NAME,
       shippedAt: firstRow[COL.shippedAt] ? new Date(firstRow[COL.shippedAt]) : undefined,
       shippingMethod: firstRow[COL.shippingMethod]
         ? new ShippingMethod(firstRow[COL.shippingMethod])

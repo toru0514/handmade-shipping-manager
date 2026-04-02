@@ -86,8 +86,8 @@ async function main(): Promise<void> {
   const client = createClient();
   const sheetName = process.env.SHIPPING_ORDERS_SHEET_NAME?.trim() || 'Orders';
 
-  await client.writeRows([['click_post_item_name']], `${sheetName}!Q1`);
-  console.log(`✅ ${sheetName}!Q1 に click_post_item_name を設定しました`);
+  await client.writeRows([['short_product_name']], `${sheetName}!Q1`);
+  console.log(`✅ ${sheetName}!Q1 に short_product_name を設定しました`);
 }
 
 void main();
